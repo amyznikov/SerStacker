@@ -109,9 +109,6 @@ public:
   /*
    * Add input frame to canvas. The rmap.size() must be equal to new_canvas_bbox.size().
    * */
-//  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-//      const cv::Mat2f & rmap, const cv::Point & boxpos = cv::Point());
-
   bool add(cv::InputArray remapped_current_image, cv::InputArray remapped_current_weights_or_mask,
       const cv::Point & boxpos = cv::Point(0,0));
 

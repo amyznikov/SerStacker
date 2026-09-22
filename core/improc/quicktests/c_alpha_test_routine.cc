@@ -34,9 +34,9 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_FF_IMAGE, "FF_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_EQUALIZED_IMAGE, "EQUALIZED_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", "" },
+      { c_alpha_test_routine::DISPLAY_DRIZZLED_IMAGE, "DRIZZLED_IMAGE", "" },
+      { c_alpha_test_routine::DISPLAY_DRIZZLE_ACCUMULATOR, "DRIZZLE_ACCUMULATOR", "" },
+      { c_alpha_test_routine::DISPLAY_DRIZZLE_WEIGHTS, "DRIZZLE_WEIGHTS", "" },
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
@@ -44,42 +44,19 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
 
 /////////////////////////////////////
 namespace {
-
-static void makeFFImage(cv::InputArray _src, cv::OutputArray _dst, int maxLvl = 2, double eps = 1e-4)
-{
-  const cv::Size srcSize = _src.size();
-  cv::Mat src;
-
-  if ( _src.channels() == 1 ) {
-    src = _src.getMat();
-  }
-  else {
-    cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
-  }
-
-  cv::Mat blured;
-
-  for ( int i = 0; i < maxLvl; ++i ) {
-    cv::medianBlur(i == 0 ? src : blured, blured, 5);
-    cv::pyrDown(blured, blured);
-  }
-
-  // Don't use cv::resize() as it will always create crucial interpolation artifacts !
-  for ( int i = 0; i < maxLvl; ++i ) {
-    cv::pyrUp(blured, blured);
-  }
-
-  cv::add(blured, eps, _dst);
-}
-
 } // namespace
 
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, maxLvl);
-    SERIALIZE_OPTION(settings, save, *this, eps);
+    SERIALIZE_OPTION(settings, save, *this, _drizzleScale);
+    SERIALIZE_OPTION(settings, save, *this, _drizzlePixFrac);
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "Translation")) {
+      SERIALIZE_OPTION(group, save, translation, T);
+    }
+
     return true;
   }
   return false;
@@ -88,8 +65,13 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "maxLvl", CTL_CONTEXT(ctx, maxLvl), "Max pyramid level");
-  ctlbind(ctls, "eps", CTL_CONTEXT(ctx, eps), "eps");
+  ctlbind(ctls, "scale", CTL_CONTEXT(ctx, _drizzleScale), "");
+  ctlbind(ctls, "pixfrac", CTL_CONTEXT(ctx, _drizzlePixFrac), "");
+
+  ctlbind_expandable_group(ctls, "Translation Options",
+      [&, ctx = CTL_CONTEXT(ctx, translation )]() {
+        ctlbind(ctls, "Translation (X;Y):", CTL_CONTEXT(ctx, T), "");
+      });
 }
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -98,19 +80,37 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return true;
   }
 
-  cv::Mat ff;
-  makeFFImage(image, ff, maxLvl, eps);
-  if ( _display == DISPLAY_FF_IMAGE ) {
-    image.move(ff);
-    return true;
+  cv::Mat src, acc, accw;
+  c_translation_image_transform transfrom(translation.T);
+
+  if ( image.depth() == CV_32F ) {
+    src = image.getMat();
+  }
+  else {
+    image.getMat().convertTo(src, CV_32F);
   }
 
-  divideImages(image, ff, image);
-  if ( _display == DISPLAY_EQUALIZED_IMAGE ) {
-    return true;
+  if ( !transfrom.drizzle(src, acc, accw, _drizzleScale, _drizzlePixFrac) ) {
+    CF_ERROR("transfrom.drizzle() fails");
+    return false;
   }
 
-  multiplyImages(image, ff, image);
+  switch (_display) {
+    case DISPLAY_DRIZZLE_ACCUMULATOR:
+      image.assign(acc);
+      mask.release();
+      break;
+    case DISPLAY_DRIZZLE_WEIGHTS:
+      image.assign(accw);
+      mask.release();
+      break;
+    case DISPLAY_DRIZZLED_IMAGE:
+      divideImages(acc, accw, image);
+      mask.release();
+      break;
+    default:
+      break;
+  }
 
   return true;
 }

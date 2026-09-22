@@ -1113,7 +1113,9 @@ bool c_canvas_average_pipeline::process_current_frame()
         }
       }
 
-      /* This will compute _image_transform parameters as _ecch has the active pointer to _image_transform */
+      /* Following will compute/update the _image_transform parameters as the _ecch
+       * holds active pointer to the current _image_transform
+       */
       _ecch.set_reference_image(reference_grayscale_image, reference_binary_mask);
       if( !_ecch.align(_current_grayscale_image, current_binary_mask) ) {
         CF_ERROR("_ecch.align() fails");
@@ -1234,13 +1236,12 @@ bool c_canvas_average_pipeline::process_current_frame()
           return !canceled();
         }
 
-        CF_DEBUG("\nPhotometricAlignment: brightness = { %g %g %g %g } contrast   = { %g %g %g %g }",
+        CF_DEBUG("\nPhotometricAlignment: brightness = { %g %g %g %g } contrast = { %g %g %g %g }",
             brightness[0], brightness[1], brightness[2], brightness[3],
             contrast[0], contrast[1], contrast[2], contrast[3]);
       }
     }
 
-    // cv::compare(remapped_current_weights, 0, remapped_current_weights, cv::CMP_GT);
     if( !_average.add(remapped_current_image, remapped_current_weights, newCanvasBBox.tl()) ) {
       CF_ERROR("average_add() fails");
       return false;

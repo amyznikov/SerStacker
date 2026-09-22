@@ -13,7 +13,7 @@
 #include <core/proc/image_registration/c_phase_correlate.h>
 #include <core/proc/extract_channel.h>
 #include <core/proc/pixtype.h>
-
+#include <core/proc/image_registration/image_transform.h>
 
 
 class c_alpha_test_routine :
@@ -25,9 +25,9 @@ public:
 
   enum DISPLAY {
     DISPLAY_CURRENT_IMAGE,
-    DISPLAY_FF_IMAGE,
-    DISPLAY_EQUALIZED_IMAGE,
-    DISPLAY_RESTORED_IMAGE,
+    DISPLAY_DRIZZLED_IMAGE,
+    DISPLAY_DRIZZLE_ACCUMULATOR,
+    DISPLAY_DRIZZLE_WEIGHTS,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -36,12 +36,12 @@ public:
 
 protected: // Controlling parameters
   DISPLAY _display = DISPLAY_CURRENT_IMAGE;
-  double eps = 0.01;
-  int maxLvl = 2;
+  double _drizzleScale = 1.5;
+  double _drizzlePixFrac = 0.6;
 
-protected: // Cached data
+  struct c_translation_opts {
+    cv::Vec2d T;
+  } translation;
 };
-
-// c_phase_correlate pc;
 
 #endif /* __c_alpha_test_routine_h__ */

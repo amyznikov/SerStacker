@@ -117,6 +117,16 @@ public:
     return cv::Mat1f();
   }
 
+  virtual bool can_drizzle() const
+  {
+    return false;
+  }
+
+  virtual bool drizzle(cv::InputArray _src, cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight, double scale, double pixfrac) const
+  {
+    return false;
+  }
+
 protected:
   cv::Mat1f _parameters;
 };
@@ -171,6 +181,13 @@ public:
     return p - dp;
   }
 
+  bool can_drizzle() const final
+  {
+    return true;
+  }
+
+  bool drizzle(cv::InputArray _src, cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+      double scale, double pixfrac) const final;
 };
 
 
@@ -237,6 +254,14 @@ public:
 
   cv::Mat1f invert(const cv::Mat1f & p) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
+
+  bool can_drizzle() const final
+  {
+    return true;
+  }
+
+  bool drizzle(cv::InputArray _src, cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+      double scale_drizzle, double pixfrac) const final;
 
 protected:
   void update_parameters();
@@ -321,6 +346,14 @@ public:
     cv::invertAffineTransform(a + matrix(dp), a);
     return cv::Mat1f(a, true).reshape(1, 6);
   }
+
+  bool can_drizzle() const final
+  {
+    return true;
+  }
+
+  bool drizzle(cv::InputArray _src, cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+      double scale, double pixfrac) const final;
 };
 
 
@@ -388,6 +421,13 @@ public:
     return cv::Mat1f(aii, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
   }
 
+  bool can_drizzle() const final
+  {
+    return true;
+  }
+
+  bool drizzle(cv::InputArray _src,  cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+      double scale, double pixfrac) const final;
 
 protected:
   void update_parameters();

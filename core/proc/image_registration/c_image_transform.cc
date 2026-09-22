@@ -268,6 +268,136 @@ bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat
   return true;
 }
 
+bool c_translation_image_transform::drizzle(cv::InputArray _src,
+    cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+    double scale, double pixfrac) const
+{
+  if (_src.empty()) {
+    return false;
+  }
+
+  const cv::Mat src = _src.getMat();
+  const int src_h = src.rows;
+  const int src_w = src.cols;
+  const int cn = src.channels();
+
+  cv::Mat1f inv_p = invert(parameters());
+  if (inv_p.rows != 2 || inv_p.cols != 1) {
+    CF_ERROR("c_translation_image_transform::drizzle: Invalid parameters size: %dx%d. Must be 2x1", inv_p.rows, inv_p.cols);
+    return false;
+  }
+
+  const cv::Size target_size(cvRound(src_w * scale), cvRound(src_h * scale));
+
+  if( _acc_energy.empty() ) {
+    _acc_energy.create(target_size, CV_MAKETYPE(CV_32F, cn));
+    _acc_energy.getMatRef().setTo(cv::Scalar::all(0));
+  }
+  else {
+    cv::Mat acc_energy_check = _acc_energy.getMat();
+    if( acc_energy_check.size() != target_size ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_energy size (%dx%d). Expected: (%dx%d)",
+          acc_energy_check.cols, acc_energy_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_energy_check.type() != CV_MAKETYPE(CV_32F, cn) ) {
+      CF_ERROR(
+          "c_translation_image_transform::drizzle: Invalid acc_energy type or channels. Depth must be CV_32F with %d channels",
+          cn);
+      return false;
+    }
+  }
+
+  if( _acc_weight.empty() ) {
+    _acc_weight.create(target_size, CV_32FC1);
+    _acc_weight.getMatRef().setTo(0.0f);
+  }
+  else {
+    cv::Mat acc_weight_check = _acc_weight.getMat();
+    if( acc_weight_check.size() != target_size ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_weight size (%dx%d). Expected: (%dx%d)",
+          acc_weight_check.cols, acc_weight_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_weight_check.type() != CV_32FC1 ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_weight type. Must be CV_32FC1");
+      return false;
+    }
+  }
+
+  cv::Mat acc_energy = _acc_energy.getMat();
+  cv::Mat1f acc_weight = _acc_weight.getMat();
+
+  const float r_drop = float(pixfrac * scale * 0.5);
+  const float offset = float((scale - 1.0) * 0.5);
+  const float fscale = float(scale);
+
+  const float tx = inv_p(0);
+  const float ty = inv_p(1);
+
+  for (int sy = 0; sy < src_h; ++sy) {
+
+    const float yf = float(sy) + ty;
+    if (yf < -1.0f || yf >= float(src_h)) {
+      continue;
+    }
+
+    const float cy = yf * fscale + offset;
+
+    int y_min = std::max(0, cvFloor(cy - r_drop));
+    int y_max = std::min(acc_energy.rows - 1, cvCeil(cy + r_drop));
+    if (y_min > y_max) {
+      continue;
+    }
+
+    const float* src_row = src.ptr<float>(sy);
+
+    for (int sx = 0; sx < src_w; ++sx) {
+      const float xf = float(sx) + tx;
+      if (xf < -1.0f || xf >= float(src_w)) {
+        continue;
+      }
+
+      const float cx = xf * fscale + offset;
+
+      int x_min = std::max(0, cvFloor(cx - r_drop));
+      int x_max = std::min(acc_energy.cols - 1, cvCeil(cx + r_drop));
+      if (x_min > x_max) {
+        continue;
+      }
+
+      const float* src_pixel = src_row + sx * cn;
+
+      for (int ny = y_min; ny <= y_max; ++ny) {
+        const float y_dist = std::min(float(ny) + 0.5f, cy + r_drop) - std::max(float(ny) - 0.5f, cy - r_drop);
+        if (y_dist <= 0.0f) {
+          continue;
+        }
+
+        float* eng_row_base = acc_energy.ptr<float>(ny);
+        float* wgt_row = acc_weight[ny];
+
+        for (int nx = x_min; nx <= x_max; ++nx) {
+          const float x_dist = std::min(float(nx) + 0.5f, cx + r_drop) - std::max(float(nx) - 0.5f, cx - r_drop);
+          if (x_dist <= 0.0f) {
+            continue;
+          }
+
+          const float weight = x_dist * y_dist;
+
+          float* dst_pixel = eng_row_base + nx * cn;
+          for (int c = 0; c < cn; ++c) {
+            dst_pixel[c] += src_pixel[c] * weight;
+          }
+          wgt_row[nx] += weight;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_euclidean_image_transform::c_euclidean_image_transform(float Tx, float Ty, float angle, float scale)
@@ -832,6 +962,133 @@ cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, c
   return res_p;
 }
 
+bool c_euclidean_image_transform::drizzle(cv::InputArray _src,
+    cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+    double scale_drizzle, double pixfrac) const
+{
+  if (_src.empty()) {
+    CF_ERROR("c_euclidean_image_transform::drizzle: Input source image is empty");
+    return false;
+  }
+
+  const cv::Mat src = _src.getMat();
+  const int src_h = src.rows;
+  const int src_w = src.cols;
+  const int cn = src.channels();
+
+  const cv::Size target_size(cvRound(src_w * scale_drizzle), cvRound(src_h * scale_drizzle));
+
+  if( _acc_energy.empty() ) {
+    _acc_energy.create(target_size, CV_MAKETYPE(CV_32F, cn));
+    _acc_energy.getMatRef().setTo(cv::Scalar::all(0));
+  }
+  else {
+    cv::Mat acc_energy_check = _acc_energy.getMat();
+    if( acc_energy_check.size() != target_size ) {
+      CF_ERROR("c_euclidean_image_transform::drizzle: Invalid acc_energy size (%dx%d). Expected: (%dx%d)",
+          acc_energy_check.cols, acc_energy_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_energy_check.type() != CV_MAKETYPE(CV_32F, cn) ) {
+      CF_ERROR("c_euclidean_image_transform::drizzle: \n"
+          "Invalid acc_energy type or channels. Depth must be CV_32F with %d channels",
+          cn);
+      return false;
+    }
+  }
+
+  if( _acc_weight.empty() ) {
+    _acc_weight.create(target_size, CV_32FC1);
+    _acc_weight.getMatRef().setTo(0.0f);
+  }
+  else {
+    cv::Mat acc_weight_check = _acc_weight.getMat();
+    if( acc_weight_check.size() != target_size ) {
+      CF_ERROR("c_euclidean_image_transform::drizzle: Invalid acc_weight size (%dx%d). Expected: (%dx%d)",
+          acc_weight_check.cols, acc_weight_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_weight_check.type() != CV_32FC1 ) {
+      CF_ERROR("c_euclidean_image_transform::drizzle: Invalid acc_weight type. Must be CV_32FC1");
+      return false;
+    }
+  }
+
+  float Tx, Ty, angle, scale_param, Cx, Cy;
+  if (!get_parameters(parameters(), &Tx, &Ty, &angle, &scale_param, &Cx, &Cy)) {
+    CF_ERROR("c_euclidean_image_transform::drizzle: get_parameters() failed");
+    return false;
+  }
+
+  cv::Matx23f direct_matrix =
+      create_euclidean_transform(cv::Vec2f(Cx, Cy), cv::Vec2f(Tx, Ty), angle, scale_param);
+
+  cv::Matx23f inv_M;
+  cv::invertAffineTransform(direct_matrix, inv_M);
+
+  const float a00 = inv_M(0, 0); const float a01 = inv_M(0, 1); const float a02 = inv_M(0, 2);
+  const float a10 = inv_M(1, 0); const float a11 = inv_M(1, 1); const float a12 = inv_M(1, 2);
+
+  cv::Mat acc_energy = _acc_energy.getMat();
+  cv::Mat1f acc_weight = _acc_weight.getMat();
+
+  const float r_drop = float(pixfrac * scale_drizzle * 0.5);
+  const float offset = float((scale_drizzle - 1.0) * 0.5);
+  const float fscale = float(scale_drizzle);
+
+  for (int sy = 0; sy < src_h; ++sy) {
+
+    const float base_x = a01 * float(sy) + a02;
+    const float base_y = a11 * float(sy) + a12;
+
+    const float* src_row = src.ptr<float>(sy);
+
+    for (int sx = 0; sx < src_w; ++sx) {
+      const float xf = a00 * float(sx) + base_x;
+      const float yf = a10 * float(sx) + base_y;
+
+      if (xf < -1.0f || xf >= float(src_w) || yf < -1.0f || yf >= float(src_h)) {
+        continue;
+      }
+
+      const float cx = xf * fscale + offset;
+      const float cy = yf * fscale + offset;
+
+      int x_min = std::max(0, cvFloor(cx - r_drop));
+      int x_max = std::min(acc_energy.cols - 1, cvCeil(cx + r_drop));
+      int y_min = std::max(0, cvFloor(cy - r_drop));
+      int y_max = std::min(acc_energy.rows - 1, cvCeil(cy + r_drop));
+
+      if (x_min > x_max || y_min > y_max) continue;
+
+      const float* src_pixel = src_row + sx * cn;
+
+      for (int ny = y_min; ny <= y_max; ++ny) {
+        const float y_dist = std::min(float(ny) + 0.5f, cy + r_drop) - std::max(float(ny) - 0.5f, cy - r_drop);
+        if (y_dist <= 0.0f) continue;
+
+        float* eng_row_base = acc_energy.ptr<float>(ny);
+        float* wgt_row = acc_weight[ny];
+
+        for (int nx = x_min; nx <= x_max; ++nx) {
+          const float x_dist = std::min(float(nx) + 0.5f, cx + r_drop) - std::max(float(nx) - 0.5f, cx - r_drop);
+          if (x_dist <= 0.0f) continue;
+
+          const float weight = x_dist * y_dist;
+
+          float* dst_pixel = eng_row_base + nx * cn;
+          for (int c = 0; c < cn; ++c) {
+            dst_pixel[c] += src_pixel[c] * weight;
+          }
+          wgt_row[nx] += weight;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_affine_image_transform::c_affine_image_transform()
@@ -1065,6 +1322,127 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f& /
       }
     }
   });
+
+  return true;
+}
+
+bool c_affine_image_transform::drizzle(cv::InputArray _src,
+    cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
+    double scale, double pixfrac) const
+{
+  if (_src.empty()) {
+    return false;
+  }
+
+  const cv::Mat src = _src.getMat();
+  const int src_h = src.rows;
+  const int src_w = src.cols;
+  const int cn = src.channels();
+
+  const cv::Size target_size(cvRound(src_w * scale), cvRound(src_h * scale));
+
+  if( _acc_energy.empty() ) {
+    _acc_energy.create(target_size, CV_MAKETYPE(CV_32F, cn));
+    _acc_energy.getMatRef().setTo(cv::Scalar::all(0));
+  }
+  else {
+    cv::Mat acc_energy_check = _acc_energy.getMat();
+    if( acc_energy_check.size() != target_size ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_energy size (%dx%d). Expected: (%dx%d)",
+          acc_energy_check.cols, acc_energy_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_energy_check.type() != CV_MAKETYPE(CV_32F, cn) ) {
+      CF_ERROR(
+          "c_translation_image_transform::drizzle: Invalid acc_energy type or channels. Depth must be CV_32F with %d channels",
+          cn);
+      return false;
+    }
+  }
+
+  if( _acc_weight.empty() ) {
+    _acc_weight.create(target_size, CV_32FC1);
+    _acc_weight.getMatRef().setTo(0.0f);
+  }
+  else {
+    cv::Mat acc_weight_check = _acc_weight.getMat();
+    if( acc_weight_check.size() != target_size ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_weight size (%dx%d). Expected: (%dx%d)",
+          acc_weight_check.cols, acc_weight_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_weight_check.type() != CV_32FC1 ) {
+      CF_ERROR("c_translation_image_transform::drizzle: Invalid acc_weight type. Must be CV_32FC1");
+      return false;
+    }
+  }
+
+
+  cv::Mat1f inv_p = invert(parameters());
+  if (inv_p.empty()) {
+    CF_ERROR("c_affine_image_transform::drizzle: Transform is not invertible");
+    return false;
+  }
+
+  const float a00 = inv_p(0); const float a01 = inv_p(1); const float a02 = inv_p(2);
+  const float a10 = inv_p(3); const float a11 = inv_p(4); const float a12 = inv_p(5);
+
+  cv::Mat acc_energy = _acc_energy.getMat();
+  cv::Mat1f acc_weight = _acc_weight.getMat();
+
+  const float r_drop = float(pixfrac * scale * 0.5);
+  const float offset = float((scale - 1.0) * 0.5);
+  const float fscale = float(scale);
+
+  for (int sy = 0; sy < src_h; ++sy) {
+
+    const float base_x = a01 * float(sy) + a02;
+    const float base_y = a11 * float(sy) + a12;
+
+    const float* src_row = src.ptr<float>(sy);
+
+    for (int sx = 0; sx < src_w; ++sx) {
+      const float xf = a00 * float(sx) + base_x;
+      const float yf = a10 * float(sx) + base_y;
+
+      if (xf < -1.0f || xf >= float(src_w) || yf < -1.0f || yf >= float(src_h)) {
+        continue;
+      }
+
+      const float cx = xf * fscale + offset;
+      const float cy = yf * fscale + offset;
+
+      int x_min = std::max(0, cvFloor(cx - r_drop));
+      int x_max = std::min(acc_energy.cols - 1, cvCeil(cx + r_drop));
+      int y_min = std::max(0, cvFloor(cy - r_drop));
+      int y_max = std::min(acc_energy.rows - 1, cvCeil(cy + r_drop));
+
+      if (x_min > x_max || y_min > y_max) continue;
+
+      const float* src_pixel = src_row + sx * cn;
+
+      for (int ny = y_min; ny <= y_max; ++ny) {
+        const float y_dist = std::min(float(ny) + 0.5f, cy + r_drop) - std::max(float(ny) - 0.5f, cy - r_drop);
+        if (y_dist <= 0.0f) continue;
+
+        float* eng_row_base = acc_energy.ptr<float>(ny);
+        float* wgt_row = acc_weight[ny];
+
+        for (int nx = x_min; nx <= x_max; ++nx) {
+          const float x_dist = std::min(float(nx) + 0.5f, cx + r_drop) - std::max(float(nx) - 0.5f, cx - r_drop);
+          if (x_dist <= 0.0f) continue;
+
+          const float weight = x_dist * y_dist;
+
+          float* dst_pixel = eng_row_base + nx * cn;
+          for (int c = 0; c < cn; ++c) {
+            dst_pixel[c] += src_pixel[c] * weight;
+          }
+          wgt_row[nx] += weight;
+        }
+      }
+    }
+  }
 
   return true;
 }
@@ -1361,6 +1739,143 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
       }
     }
   });
+
+  return true;
+}
+
+bool c_homography_image_transform::drizzle(cv::InputArray _src,
+                                           cv::InputOutputArray _acc_energy,
+                                           cv::InputOutputArray _acc_weight,
+                                           double scale, double pixfrac) const
+{
+  if (_src.empty()) {
+    CF_ERROR("c_homography_image_transform::drizzle: Input source image is empty");
+    return false;
+  }
+
+  const cv::Mat src = _src.getMat();
+  const int src_h = src.rows;
+  const int src_w = src.cols;
+  const int cn = src.channels();
+
+  const cv::Size target_size(cvRound(src_w * scale), cvRound(src_h * scale));
+
+  if( _acc_energy.empty() ) {
+    _acc_energy.create(target_size, CV_MAKETYPE(CV_32F, cn));
+    _acc_energy.getMatRef().setTo(cv::Scalar::all(0));
+  }
+  else {
+    cv::Mat acc_energy_check = _acc_energy.getMat();
+    if( acc_energy_check.size() != target_size ) {
+      CF_ERROR("c_homography_image_transform::drizzle: Invalid acc_energy size (%dx%d). Expected: (%dx%d)",
+          acc_energy_check.cols, acc_energy_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if( acc_energy_check.type() != CV_MAKETYPE(CV_32F, cn) ) {
+      CF_ERROR("c_homography_image_transform::drizzle: \n"
+          "Invalid acc_energy type or channels. Depth must be CV_32F with %d channels",
+          cn);
+      return false;
+    }
+  }
+
+  if (_acc_weight.empty()) {
+    _acc_weight.create(target_size, CV_32FC1);
+    _acc_weight.getMatRef().setTo(0.0f);
+  }
+  else {
+    cv::Mat acc_weight_check = _acc_weight.getMat();
+    if (acc_weight_check.size() != target_size) {
+      CF_ERROR("c_homography_image_transform::drizzle: Invalid acc_weight size (%dx%d). Expected: (%dx%d)",
+               acc_weight_check.cols, acc_weight_check.rows, target_size.width, target_size.height);
+      return false;
+    }
+    if (acc_weight_check.type() != CV_32FC1) {
+      CF_ERROR("c_homography_image_transform::drizzle: Invalid acc_weight type. Must be CV_32FC1");
+      return false;
+    }
+  }
+
+  cv::Mat1f inv_p = invert(parameters());
+  if (inv_p.empty()) {
+    CF_ERROR("c_homography_image_transform::drizzle: Transform is not invertible");
+    return false;
+  }
+
+  cv::Matx33f inv_M = matrix(inv_p);
+  const float a00 = inv_M(0, 0); const float a01 = inv_M(0, 1); const float a02 = inv_M(0, 2);
+  const float a10 = inv_M(1, 0); const float a11 = inv_M(1, 1); const float a12 = inv_M(1, 2);
+  const float a20 = inv_M(2, 0); const float a21 = inv_M(2, 1); const float a22 = inv_M(2, 2);
+
+  cv::Mat acc_energy = _acc_energy.getMat();
+  cv::Mat1f acc_weight = _acc_weight.getMat();
+
+  // Physical size of the droplet on the battery: pixfrac * scale
+  const float r_drop = float(pixfrac * scale * 0.5);
+  const float offset = float((scale - 1.0) * 0.5);
+  const float fscale = float(scale);
+
+  for (int sy = 0; sy < src_h; ++sy) {
+    const float base_x = a01 * float(sy) + a02;
+    const float base_y = a11 * float(sy) + a12;
+    const float base_w = a21 * float(sy) + a22;
+
+    const float* src_row = src.ptr<float>(sy);
+
+    for (int sx = 0; sx < src_w; ++sx) {
+      const float w_denom = a20 * float(sx) + base_w;
+      if (std::abs(w_denom) < 1e-7f) {
+        continue;
+      }
+
+      const float w = 1.0f / w_denom;
+      const float xf = (a00 * float(sx) + base_x) * w;
+      const float yf = (a10 * float(sx) + base_y) * w;
+      if (xf < -1.0f || xf >= float(src_w) || yf < -1.0f || yf >= float(src_h)) {
+        continue;
+      }
+
+      const float cx = xf * fscale + offset;
+      const float cy = yf * fscale + offset;
+
+      // Pixel range of the accumulator where the droplet is projected
+      int x_min = std::max(0, cvFloor(cx - r_drop));
+      int x_max = std::min(acc_energy.cols - 1, cvCeil(cx + r_drop));
+      int y_min = std::max(0, cvFloor(cy - r_drop));
+      int y_max = std::min(acc_energy.rows - 1, cvCeil(cy + r_drop));
+      if (x_min > x_max || y_min > y_max) {
+        continue;
+      }
+
+      const float* src_pixel = src_row + sx * cn;
+
+      // Energy distribution with calculation of floor areas
+      for (int ny = y_min; ny <= y_max; ++ny) {
+        const float y_dist = std::min(float(ny) + 0.5f, cy + r_drop) - std::max(float(ny) - 0.5f, cy - r_drop);
+        if (y_dist <= 0.0f) {
+          continue;
+        }
+
+        float* eng_row_base = acc_energy.ptr<float>(ny);
+        float* wgt_row = acc_weight[ny];
+
+        for (int nx = x_min; nx <= x_max; ++nx) {
+          const float x_dist = std::min(float(nx) + 0.5f, cx + r_drop) - std::max(float(nx) - 0.5f, cx - r_drop);
+          if (x_dist <= 0.0f) {
+            continue;
+          }
+
+          const float weight = x_dist * y_dist;
+
+          float* dst_pixel = eng_row_base + nx * cn;
+          for (int c = 0; c < cn; ++c) {
+            dst_pixel[c] += src_pixel[c] * weight;
+          }
+          wgt_row[nx] += weight;
+        }
+      }
+    }
+  }
 
   return true;
 }

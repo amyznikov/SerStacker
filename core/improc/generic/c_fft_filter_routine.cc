@@ -168,33 +168,6 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-
-//// Magnitude: sqrt(Re^2 + Im^2)
-//static bool fftDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-//{
-//  if( _spec.type() == CV_32FC1 ) {
-//    _spec.getMat().copyTo(_dst);
-//    if( swapQuadrants ) {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  if ( _spec.type() == CV_32FC2 ) {
-//    cv::Mat1f magnitude;
-//    fftSpectrumModule(_spec, _dst);
-//    if ( swapQuadrants )  {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-//  return false;
-//}
-
-extern void setVMethodClassic(bool v);
-
 bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if ( _display == DISPLAY_SRC_IMAGE ) {

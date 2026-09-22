@@ -1254,11 +1254,8 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
-  cv::Mat src =
-      _src.getMat();
-
-  cv::Mat src_mask =
-      _src_mask.getMat();
+  cv::Mat src = _src.getMat();
+  cv::Mat src_mask = _src_mask.getMat();
 
   cv::Size src_size;
   const cv::Scalar * border_value_ptr;
@@ -1293,16 +1290,12 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     border_value_ptr = &_options.border_value;
   }
 
-
-
   if( dst.needed() ) {
-
     cv::remap(src, dst, rmap, cv::noArray(), interpolation_flags,
         border_mode, *border_value_ptr);
   }
 
   if ( dst_mask.needed() ) {
-
     if ( !src_mask.empty() ) {
       cv::remap(src_mask, dst_mask, rmap, cv::noArray(),
           interpolation_flags, cv::BORDER_CONSTANT, cv::Scalar::all(0));
@@ -1312,59 +1305,13 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
           interpolation_flags, cv::BORDER_CONSTANT, cv::Scalar::all(0));
     }
 
-    cv::Mat & out_mask =
-        dst_mask.getMatRef();
-
+    cv::Mat & out_mask = dst_mask.getMatRef();
     if ( out_mask.depth() == CV_8U ) {
       // reduce mask edge artifacts
       cv::compare(out_mask, 255, out_mask, cv::CMP_GE);
       cv::erode(out_mask, out_mask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
-
-//    if ( _options.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
-//
-//      // size must be referece_image.size()
-//      cv::Mat new_mask;
-//
-//      if ( out_mask.depth() == CV_32F ) {
-//        out_mask.copyTo(new_mask);
-//      }
-//      else {
-//        out_mask.convertTo(new_mask, CV_32F, 1./255);
-//      }
-//
-//      switch (_options.planetary_disk_derotation.derotation_type) {
-//        case planetary_disk_derotation_jovian:
-//          _jovian_derotation.current_wmask().copyTo(new_mask,
-//              _jovian_derotation.planetary_disk_ellipse_mask());
-//          break;
-//        case planetary_disk_derotation_saturn:
-//          _saturn_derotation.current_wmask().copyTo(new_mask,
-//              _saturn_derotation.planetary_disk_ellipse_mask());
-//          break;
-//      }
-//
-//
-//      static int iitest = 0;
-//
-//      if ( !_debug_path.empty() ) {
-//        save_image(out_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", _debug_path.c_str(), iitest));
-//        save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", _debug_path.c_str(), iitest));
-//      }
-//
-//      cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
-//      new_mask.setTo(0, ~out_mask);
-//      if ( !_debug_path.empty() ) {
-//        save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", _debug_path.c_str(), iitest));
-//      }
-//
-//      dst_mask.move(new_mask);
-//
-//      ++iitest;
-//    }
-
-
   }
 
   return true;

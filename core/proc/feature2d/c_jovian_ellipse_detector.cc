@@ -476,14 +476,12 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
 
   const cv::Size cropSize = _cropRC.size();
   if( VLAP.size() != cropSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, true);
+    VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, false);
   }
 
-  fftPPSDecomposition(_grayscaleImageCrop, VLAP,
-      INTENSITY_P, cv::noArray(),
-      true);
-
+  fftPPSDecomposition(_grayscaleImageCrop, VLAP, INTENSITY_P, cv::noArray());
   fftSpectrumModule(INTENSITY_P, _radonMagnitude);
+  fftSwapQuadrants(_radonMagnitude);
 
   const double angle =
       fftEstimateRadonOrientation(_radonMagnitude,

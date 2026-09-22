@@ -1053,7 +1053,7 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     SRC_CHANNELS_RESTORED.resize(cn);
     for ( int i = 0; i < cn; ++i ) {
       fftMulSpectrumCCS(SRC_P[i], INVERSE_FILTER, SRC_P[i]);
-      cv::add(SRC_P[i], SRC_S[i], SRC_P[i]);
+      cv::add(SRC_P[i], SRC_S[i], SRC_P[i]); // don't apply filter to S to avoid edge artifacts !
       cv::idft(SRC_P[i], SRC_CHANNELS_RESTORED[i], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
     }
   }

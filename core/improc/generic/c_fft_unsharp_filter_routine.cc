@@ -38,29 +38,6 @@ const c_enum_member* members_of<c_fft_unsharp_filter_routine::DISPLAY>()
   return members;
 }
 
-static bool fftMulSpectrum(cv::InputArray filter, cv::InputArray complexSpectrum,
-    cv::OutputArray dst)
-{
-  if( filter.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid argument: Single channel CV_32F filter matrix is expected on input");
-    return false;
-  }
-
-  if( complexSpectrum.type() != CV_32FC2 ) {
-    CF_ERROR("Invalid argument: Two channel CV_32F complex spectrum matrix is expected on input");
-    return false;
-  }
-
-  cv::Mat2f F;
-  const cv::Mat planes[] {
-      filter.getMat(), filter.getMat()
-  };
-  cv::merge(planes, 2, F);
-  cv::multiply(F, complexSpectrum, dst);
-
-  return true;
-}
-
 // Magnitude: sqrt(Re^2 + Im^2)
 static bool fftDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
 {
@@ -196,7 +173,7 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
       continue;
     }
 
-    fftMulSpectrum(FILTER, complex_channels[i], complex_channels[i]);
+    fftMulSpectrum(complex_channels[i], FILTER, complex_channels[i]);
     if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE ) {
       fftSpectrumModule(complex_channels[i], real_channels[i]);
       continue;

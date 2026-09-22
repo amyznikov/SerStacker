@@ -43,7 +43,7 @@ bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::Input
     VLAP.release();
   }
   else if( VLAP.size() != fftSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
   }
 
   for ( int i = 0; i < cn; ++i ) {
@@ -51,13 +51,14 @@ bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::Input
     channels[i].convertTo(channels[i], CV_32F);
 
     if ( ! _ppsDecomposition ) {
-      fftImageToSpectrum(channels[i], channels[i], fftSize, true);
+      fftImageToSpectrum(channels[i], channels[i], fftSize, false);
     }
     else {
-      fftPPSDecomposition(channels[i], VLAP, channels[i], cv::noArray(), true);
+      fftPPSDecomposition(channels[i], VLAP, channels[i], cv::noArray());
     }
 
     fftSpectrumModule(channels[i], channels[i]);
+    fftSwapQuadrants(channels[i]);
     if ( _profileToImage) {
       fftRadialProfile(channels[i], radial_profile);
       fftRadialProfileToImage(radial_profile, fftSize, (cv::Mat1f&) channels[i]);

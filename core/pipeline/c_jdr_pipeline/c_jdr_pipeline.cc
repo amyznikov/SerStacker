@@ -27,10 +27,40 @@ const c_enum_member* members_of<c_jdr_pipeline::STACKING_STAGE>()
 
 namespace {
 
-static void makeFFImage(cv::InputArray _src, cv::OutputArray _dst, int maxLvl = 3, double eps = 1e-4)
+//static void makeFFImage(cv::InputArray _src, cv::OutputArray _dst, int maxLvl = 3, double alpha = 1e-2)
+//{
+//  const cv::Size srcSize = _src.size();
+//  cv::Mat src;
+//
+//  if ( _src.channels() == 1 ) {
+//    src = _src.getMat();
+//  }
+//  else {
+//    cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
+//  }
+//
+//  cv::Mat blured;
+//
+//  for ( int i = 0; i < maxLvl; ++i ) {
+//    cv::medianBlur(i == 0 ? src : blured, blured, 5);
+//    cv::pyrDown(blured, blured);
+//  }
+//
+//  // Don't use cv::resize() as it will always create crucial interpolation artifacts !
+//  for ( int i = 0; i < maxLvl; ++i ) {
+//    cv::pyrUp(blured, blured);
+//  }
+//
+//  cv::add(blured, alpha, _dst);
+//}
+
+static void makeFFImage(cv::InputArray _src, cv::OutputArray _dst, int maxLvl = 3, double alpha = 5e-2)
 {
   const cv::Size srcSize = _src.size();
   cv::Mat src;
+  cv::Mat blured;
+  cv::Mat num, den;
+  double minv, maxv;
 
   if ( _src.channels() == 1 ) {
     src = _src.getMat();
@@ -39,20 +69,24 @@ static void makeFFImage(cv::InputArray _src, cv::OutputArray _dst, int maxLvl = 
     cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
   }
 
-  cv::Mat blured;
-
   for ( int i = 0; i < maxLvl; ++i ) {
     cv::medianBlur(i == 0 ? src : blured, blured, 5);
     cv::pyrDown(blured, blured);
   }
 
-  // Don't use cv::resize() as it will always create crucial interpolation artifacts !
+  // blured = (blured^2 + alpha * max_val^2) / (blured + reg)
+
+  cv::minMaxLoc(blured, &minv, &maxv);
+  cv::add(blured.mul(blured), alpha * maxv * maxv, num);
+  cv::add(blured, alpha * maxv, den);
+  cv::divide(num, den, blured);
+
   for ( int i = 0; i < maxLvl; ++i ) {
     cv::pyrUp(blured, blured);
   }
 
-  cv::add(blured, eps, _dst);
 }
+
 }
 
 c_jdr_pipeline::c_jdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence) :

@@ -23,24 +23,29 @@ public:
     FILTER_LAPLACIAN,
     FILTER_RAMP,
     FILTER_BUTTERWORTH,
+    FILTER_BUTTERWORTH_BAND,
     FILTER_GAUSSIAN_SHARP,
     FILTER_LAPLACIAN_SHARP,
-    FILTER_LAPLACIAN_LPASS,
+    //FILTER_LAPLACIAN_LPASS,
   };
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE,
     DISPLAY_SRC_SPECTRUM_MODULE,
-    DISPLAY_SRC_SPECTRUM_POWER,
+    DISPLAY_SRC_SPECTRUM_PHASE,
     DISPLAY_FILTER_MODULE,
-    DISPLAY_FILTER_POWER,
     DISPLAY_FILTERED_SPECTRUM_MODULE,
-    DISPLAY_FILTERED_SPECTRUM_POWER,
+    DISPLAY_FILTERED_SPECTRUM_PHASE,
     DISPLAY_FILTERED_IMAGE,
 
     DISPLAY_VLAP,
-    //DISPLAY_PPS,
 
+    DISPLAY_SRC_SPECTRUM_P_MODULE,
+    DISPLAY_SRC_SPECTRUM_P_PHASE,
+    DISPLAY_SRC_SPECTRUM_S_MODULE,
+    DISPLAY_SRC_SPECTRUM_S_PHASE,
+    DISPLAY_SRC_SPECTRUM_V_MODULE,
+    DISPLAY_SRC_SPECTRUM_V_PHASE,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -51,7 +56,7 @@ protected:
   FILTER _filterType = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
   bool _ppsDecomposition = false;
-  bool _showRadialProfile = false;
+  bool _swapQuadrants = true;
 
   struct c_gaussian_filter_opts {
     double sigma = 1;
@@ -71,6 +76,14 @@ protected:
     double gain = 1;
     int order = 4;
   } butterworth;
+
+  struct c_butterband_filter_opts {
+    double grain_size = 2;
+    double grain_band = 3;
+    double gain = 1;
+    int order = 2;
+    bool inverse = false;
+  } butterband;
 
   struct c_gaussian_sharp_filter_opts {
     double sigma = 1;

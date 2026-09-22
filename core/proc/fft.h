@@ -121,12 +121,17 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     double rc, double order, double gain, bool centerDC = true);
 
+// Space Isotropic Butterworth Band-Pass / Band-Reject Filter.
+cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
+    double grain_size, double grain_band, int order, double gain,
+    bool inverse, bool centerDC);
+
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);
 
-bool fftMulSpectrum(const cv::Mat1f & filter,
-    cv::InputArray complexSpectrum,
+bool fftMulSpectrum(cv::InputArray complexSpectrum,
+    const cv::Mat1f & filter,
     cv::OutputArray dst);
 
 // Create V-Matrix for Periodic+Smooth Decomposition
@@ -159,17 +164,36 @@ void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & re
     double _csigma = 0.5, double _calpha = 0.01, bool centerDC = false);
 
 
+/**
+ * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
+ * Implements Virginie Moizan decomposition directly into fft domain avoiding extra call to cv::dft().
+ * The src must be singke-channel real image
+ *
+ * The classic way to get the same output is to use the cv::dft():
+ *   cv::Mat V;
+ *   fftCreateVMatrix(SRC, V);
+ *   cv::dft(V, V_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+ *
+ * TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum() into single function
+ */
+bool fftComputeVSpectrumComplex(cv::InputArray _src,
+    cv::OutputArray _complexSpectrum);
+
 // DFT with Periodic + Smooth Decomposition.
 // The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
 // The target fftSize (FFT padding) is defined by the VLAP.size()
-void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+// TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum() into single function
+bool fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
-    bool centerDC = true);
+    cv::OutputArray V_SPECTRUM = cv::noArray());
 
-void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+bool fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS);
+
+bool fftPPSDecompositionPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
     std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
-    bool centerDC = true);
+    std::vector<cv::Mat2f> * V_SPECTRUMS = nullptr);
 
 /**
 * @brief Function for automatically determining the position angle from the FFT spectrum module
@@ -208,13 +232,6 @@ bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum,
 bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray ccsOutputSpectrum);
 
-/**
- * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
- * Implements Virginie Moizan decomposition.
- * The src must be singke-channel real image
- */
-bool fftComputeVSpectrumComplex(cv::InputArray _src,
-    cv::OutputArray _complexSpectrum);
 
 /*
  * Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
@@ -246,6 +263,9 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
+ *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
+ *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
+ *   may happen because the filter becomes not symmetrical.
  *
  * This function performs element-wise cross-multiplication of two spectra with conjugation of the
  * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.

@@ -910,29 +910,35 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
     sigma_space = 1;
   }
 
-  const float cx = float(fftSize.width / 2.0);
-  const float cy = float(fftSize.height / 2.0);
-  const float sx = float(sigma_space * CV_PI * M_SQRT2 / fftSize.width);
-  const float sy = float(sigma_space * CV_PI * M_SQRT2 / fftSize.height);
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  const float cx = float(w / 2.0);
+  const float cy = float(h / 2.0);
+  const float sx = float(sigma_space * CV_PI * M_SQRT2 / w);
+  const float sy = float(sigma_space * CV_PI * M_SQRT2 / h);
   const float fgain = float(gain);
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float * __restrict dstp = FILTER[y];
-      const float dy = (y - cy) * sy;
+
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const float dy = (freq_y - cy) * sy;
       const float dy2 = dy * dy;
-      for (int x = 0; x < fftSize.width; ++x) {
-        const float dx = (x - cx) * sx;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const float dx = (freq_x - cx) * sx;
         const float dx2 = dx * dx;
+
         const float gaussLPF = fgain * std::exp(-(dx2 + dy2));
         dstp[x] = float(inverseFilter ? fgain - gaussLPF : gaussLPF);
       }
     }
   });
-
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
-  }
 
   return FILTER;
 }
@@ -941,28 +947,29 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     double gain /* =1*/,
     bool centerDC /* =true */)
 {
-  // Isotropic Laplacian
-  // The frequency step is tied to the physical dimensions of the matrix
-  //  fx = dx / width
-  //  fy = dy / height
-  // Physical Laplacian:
-  //    4 * PI^2 * (fx^2 + fy^2)
-
   cv::Mat1f FILTER(fftSize);
 
-  const float scaleX = float (CV_2PI / fftSize.width);
-  const float scaleY = float (CV_2PI / fftSize.height);
-  const float cx = float (fftSize.width / 2.0);
-  const float cy = float (fftSize.height / 2.0);
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  const float scaleX = float (CV_2PI / w);
+  const float scaleY = float (CV_2PI / h);
+  const float cx = float (w / 2.0);
+  const float cy = float (h / 2.0);
   const float fgain = float (gain);
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float * __restrict dstp = FILTER[y];
-      const float  dy = (y - cy) * scaleY;
-      const float  dy2 = dy * dy;
-      for (int x = 0; x < fftSize.width; ++x) {
-        const float dx = (x - cx) * scaleX;
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const float dy = (freq_y - cy) * scaleY;
+      const float dy2 = dy * dy;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const float dx = (freq_x - cx) * scaleX;
         const float dx2 = dx * dx;
         const float dr2 = dx2 + dy2;
         dstp[x] = fgain * dr2;
@@ -970,55 +977,47 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     }
   });
 
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
-  }
-
   return FILTER;
 }
 
 cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,
     bool centerDC)
 {
-  // Isotropic Laplacian
-  // The frequency step is tied to the physical dimensions of the matrix
-  //    fx = dx / width
-  //    fy = dy / height
-  // Physical Laplacian:
-  //    4 * PI^2 * (fx^2 + fy^2)
-  // Isotropic Butterworth:
-  //    1.0 / (1.0 + (r / rc)^(n))
-
   cv::Mat1f FILTER(fftSize);
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
 
     const float bworder2 = float (bworder / 2.);
     const float bwrc2 = float (1. / (bwrc * bwrc));
     const float fgain = (float) (gain);
 
-    const float scaleX = float (CV_2PI / fftSize.width);
-    const float scaleY = float (CV_2PI / fftSize.height);
-    const float cx = float (fftSize.width / 2.0);
-    const float cy = float (fftSize.height / 2.0);
+    const float scaleX = float (CV_2PI / w);
+    const float scaleY = float (CV_2PI / h);
+    const float cx = float (w / 2.0);
+    const float cy = float (h / 2.0);
 
     for (int y = rbegin(range); y < rend(range); ++y) {
       float * __restrict dstp = FILTER[y];
-      const float dy = (y - cy) * scaleY;
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const float dy = (freq_y - cy) * scaleY;
       const float dy2 = dy * dy;
-      for (int x = 0; x < fftSize.width; ++x) {
-        const float dx = (x - cx) * scaleX;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const float dx = (freq_x - cx) * scaleX;
         const float dx2 = dx * dx;
+
         const float dr2 = dx2 + dy2;
         const float v = 1.f + fgain * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
         dstp[x] = v;
       }
     }
   });
-
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
-  }
 
   return FILTER;
 }
@@ -1165,37 +1164,33 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     double rc, int order, double gain,
     bool centerDC)
 {
-  // The frequency step is tied to the physical dimensions of the matrix
-  // fx = dx / width, fy = dy / height
-
   cv::Mat1f FILTER(fftSize);
 
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
-  const double sx = CV_2PI / fftSize.width;
-  const double sy = CV_2PI / fftSize.height;
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  const double cx = w / 2.0;
+  const double cy = h / 2.0;
+  const double sx = CV_2PI / w;
+  const double sy = CV_2PI / h;
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float* __restrict dstp = FILTER[y];
-
-      const double dy = (y - cy) * sy;
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const double dy = (freq_y - cy) * sy;
       const double dy2 = dy * dy;
-
-      for (int x = 0; x < fftSize.width; ++x) {
-        const double dx = (x - cx) * sx;
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const double dx = (freq_x - cx) * sx;
         const double dx2 = dx * dx;
-
         const double r = std::sqrt(dx2 + dy2);
-
         dstp[x] = float(gain / (1.0 + std::pow(r / rc, order)));
       }
     }
   });
-
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
-  }
 
   return FILTER;
 }
@@ -1214,34 +1209,34 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
     sigma_space = 1;
   }
 
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
-  const double sx = sigma_space * CV_PI * M_SQRT2 / fftSize.width;
-  const double sy = sigma_space * CV_PI * M_SQRT2 / fftSize.height;
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  const double cx = w / 2.0;
+  const double cy = h / 2.0;
+  const double sx = sigma_space * CV_PI * M_SQRT2 / w;
+  const double sy = sigma_space * CV_PI * M_SQRT2 / h;
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float * __restrict dstp = FILTER[y];
-
-      const double dy = (y - cy) * sy;
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const double dy = (freq_y - cy) * sy;
       const double dy2 = dy * dy;
 
-      for (int x = 0; x < fftSize.width; ++x) {
-        const double dx = (x - cx) * sx;
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const double dx = (freq_x - cx) * sx;
         const double dx2 = dx * dx;
-
         const double gaussLPF = std::exp(-(dx2 + dy2));
         const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
-
         // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
         dstp[x] = float(inverseFilter ? (1.0 + gain) - unsharpHPF : unsharpHPF);
       }
     }
   });
-
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
-  }
 
   return FILTER;
 }
@@ -1256,21 +1251,27 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     rc_space = 1.0;
   }
 
-  const double rc = CV_2PI / rc_space;
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
-  const double sx = CV_2PI / fftSize.width;
-  const double sy = CV_2PI / fftSize.height;
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+  const double rc = CV_2PI / rc_space;
+  const double cx = w / 2.0;
+  const double cy = h / 2.0;
+  const double sx = CV_2PI / w;
+  const double sy = CV_2PI / h;
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float* __restrict dstp = FILTER[y];
-
-      const double dy = (y - cy) * sy;
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const double dy = (freq_y - cy) * sy;
       const double dy2 = dy * dy;
 
-      for (int x = 0; x < fftSize.width; ++x) {
-        const double dx = (x - cx) * sx;
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const double dx = (freq_x - cx) * sx;
         const double dx2 = dx * dx;
 
         const double r2 = dx2 + dy2;
@@ -1287,9 +1288,83 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     }
   });
 
-  if (!centerDC) {
-    fftSwapQuadrants(FILTER);
-  }
+  return FILTER;
+}
+
+/**
+ * Space Isotropic Butterworth Band-Pass / Band-Reject Filter.
+ *
+ * @param fftSize      FFT matrix size.
+ * @param grain_size   Central grain size in pixels (spatial).
+ * @param grain_band   Grain bandwidth in pixels (spatial spread).
+ * @param order        Butterworth filter order (roll-off steepness, n).
+ * @param gain         Filtering depth (0.0 - no effect, 1.0 - full effect).
+ * @param inverse      true: Grain suppression (Band-Reject), false: Grain isolation/enhancement (Band-Pass).
+ * @param centerDC     Output spectrum format.
+**/
+cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
+    double grain_size, double grain_band, int order, double gain,
+    bool inverse, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  //  if (grain_size <= 0) {
+  //    grain_size = 1;
+  //  }
+  //  if (grain_band >= grain_size) {
+  //    grain_band = grain_size - 0.5;
+  //  }
+  //  if (grain_band <= 0.0) {
+  //    grain_band = 0.5;
+  //  }
+  //  if (order < 1) {
+  //    order = 1;
+  //  }
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  // Central frequency and bandwidth in radians expressed via the difference between cutoff frequencies
+  const double rc = CV_2PI / grain_size;
+  const double rc_min = CV_2PI / (grain_size + 0.5 * grain_band);
+  const double rc_max = CV_2PI / (grain_size - 0.5 * grain_band);
+  const double half_B = (rc_max - rc_min) * 0.5;
+  const int bw_order = 2 * order;
+  const double cx = w / 2.0;
+  const double cy = h / 2.0;
+  const double sx = CV_2PI / w;
+  const double sy = CV_2PI / h;
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float* __restrict dstp = FILTER[y];
+
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const double dy = (freq_y - cy) * sy;
+      const double dy2 = dy * dy;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const double dx = (freq_x - cx) * sx;
+        const double dx2 = dx * dx;
+
+        const double r = std::sqrt(dx2 + dy2);
+
+        // Butterworth argument
+        const double arg = std::abs(r - rc) / half_B;
+        const double butterworthBP = 1.0 / (1.0 + std::pow(arg, bw_order));
+
+        if (inverse) { // Suppression mode
+          dstp[x] = float(1.0 - gain * butterworthBP);
+        }
+        else { // Boost mode
+          dstp[x] = float(1.0 + gain * butterworthBP);
+        }
+      }
+    }
+  });
 
   return FILTER;
 }
@@ -1371,7 +1446,7 @@ void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & re
   });
 }
 
-bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
+bool fftMulSpectrum(cv::InputArray complexSpectrum, const cv::Mat1f & filter,
     cv::OutputArray dst)
 {
   cv::Mat2f F;
@@ -1384,6 +1459,106 @@ bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
   return true;
 }
 
+/**
+ * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
+ * Implements Virginie Moizan decomposition directly into fft domain avoiding extra call to cv::dft().
+ * The src must be singke-channel real image
+ *
+ * The classic way to get the same output is to use cv::dft():
+ *   cv::Mat V;
+ *   fftCreateVMatrix(SRC, V);
+ *   cv::dft(V, V_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+ */
+bool fftComputeVSpectrumComplex(cv::InputArray _src, cv::OutputArray _complexSpectrum)
+{
+  if( _src.empty() || _src.channels() != 1 ) {
+    CF_ERROR("Single-channel input image expected");
+    return false;
+  }
+
+  const cv::Mat src = _src.getMat();
+  const int rows = src.rows;
+  const int cols = src.cols;
+
+  // One-dimensional boundary differences
+  cv::Mat drow, dcol;
+  cv::subtract(src.row(0), src.row(rows - 1), drow, cv::noArray(), CV_32F);
+  cv::subtract(src.col(0), src.col(cols - 1), dcol, cv::noArray(), CV_32F);
+
+  // Two complex 1D DFT in CV_32FC2 of size 1 x N and 1 x M
+  cv::Mat drow_complex, dcol_complex;
+  cv::dft(drow, drow_complex, cv::DFT_COMPLEX_OUTPUT);
+  cv::dft(dcol.t(), dcol_complex, cv::DFT_COMPLEX_OUTPUT);
+
+  // Precompute trigonometric tables
+  std::vector<float> cosx(cols), sinx(cols);
+  std::vector<float> cosy(rows), siny(rows);
+  for( int y = 0; y < rows; ++y ) {
+    cosy[y] = std::cos(y * CV_2PI / rows);
+    siny[y] = std::sin(y * CV_2PI / rows);
+  }
+  for( int x = 0; x < cols; ++x ) {
+    cosx[x] = std::cos(x * CV_2PI / cols);
+    sinx[x] = std::sin(x * CV_2PI / cols);
+  }
+
+  // Output complex 2D  CV_32FC2 matrix
+  _complexSpectrum.create(rows, cols, CV_32FC2);
+  cv::Mat2f V_COMPLEX = _complexSpectrum.getMatRef();
+  uint8_t * const out_spec_base = V_COMPLEX.ptr();
+  const size_t out_spec_stride = V_COMPLEX.step;
+
+  const cv::Vec2f * drow_p = (const cv::Vec2f*) drow_complex.ptr();
+  const cv::Vec2f * dcol_p = (const cv::Vec2f*) dcol_complex.ptr();
+
+  const float * cosX = cosx.data();
+  const float * cosY = cosy.data();
+  const float * sinX = sinx.data();
+  const float * sinY = siny.data();
+
+  // Assembly of a complex 2D matrix
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      cv::Vec2f * __restrict dstp = (cv::Vec2f*)(out_spec_base + y * out_spec_stride);
+
+      // The contribution of columns dcol depends on the vertical frequency y
+      const float re_c = dcol_p[y][0];
+      const float im_c = dcol_p[y][1];
+
+      // Vertical shift terms (1 - exp(-j * omega_y))
+      const float sRe_Y = 1.0f - cosY[y];
+      const float sIm_Y = sinY[y];
+
+      for (int x = 0; x < cols; ++x) {
+        // The contribution of rows drow depends on the horizontal frequency x
+        const float re_r = drow_p[x][0];
+        const float im_r = drow_p[x][1];
+
+        // Horizontal shift terms (1 - exp(-j * omega_x))
+        const float sRe_X = 1.0f - cosX[x];
+        const float sIm_X = sinX[x];
+
+        // Complex multiplication V = drow(x) * (1 - e^{-j wy}) + dcol(y) * (1 - e^{-j wx})
+        // with sign inversion of the imaginary part (sines) to compensate for phase rotation.
+        // The row difference contribution is modulated along the Y-axis
+        // The column difference contribution is modulated along the X-axis
+        const float rx_re = re_r * sRe_Y + im_r * sIm_Y;
+        const float rx_im = -re_r * sIm_Y + im_r * sRe_Y;
+        const float ry_re = re_c * sRe_X + im_c * sIm_X;
+        const float ry_im = -re_c * sIm_X + im_c * sRe_X;
+
+        // Final sum
+        dstp[x][0] = rx_re + ry_re;
+        dstp[x][1] = rx_im + ry_im;
+      }
+    }
+  });
+
+  // Reset singularity in DC component
+  V_COMPLEX(0, 0) = cv::Vec2f(0.0f, 0.0f);
+
+  return true;
+}
 
 // Create V-Matrix for Periodic+Smooth Decomposition
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
@@ -1410,59 +1585,94 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
 
 // DFT with Periodic + Smooth Decomposition.
 // The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
 // The target fftSize (FFT padding) is defined by the VLAP.size()
-void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+// TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum()
+// into single function
+bool fftPPSDecomposition(cv::InputArray _src, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
-    bool centerDC)
+    cv::OutputArray outputV_SPECTRUM /*= cv::noArray()*/)
 {
-  cv::Mat SRC, SRC_SPECTRUM, V;
-
-  const cv::Size fftSize = VLAP.size();
-
-  if ( src_image.size() == fftSize ) {
-    SRC = src_image.getMat();
-  }
-  else {
-    fftCopyMakeBorder(src_image, SRC, fftSize);
+  if( _src.empty() || _src.channels() != 1 ) {
+    CF_ERROR("Single-channel input image expected");
+    return false;
   }
 
-  fftCreateVMatrix(SRC, V);
+  if ( _src.size() != VLAP.size() ) {
+    CF_ERROR("Input image size %dx%d not match to VLAP filter size %dx%d",
+        _src.cols(), _src.rows(), VLAP.cols, VLAP.rows);
+    return false;
+  }
 
-  cv::dft(SRC, SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
-  cv::dft(V, V, cv::DFT_COMPLEX_OUTPUT);
-  if( centerDC ) {
-    fftSwapQuadrants(SRC_SPECTRUM);
-    fftSwapQuadrants(V);
+  if ( P_SPECTRUM.fixedType() && P_SPECTRUM.type() != CV_32FC2 ) {
+    CF_ERROR("CV_32FC2 output P spectrum destination expected");
+    return false;
+  }
+
+  if ( P_SPECTRUM.fixedSize() && P_SPECTRUM.size() != _src.size() ) {
+    CF_ERROR("Output P matrix size %dx%d not match to input image size %dx%d",
+        P_SPECTRUM.cols(), P_SPECTRUM.rows(),
+        _src.cols(), _src.rows() );
+    return false;
   }
 
   if ( S_SPECTRUM.needed() ) {
-    fftMulSpectrum(VLAP, V, S_SPECTRUM);
+    if ( S_SPECTRUM.fixedType() && S_SPECTRUM.type() != CV_32FC2 ) {
+      CF_ERROR("CV_32FC2 output S spectrum destination expected");
+      return false;
+    }
+    if ( S_SPECTRUM.fixedSize() && S_SPECTRUM.size() != _src.size() ) {
+      CF_ERROR("Output S matrix size %dx%d not match to input image size %dx%d",
+          S_SPECTRUM.cols(), S_SPECTRUM.rows(),
+          _src.cols(), _src.rows() );
+      return false;
+    }
+  }
+
+  const cv::Size fftSize = VLAP.size();
+  const cv::Mat SRC = _src.getMat();
+  cv::Mat SRC_SPECTRUM, V_SPECTRUM;
+
+  cv::dft(SRC, SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+  fftComputeVSpectrumComplex(SRC, V_SPECTRUM);
+
+  if ( S_SPECTRUM.needed() ) {
+    fftMulSpectrum(V_SPECTRUM, VLAP, S_SPECTRUM);
     cv::subtract(SRC_SPECTRUM, S_SPECTRUM, P_SPECTRUM);
   }
   else {
     cv::Mat S_SPECTRUM_TMP;
-    fftMulSpectrum(VLAP, V, S_SPECTRUM_TMP);
+    fftMulSpectrum(V_SPECTRUM, VLAP, S_SPECTRUM_TMP);
     cv::subtract(SRC_SPECTRUM, S_SPECTRUM_TMP, P_SPECTRUM);
   }
+
+  if ( outputV_SPECTRUM.needed() ) {
+    outputV_SPECTRUM.move(V_SPECTRUM);
+  }
+
+  return true;
 }
 
-void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
-    bool centerDC)
+bool fftPPSDecomposition(cv::InputArray _src, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS)
 {
-  cv::Mat SRC, SRC_SPECTRUM, V;
+  if( _src.empty() ) {
+    CF_ERROR("Single-channel input image expected");
+    return false;
+  }
+
+  if ( _src.size() != VLAP.size() ) {
+    CF_ERROR("Input image size %dx%d not match to VLAP filter size %dx%d",
+        _src.cols(), _src.rows(), VLAP.cols, VLAP.rows);
+    return false;
+  }
 
   const cv::Size fftSize = VLAP.size();
-  const int cn = src_image.channels();
-  std::vector<cv::Mat> src_channels(cn);
+  const cv::Mat SRC = _src.getMat();
+  const int cn = _src.channels();
 
-  if ( src_image.size() == fftSize ) {
-    SRC = src_image.getMat();
-  }
-  else {
-    fftCopyMakeBorder(src_image, SRC, fftSize);
-  }
+  std::vector<cv::Mat> src_channels(cn);
+  cv::Mat SRC_SPECTRUM, V_SPECTRUM, TMP;
 
   if ( cn == 1 ) {
     src_channels[0] = SRC;
@@ -1472,25 +1682,85 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
   }
 
   P_SPECTRUMS->resize(cn);
-  S_SPECTRUMS->resize(cn);
+  if ( S_SPECTRUMS != nullptr ) {
+    S_SPECTRUMS->resize(cn);
+  }
 
   for ( int i = 0; i < cn; ++i ) {
-    fftCreateVMatrix(src_channels[i], V);
-
-    cv::dft(V, V, cv::DFT_COMPLEX_OUTPUT);
     cv::dft(src_channels[i], SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+    fftComputeVSpectrumComplex(src_channels[i], V_SPECTRUM);
 
-    if( centerDC ) {
-      fftSwapQuadrants(SRC_SPECTRUM);
-      fftSwapQuadrants(V);
+    if ( S_SPECTRUMS != nullptr ) {
+      fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUMS->at(i));
+      cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(i), P_SPECTRUMS->at(i));
     }
-
-    fftMulSpectrum(VLAP, V, S_SPECTRUMS->at(i));
-    cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(i), P_SPECTRUMS->at(i));
+    else {
+      fftMulSpectrumCCS(V_SPECTRUM, VLAP, TMP);
+      cv::subtract(SRC_SPECTRUM, TMP, P_SPECTRUMS->at(i));
+    }
   }
+
+  return true;
 }
 
+bool fftPPSDecompositionPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
+    std::vector<cv::Mat2f> * V_SPECTRUMS /*= nullptr*/)
+{
+  INSTRUMENT_REGION("");
 
+  if( planes.empty() ) {
+    CF_ERROR("Input argument is empty");
+    return false;
+  }
+
+  const cv::Size fftSize = VLAP.size();
+  if ( fftSize.empty() ) {
+    CF_ERROR("Bad VLAP: empty");
+    return false;
+  }
+
+  const int cn = (int)planes.size();
+  for ( int c = 0; c < cn; ++c ) {
+    if ( planes[c].size() != fftSize ) {
+      CF_ERROR("Bad image size on plane %d: %dx%d not match to VLAP filter size %dx%d",
+          c, planes[c].cols, planes[c].rows, VLAP.cols, VLAP.rows);
+      return false;
+    }
+  }
+
+  P_SPECTRUMS->resize(cn);
+  if ( S_SPECTRUMS != nullptr ) {
+    S_SPECTRUMS->resize(cn);
+  }
+  if ( V_SPECTRUMS != nullptr ) {
+    V_SPECTRUMS->resize(cn);
+  }
+
+  cv::Mat SRC_SPECTRUM, V_SPECTRUM, S_TMP;
+
+  for ( int c = 0; c < cn; ++c ) {
+    cv::dft(planes[c], SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+    if ( V_SPECTRUMS == nullptr ) {
+      fftComputeVSpectrumComplex(planes[c], V_SPECTRUM);
+    }
+    else {
+      fftComputeVSpectrumComplex(planes[c], V_SPECTRUMS->at(c));
+      V_SPECTRUM = V_SPECTRUMS->at(c);
+    }
+
+    if ( S_SPECTRUMS != nullptr ) {
+      fftMulSpectrum(V_SPECTRUM, VLAP, S_SPECTRUMS->at(c));
+      cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(c), P_SPECTRUMS->at(c));
+    }
+    else {
+      fftMulSpectrum(V_SPECTRUM, VLAP, S_TMP);
+      cv::subtract(SRC_SPECTRUM, S_TMP, P_SPECTRUMS->at(c));
+    }
+  }
+
+  return true;
+}
 
 
 /**
@@ -2048,101 +2318,6 @@ bool fftMulSpectrumCCS(cv::InputArray _ccsInputSpectrum, const cv::Mat1f & filte
   return true;
 }
 
-/**
- * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
- * Implements Virginie Moizan decomposition.
- * The src must be singke-channel real image
- */
-bool fftComputeVSpectrumComplex(cv::InputArray _src, cv::OutputArray _complexSpectrum)
-{
-  if( _src.empty() || _src.channels() != 1 ) {
-    CF_ERROR("Single-channel input image expected");
-    return false;
-  }
-
-  const cv::Mat src = _src.getMat();
-  const int rows = src.rows;
-  const int cols = src.cols;
-
-  // One-dimensional boundary differences
-  cv::Mat drow, dcol;
-  cv::subtract(src.row(0), src.row(rows - 1), drow, cv::noArray(), CV_32F);
-  cv::subtract(src.col(0), src.col(cols - 1), dcol, cv::noArray(), CV_32F);
-
-  // Two complex 1D DFT in CV_32FC2 of size 1 x N and 1 x M
-  cv::Mat drow_complex, dcol_complex;
-  cv::dft(drow, drow_complex, cv::DFT_COMPLEX_OUTPUT);
-  cv::dft(dcol.t(), dcol_complex, cv::DFT_COMPLEX_OUTPUT);
-
-  // Precompute trigonometric tables
-  std::vector<float> cosx(cols), sinx(cols);
-  std::vector<float> cosy(rows), siny(rows);
-  for( int y = 0; y < rows; ++y ) {
-    cosy[y] = std::cos(y * CV_2PI / rows);
-    siny[y] = std::sin(y * CV_2PI / rows);
-  }
-  for( int x = 0; x < cols; ++x ) {
-    cosx[x] = std::cos(x * CV_2PI / cols);
-    sinx[x] = std::sin(x * CV_2PI / cols);
-  }
-
-  // Output complex 2D  CV_32FC2 matrix
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f V_COMPLEX = _complexSpectrum.getMatRef();
-  uint8_t * const out_spec_base = V_COMPLEX.ptr();
-  const size_t out_spec_stride = V_COMPLEX.step;
-
-  const cv::Vec2f * drow_p = (const cv::Vec2f*) drow_complex.ptr();
-  const cv::Vec2f * dcol_p = (const cv::Vec2f*) dcol_complex.ptr();
-
-  const float * cosX = cosx.data();
-  const float * cosY = cosy.data();
-  const float * sinX = sinx.data();
-  const float * sinY = siny.data();
-
-  // Assembly of a complex 2D matrix
-  parallel_for(0, rows, [=](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      cv::Vec2f * __restrict dstp = (cv::Vec2f*)(out_spec_base + y * out_spec_stride);
-
-      // The contribution of columns dcol depends on the vertical frequency y
-      const float re_c = dcol_p[y][0];
-      const float im_c = dcol_p[y][1];
-
-      // Vertical shift terms (1 - exp(-j * omega_y))
-      const float sRe_Y = 1.0f - cosY[y];
-      const float sIm_Y = sinY[y];
-
-      for (int x = 0; x < cols; ++x) {
-        // The contribution of rows drow depends on the horizontal frequency x
-        const float re_r = drow_p[x][0];
-        const float im_r = drow_p[x][1];
-
-        // Horizontal shift terms (1 - exp(-j * omega_x))
-        const float sRe_X = 1.0f - cosX[x];
-        const float sIm_X = sinX[x];
-
-        // Complex multiplication V = drow(x) * (1 - e^{-j wy}) + dcol(y) * (1 - e^{-j wx})
-        // with sign inversion of the imaginary part (sines) to compensate for phase rotation.
-        // The row difference contribution is modulated along the Y-axis
-        // The column difference contribution is modulated along the X-axis
-        const float rx_re = re_r * sRe_Y + im_r * sIm_Y;
-        const float rx_im = -re_r * sIm_Y + im_r * sRe_Y;
-        const float ry_re = re_c * sRe_X + im_c * sIm_X;
-        const float ry_im = -re_c * sIm_X + im_c * sRe_X;
-
-        // Final sum
-        dstp[x][0] = rx_re + ry_re;
-        dstp[x][1] = rx_im + ry_im;
-      }
-    }
-  });
-
-  // Reset singularity in DC component
-  V_COMPLEX(0, 0) = cv::Vec2f(0.0f, 0.0f);
-
-  return true;
-}
 
 // Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
 // Implements Virginie Moizan decomposition.
@@ -2470,8 +2645,9 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
- *   Because of some CCS format limitations the both vertical and horizontal sizes of spectrums
- *   must be even, otherwise incorrect complex conjugation may happen for sign-alternating filters.
+ *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
+ *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
+ *   may happen because the filter becomes not symmetrical.
  *
  * This function performs element-wise cross-multiplication of two spectra with conjugation of the
  * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.

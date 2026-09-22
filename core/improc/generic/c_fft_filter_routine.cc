@@ -18,9 +18,10 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
       { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
+      { c_fft_filter_routine::FILTER_BUTTERWORTH_BAND, "BUTTERWORTH_BAND", },
       { c_fft_filter_routine::FILTER_GAUSSIAN_SHARP, "GAUSSIAN_SHARP", },
       { c_fft_filter_routine::FILTER_LAPLACIAN_SHARP, "LAPLACIAN_SHARP", },
-      { c_fft_filter_routine::FILTER_LAPLACIAN_LPASS, "LAPLACIAN_LPASS", },
+      // { c_fft_filter_routine::FILTER_LAPLACIAN_LPASS, "LAPLACIAN_LPASS", },
 
       { c_fft_filter_routine::FILTER_GAUSSIAN, },
 
@@ -35,12 +36,19 @@ const c_enum_member* members_of<c_fft_filter_routine::DISPLAY>()
       { c_fft_filter_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
       { c_fft_filter_routine::DISPLAY_FILTERED_IMAGE, "FILTERED_IMAGE" },
       { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_MODULE, "SRC_SPECTRUM_MODULE" },
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_POWER, "SRC_SPECTRUM_POWER" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_PHASE, "SRC_SPECTRUM_PHASE" },
       { c_fft_filter_routine::DISPLAY_FILTER_MODULE, "FILTER_MODULE" },
-      { c_fft_filter_routine::DISPLAY_FILTER_POWER, "FILTER_POWER" },
       { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_MODULE, "FILTERED_SPECTRUM_MODULE" },
-      { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_POWER, "FILTERED_SPECTRUM_POWER" },
+      { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_PHASE, "FILTERED_SPECTRUM_PHASE" },
       { c_fft_filter_routine::DISPLAY_VLAP, "VLAP" },
+
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_MODULE, "SRC_SPECTRUM_P_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_PHASE, "SRC_SPECTRUM_P_PHASE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_MODULE, "SRC_SPECTRUM_S_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_PHASE, "SRC_SPECTRUM_S_PHASE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_V_MODULE, "SRC_SPECTRUM_V_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_V_PHASE, "SRC_SPECTRUM_V_PHASE" },
+
       { c_fft_filter_routine::DISPLAY_FILTERED_IMAGE, },
   };
   return members;
@@ -51,7 +59,7 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "Filter: ", CTL_CONTEXT(ctx, _filterType), "Select filter type");
   ctlbind(ctls, "ppsDecomposition", CTL_CONTEXT(ctx, _ppsDecomposition), "");
-  ctlbind(ctls, "radialProfile", CTL_CONTEXT(ctx, _showRadialProfile), "");
+  ctlbind(ctls, "swapQuadrants: ", CTL_CONTEXT(ctx, _swapQuadrants), "swapQuadrants for spectrum displays");
 
   ctlbind_expandable_group(ctls, "Gaussian options",
       [&, ctx = CTL_CONTEXT(ctx, gaussian)]() {
@@ -74,6 +82,15 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
         ctlbind(ctls, "rc [pix]: ", CTL_CONTEXT(ctx, rc), "Butterworth cutoff in image space domain:\n FILTER = 1.0 / (1.0 + (r / rc)^(order))");
         ctlbind(ctls, "order: ", CTL_CONTEXT(ctx, order), "Butterworth filter order:\n FILTER = 1.0 / (1.0 + (r / rc)^(order))");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+      });
+
+  ctlbind_expandable_group(ctls, "ButterBabd options",
+      [&, ctx = CTL_CONTEXT(ctx, butterband)]() {
+      ctlbind(ctls, "grain_size [px]: ", CTL_CONTEXT(ctx, grain_size), "");
+      ctlbind(ctls, "grain_band [px]: ", CTL_CONTEXT(ctx, grain_band), "");
+      ctlbind(ctls, "order: ", CTL_CONTEXT(ctx, order), "");
+      ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+      ctlbind(ctls, "inverse: ", CTL_CONTEXT(ctx, inverse), "");
       });
 
   ctlbind_expandable_group(ctls, "Gaussian sharp options",
@@ -102,7 +119,7 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _filterType);
     SERIALIZE_OPTION(settings, save, *this, _ppsDecomposition);
-    SERIALIZE_OPTION(settings, save, *this, _showRadialProfile);
+    SERIALIZE_OPTION(settings, save, *this, _swapQuadrants);
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianFilter")) {
       SERIALIZE_OPTION(group, save, gaussian, sigma);
@@ -121,6 +138,14 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(group, save, butterworth, rc);
       SERIALIZE_OPTION(group, save, butterworth, order);
       SERIALIZE_OPTION(group, save, butterworth, gain);
+    }
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "ButterBandFilter")) {
+      SERIALIZE_OPTION(group, save, butterband, grain_size);
+      SERIALIZE_OPTION(group, save, butterband, grain_band);
+      SERIALIZE_OPTION(group, save, butterband, order);
+      SERIALIZE_OPTION(group, save, butterband, gain);
+      SERIALIZE_OPTION(group, save, butterband, inverse);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianSharpFilter")) {
@@ -144,29 +169,31 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
 }
 
 
-// Magnitude: sqrt(Re^2 + Im^2)
-static bool fftDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-{
-  if( _spec.type() == CV_32FC1 ) {
-    _spec.getMat().copyTo(_dst);
-    if( swapQuadrants ) {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
+//// Magnitude: sqrt(Re^2 + Im^2)
+//static bool fftDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
+//{
+//  if( _spec.type() == CV_32FC1 ) {
+//    _spec.getMat().copyTo(_dst);
+//    if( swapQuadrants ) {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  if ( _spec.type() == CV_32FC2 ) {
+//    cv::Mat1f magnitude;
+//    fftSpectrumModule(_spec, _dst);
+//    if ( swapQuadrants )  {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
+//  return false;
+//}
 
-  if ( _spec.type() == CV_32FC2 ) {
-    cv::Mat1f magnitude;
-    fftSpectrumModule(_spec, _dst);
-    if ( swapQuadrants )  {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-  return false;
-}
+extern void setVMethodClassic(bool v);
 
 bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
@@ -184,35 +211,43 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     case FILTER_GAUSSIAN: {
       const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian.sigma) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateGaussianFilter(fftSize, gaussian.sigma, gaussian.gain);
+      FILTER = fftGenerateGaussianFilter(fftSize, gaussian.sigma, gaussian.gain, false);
       break;
     }
 
     case FILTER_LAPLACIAN: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateLaplacianFilter(fftSize, laplacian.gain);
+      FILTER = fftGenerateLaplacianFilter(fftSize, laplacian.gain, false);
       break;
     }
 
     case FILTER_RAMP: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateRampFilter(fftSize, ramp.gain);
+      FILTER = fftGenerateRampFilter(fftSize, ramp.gain, false);
       break;
     }
 
     case FILTER_BUTTERWORTH: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateButterworthFilter(fftSize, butterworth.rc, butterworth.order, butterworth.gain);
+      FILTER = fftGenerateButterworthFilter(fftSize, butterworth.rc, butterworth.order, butterworth.gain, false);
+      break;
+    }
+
+    case FILTER_BUTTERWORTH_BAND: {
+      const int ksize = 0;
+      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      FILTER = fftGenerateButterworthBandFilter(fftSize, butterband.grain_size, butterband.grain_band,
+          butterband.order, butterband.gain, butterband.inverse, false);
       break;
     }
 
     case FILTER_GAUSSIAN_SHARP: {
       const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian_sharp.sigma) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateGaussianUnsharpFilter(fftSize, gaussian_sharp.sigma, gaussian_sharp.gain);
+      FILTER = fftGenerateGaussianUnsharpFilter(fftSize, gaussian_sharp.sigma, gaussian_sharp.gain, false);
       break;
     }
 
@@ -220,154 +255,204 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       FILTER = fftGenerateLaplacianUnsharpFilter(fftSize, laplacian_sharp.gain,
-          laplacian_sharp.bwrc, laplacian_sharp.bworder, true);
+          laplacian_sharp.bwrc, laplacian_sharp.bworder, false);
       break;
     }
 
-    case FILTER_LAPLACIAN_LPASS: {
-      const int ksize = 0;
-      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateLaplacianFilter(fftSize, 1, true);
-      break;
-    }
+
+
+//    case FILTER_LAPLACIAN_LPASS: {
+//      const int ksize = 0;
+//      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+//      FILTER = fftGenerateLaplacianFilter(fftSize, 1, false);
+//      break;
+//    }
 
     default:
       CF_ERROR("Not supported filter=%d requested", _filterType);
       break;
   }
 
+  if ( _display == DISPLAY_FILTER_MODULE ) {
+    if ( _swapQuadrants ) {
+      fftSwapQuadrants(FILTER, image);
+    }
+    else {
+      image.assign(FILTER);
+    }
+    mask.release();
+    return true;
+  }
+
   if( !_ppsDecomposition ) {
     VLAP.release();
   }
   else if( VLAP.size() != fftSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+    CF_DEBUG("VLAP: %dx%d", VLAP.cols, VLAP.rows);
   }
 
   if ( _display == DISPLAY_VLAP ) {
+    if ( _swapQuadrants ) {
+      fftSwapQuadrants(VLAP, image);
+    }
+    else {
+      VLAP.copyTo(image);
+    }
     mask.release();
-    return fftDisplay(VLAP, image);
+    return true;
   }
 
   std::vector<cv::Mat> real_channels(cn);
   std::vector<cv::Mat> complex_channels(cn);
   std::vector<cv::Mat> complex_channels_s(cn);
+  std::vector<cv::Mat> complex_channels_v(cn);
   cv::split(src, real_channels);
 
   for ( int i = 0; i < cn; ++i ) {
     fftCopyMakeBorder(real_channels[i], real_channels[i], fftSize);
     real_channels[i].convertTo(real_channels[i], CV_32F);
 
+    // if S must be also multiplied by the filter then use _ppsDecomposition = false
     if ( ! _ppsDecomposition ) {
-      fftImageToSpectrum(real_channels[i], complex_channels[i], fftSize);
+      fftImageToSpectrum(real_channels[i], complex_channels[i], fftSize, false);
     }
     else {
-      fftPPSDecomposition(real_channels[i], VLAP, complex_channels[i], complex_channels_s[i]);
+      fftPPSDecomposition(real_channels[i], VLAP,
+          complex_channels[i],
+          complex_channels_s[i],
+          complex_channels_v[i]);
     }
   }
 
-  if( _filterType == FILTER_LAPLACIAN_LPASS ) {
-    cv::Mat1f radialProfile, F, FAVG;
-
-    for( int i = 0; i < cn; ++i ) {
-      fftSpectrumModule(complex_channels[i], radialProfile);
-      cv::multiply(FILTER, radialProfile, radialProfile);
-      fftRadialProfile(radialProfile, radialProfile);
-      for( int j = 0, n = radialProfile.cols; j < n; ++j ) {
-        const float v = radialProfile(0, j);
-        radialProfile(0, j) = 1 / (1 + laplacian_lpass.gain * v * v * v * v);
+  switch (_display) {
+    case DISPLAY_SRC_SPECTRUM_MODULE:
+    case DISPLAY_SRC_SPECTRUM_PHASE: {
+      std::vector<cv::Mat> planes(cn);
+      for( int i = 0; i < cn; ++i ) {
+        if( _ppsDecomposition ) {
+          cv::add(complex_channels[i], complex_channels_s[i], complex_channels[i]);
+        }
+        fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
+        cv::extractChannel(complex_channels[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_MODULE ? 0 : 1);
       }
       if( cn == 1 ) {
-        fftRadialProfileToImage(radialProfile, fftSize, FAVG);
-      }
-      else if( i == 0 ) {
-        fftRadialProfileToImage(radialProfile, fftSize, FAVG);
+        image.move(planes[0]);
       }
       else {
-        fftRadialProfileToImage(radialProfile, fftSize, F);
-        cv::add(F, FAVG, FAVG);
+        cv::merge(planes, image);
       }
+      if ( _swapQuadrants ) {
+        fftSwapQuadrants(image);
+      }
+      mask.release();
+      return true;
     }
 
-    if( cn > 1 ) {
-      cv::multiply(FAVG, 1.0 / cn, FILTER);
-    }
-    else {
-      FILTER = std::move(FAVG);
-    }
-  }
+    case DISPLAY_SRC_SPECTRUM_P_MODULE:
+    case DISPLAY_SRC_SPECTRUM_P_PHASE: {
+      if( !_ppsDecomposition ) {
+        image.release();
+      }
+      else {
+        std::vector<cv::Mat> planes(cn);
+        for( int i = 0; i < cn; ++i ) {
+          fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
+          cv::extractChannel(complex_channels[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_P_MODULE ? 0 : 1);
+        }
+        if( cn == 1 ) {
+          image.move(planes[0]);
+        }
+        else {
+          cv::merge(planes, image);
+        }
+        if ( _swapQuadrants ) {
+          fftSwapQuadrants(image);
+        }
+      }
 
-  if ( _display == DISPLAY_FILTER_MODULE ) {
-    // No further processing requested
-    mask.release();
-    return fftDisplay(FILTER, image);
-  }
-  if ( _display == DISPLAY_FILTER_POWER ) {
-    // No further processing requested
-    mask.release();
-    return fftDisplay(FILTER.mul(FILTER), image);
+      mask.release();
+      return true;
+    }
+
+    case DISPLAY_SRC_SPECTRUM_S_MODULE:
+    case DISPLAY_SRC_SPECTRUM_S_PHASE: {
+      if( !_ppsDecomposition ) {
+        image.release();
+      }
+      else {
+        std::vector<cv::Mat> planes(cn);
+        for( int i = 0; i < cn; ++i ) {
+          fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
+          cv::extractChannel(complex_channels_s[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_S_MODULE ? 0 : 1);
+        }
+        if( cn == 1 ) {
+          image.move(planes[0]);
+        }
+        else {
+          cv::merge(planes, image);
+        }
+        if ( _swapQuadrants ) {
+          fftSwapQuadrants(image);
+        }
+      }
+      mask.release();
+      return true;
+    }
+
+    case DISPLAY_SRC_SPECTRUM_V_MODULE:
+    case DISPLAY_SRC_SPECTRUM_V_PHASE: {
+      if( !_ppsDecomposition ) {
+        image.release();
+      }
+      else {
+        std::vector<cv::Mat> planes(cn);
+        for( int i = 0; i < cn; ++i ) {
+          fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
+          cv::extractChannel(complex_channels_v[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_V_MODULE ? 0 : 1);
+        }
+        if( cn == 1 ) {
+          image.move(planes[0]);
+        }
+        else {
+          cv::merge(planes, image);
+        }
+        if ( _swapQuadrants ) {
+          fftSwapQuadrants(image);
+        }
+      }
+      mask.release();
+      return true;
+    }
+
+    default:
+      break;
   }
 
   for ( int i = 0; i < cn; ++i ) {
 
-    if ( _display == DISPLAY_SRC_SPECTRUM_MODULE ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
+    fftMulSpectrum(complex_channels[i], FILTER, complex_channels[i]);
 
-      if ( _showRadialProfile ) {
-        cv::Mat1f radialProfile;
-        fftRadialProfile(real_channels[i], radialProfile);
-        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
-      }
-
-      continue;
+    if ( _ppsDecomposition ) {
+      // if S must be also multiplied by the filter then use _ppsDecomposition = false
+      cv::add(complex_channels[i], complex_channels_s[i], complex_channels[i]);
     }
 
-    if ( _display == DISPLAY_SRC_SPECTRUM_POWER ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
-      cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
+    if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE || _display == DISPLAY_FILTERED_SPECTRUM_PHASE ) {
 
-      if ( _showRadialProfile ) {
-        cv::Mat1f radialProfile;
-        fftRadialProfile(real_channels[i], radialProfile);
-        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
-      }
+      fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
 
-      continue;
-    }
+      cv::extractChannel(complex_channels[i], real_channels[i],
+          _display == DISPLAY_FILTERED_SPECTRUM_MODULE ? 0 : 1);
 
-    fftMulSpectrum(FILTER, complex_channels[i], complex_channels[i]);
-
-    if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE ) {
-
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
-
-      if ( _showRadialProfile ) {
-        cv::Mat1f radialProfile;
-        fftRadialProfile(real_channels[i], radialProfile);
-        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
-      }
-
-      continue;
-    }
-
-    if ( _display == DISPLAY_FILTERED_SPECTRUM_POWER ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
-      cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
-
-      if ( _showRadialProfile ) {
-        cv::Mat1f radialProfile;
-        fftRadialProfile(real_channels[i], radialProfile);
-        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
+      if ( _swapQuadrants ) {
+        fftSwapQuadrants(real_channels[i]);
       }
 
       continue;
     }
 
     // DISPLAY_FILTERED_IMAGE
-    if ( _ppsDecomposition ) {
-      cv::add(complex_channels[i], complex_channels_s[i], complex_channels[i]);
-    }
-
-    fftSwapQuadrants(complex_channels[i]);
     cv::idft(complex_channels[i], real_channels[i], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
     if ( !rc.empty() ) {
       real_channels[i] = real_channels[i](rc);

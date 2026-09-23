@@ -11,7 +11,7 @@
 #include <core/debug.h>
 
 template<class _Tp1, class _Tp2, class _Tp3>
-static bool _divideImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst, double eps)
+static bool _divideImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst, double _scale, double eps)
 {
   using _Tpc = std::common_type_t<std::common_type_t<_Tp1,_Tp2>, _Tp3>;
   using _Tcomp = std::conditional_t<std::is_floating_point_v<_Tpc>, _Tpc, float>;
@@ -34,49 +34,95 @@ static bool _divideImages(cv::InputArray _src1, cv::InputArray _src2, cv::Output
   const size_t dst_stride = dst.step;
 
   const _Tcomp abs_eps = static_cast<_Tcomp>(std::abs(eps));
+  const _Tcomp scale = _Tcomp(_scale);
 
-  parallel_for(0, size.height, [=](const auto & range) {
+  if ( std::abs(scale-1) > std::numeric_limits<_Tcomp>::min()  ) {
 
-    for ( int y = rbegin(range); y < rend(range); ++y) {
-      const _Tp1* srcp1 = (const _Tp1* )(src1_base + y * src1_stride);
-      const _Tp2* srcp2 = (const _Tp2* )(src2_base + y * src2_stride);
-      _Tp3* __restrict dstp = (_Tp3* )(dst_base + y * dst_stride);
+    parallel_for(0, size.height, [=](const auto & range) {
 
-      if ( src1_channels == 1 && src2_channels == 1 ) {
-        for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
-          const _Tcomp v = *srcp2;
-          *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 / v : 0);
-        }
-      }
-      else if ( src2_channels == 1 ) {
-        for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
-          const _Tcomp v = *srcp2;
-          if ( std::abs(v) > abs_eps ) {
-            const _Tcomp inv_v = 1 / v;
-            for ( int c = 0; c < src1_channels; ++c) {
-              dstp[c] = cv::saturate_cast<_Tp3>(srcp1[c] * inv_v);
-            }
-          }
-          else {
-            for ( int c = 0; c < src1_channels; ++c) {
-              dstp[c] = 0;
-            }
+      for ( int y = rbegin(range); y < rend(range); ++y) {
+        const _Tp1* srcp1 = (const _Tp1* )(src1_base + y * src1_stride);
+        const _Tp2* srcp2 = (const _Tp2* )(src2_base + y * src2_stride);
+        _Tp3* __restrict dstp = (_Tp3* )(dst_base + y * dst_stride);
+
+        if ( src1_channels == 1 && src2_channels == 1 ) {
+          for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
+            const _Tcomp v = *srcp2 ;
+            *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 * scale / v : 0);
           }
         }
-      }
-      else {
-        for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
-          const _Tcomp v = *srcp2;
-          *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 / v : 0);
+        else if ( src2_channels == 1 ) {
+          for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
+            const _Tcomp v = *srcp2;
+            if ( std::abs(v) > abs_eps ) {
+              const _Tcomp inv_v = scale / v;
+              for ( int c = 0; c < src1_channels; ++c) {
+                dstp[c] = cv::saturate_cast<_Tp3>(srcp1[c] * inv_v);
+              }
+            }
+            else {
+              for ( int c = 0; c < src1_channels; ++c) {
+                dstp[c] = 0;
+              }
+            }
+          }
+        }
+        else {
+          for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
+            const _Tcomp v = *srcp2;
+            *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 * scale / v : 0);
+          }
         }
       }
-    }
-  });
+    });
+
+  }
+  else {
+
+    parallel_for(0, size.height, [=](const auto & range) {
+
+      for ( int y = rbegin(range); y < rend(range); ++y) {
+        const _Tp1* srcp1 = (const _Tp1* )(src1_base + y * src1_stride);
+        const _Tp2* srcp2 = (const _Tp2* )(src2_base + y * src2_stride);
+        _Tp3* __restrict dstp = (_Tp3* )(dst_base + y * dst_stride);
+
+        if ( src1_channels == 1 && src2_channels == 1 ) {
+          for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
+            const _Tcomp v = *srcp2;
+            *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 / v : 0);
+          }
+        }
+        else if ( src2_channels == 1 ) {
+          for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
+            const _Tcomp v = *srcp2;
+            if ( std::abs(v) > abs_eps ) {
+              const _Tcomp inv_v = 1 / v;
+              for ( int c = 0; c < src1_channels; ++c) {
+                dstp[c] = cv::saturate_cast<_Tp3>(srcp1[c] * inv_v);
+              }
+            }
+            else {
+              for ( int c = 0; c < src1_channels; ++c) {
+                dstp[c] = 0;
+              }
+            }
+          }
+        }
+        else {
+          for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
+            const _Tcomp v = *srcp2;
+            *dstp = cv::saturate_cast<_Tp3>( std::abs(v) > abs_eps ? *srcp1 / v : 0);
+          }
+        }
+      }
+    });
+  }
 
   return true;
 }
 
-bool divideImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst, double eps, int ddepth)
+bool divideImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst,
+    int ddepth, double scale, double eps)
 {
   if ( src1.empty() || src2.empty() ) {
     dst.release();
@@ -109,7 +155,7 @@ bool divideImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst,
            using T2 = std::remove_pointer_t<decltype(t2)>;
            return cv_dispatch_helper(ddepth, [&](auto t3) {
              using T3 = std::remove_pointer_t<decltype(t3)>;
-             return _divideImages<T1, T2, T3>(src1, src2, dst, eps);
+             return _divideImages<T1, T2, T3>(src1, src2, dst, scale, eps);
            });
          });
        });

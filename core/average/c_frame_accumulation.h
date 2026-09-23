@@ -10,6 +10,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/io/debayer.h>
+#include <core/proc/image_registration/image_transform.h>
 
 class c_frame_accumulation
 {
@@ -148,6 +149,110 @@ protected:
   cv::Rect _last_bbox;
   cv::Size _canvasSize;
   int _accumulated_frames = 0;
+};
+
+class c_canvas_drizzle
+{
+public:
+  typedef c_canvas_drizzle this_class;
+  typedef std::shared_ptr<this_class> sptr;
+
+  // Base margin in src coordinates
+  static const int FRAME_MARGIN = 32;
+
+  c_canvas_drizzle(double scale, double pixfrac) :
+    _scale(scale), _pixfrac(pixfrac)
+  {}
+
+  void setCanvasSize(const cv::Size & v)
+  {
+    std::scoped_lock lock(_mtx);
+    _canvasSize = v;
+    clear();
+  }
+  const cv::Size & canvasSize() const {
+    return _canvasSize;
+  }
+  int accumulated_frames() const {
+    return _accumulated_frames;
+  }
+  cv::Size accumulator_size() const {
+    return _accumulator.size();
+  }
+  const cv::Mat & accumulator() const {
+    return _accumulator;
+  }
+  const cv::Mat1f & counter() const {
+    return _weights;
+  }
+  const cv::Rect & last_bbox() const {
+    return _last_bbox;
+  }
+
+  /**
+  * Add a raw src frame to the Drizzle canvas.
+  * @param src              Raw input frame (CV_32F, 1–4 channels)
+  * @param transform        Forward parametric transformation of the frame to the 1:1 reference
+  * @param newCanvasBBox    Frame position on the 1:1 canvas, calculated by the aligner
+  */
+  bool add(const cv::Mat & src, const c_image_transform::sptr & transform, const cv::Rect & newCanvasBBox);
+
+  /**
+  * Return weighted average
+  */
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
+      const cv::Rect & rbbox = cv::Rect()) const;
+
+  void reset()
+  {
+    std::scoped_lock lock(_mtx);
+    _accumulated_frames = 0;
+    if (!_accumulator.empty()) {
+      _accumulator.setTo(cv::Scalar::all(0));
+    }
+    if (!_weights.empty()) {
+      _weights.setTo(0.0f);
+    }
+  }
+
+  void clear()
+  {
+    std::scoped_lock lock(_mtx);
+    _accumulator.release();
+    _weights.release();
+    _accumulated_frames = 0;
+  }
+
+  template<typename Fn>
+  inline auto synchronized(Fn && fn) const
+  {
+    std::scoped_lock lock(_mtx);
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
+
+protected:
+  // Canvas scrolling fully scaled to Drizzle coordinates.
+  void maintainCanvasBoundaries(cv::Rect & bbox_1to1);
+
+protected:
+  mutable std::mutex _mtx;
+  cv::Mat _accumulator;
+  cv::Mat1f _weights;
+  cv::Rect _last_bbox; // Stored at 1:1 scale for compatibility with the aligner
+  cv::Size _canvasSize; // Nominal canvas size at 1:1 scale
+  int _accumulated_frames = 0;
+
+  // Drizzle parameters
+  double _scale = 1.5;
+  double _pixfrac = 0.6;
+
+  // Current offset of the memory coordinate system origin relative to the absolute zero of the 1:1 canvas
+  cv::Point _memory_offset = cv::Point(0, 0);
 };
 
 

@@ -131,7 +131,7 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
       0,
       borderType);
 
-    divideImages(gsrc, gmask, _dst, 1e-5, ddepth);
+    divideImages(gsrc, gmask, _dst, ddepth, 1, 1e-5);
 }
 
 void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,

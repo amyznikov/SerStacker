@@ -12,6 +12,7 @@
 #include <core/proc/reduce_channels.h>
 #include <core/proc/laplacian_pyramid.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
+#include <core/proc/divide.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -451,6 +452,189 @@ bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
     }
     else {
       cv::compare(local_weights(bbox), 0, mask, cv::CMP_GT);
+    }
+  }
+
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void c_canvas_drizzle::maintainCanvasBoundaries(cv::Rect & bbox_1to1)
+{
+  if (_accumulator.empty() || bbox_1to1.width <= 0 || bbox_1to1.height <= 0) {
+    return;
+  }
+
+  const int margin = FRAME_MARGIN;
+  int shift_x = 0;
+  int shift_y = 0;
+
+  if (bbox_1to1.x < margin) {
+    shift_x = 2 * margin;
+  }
+  else if ((bbox_1to1.x + bbox_1to1.width) >= _canvasSize.width - margin) {
+    shift_x = -2 * margin;
+  }
+
+  if (bbox_1to1.y < margin) {
+    shift_y = 2 * margin;
+  }
+  else if ((bbox_1to1.y + bbox_1to1.height) >= _canvasSize.height - margin) {
+    shift_y = -2 * margin;
+  }
+
+  if (shift_x || shift_y) {
+    // All copying logic takes place in DRIZZLE SPACE.
+    const int d_shift_x = cvRound(shift_x * _scale);
+    const int d_shift_y = cvRound(shift_y * _scale);
+
+    const int copy_w = _accumulator.cols - std::abs(d_shift_x);
+    const int copy_h = _accumulator.rows - std::abs(d_shift_y);
+
+    if (copy_w > 0 && copy_h > 0) {
+      const int src_x = (d_shift_x > 0) ? 0 : -d_shift_x;
+      const int src_y = (d_shift_y > 0) ? 0 : -d_shift_y;
+      const int dst_x = (d_shift_x > 0) ? d_shift_x : 0;
+      const int dst_y = (d_shift_y > 0) ? d_shift_y : 0;
+
+      const cv::Rect src_roi(src_x, src_y, copy_w, copy_h);
+      const cv::Rect dst_roi(dst_x, dst_y, copy_w, copy_h);
+
+      cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
+      cv::Mat1f new_counter = cv::Mat1f::zeros(_weights.size());
+
+      _accumulator(src_roi).copyTo(new_accum(dst_roi));
+      _weights(src_roi).copyTo(new_counter(dst_roi));
+
+      _accumulator = new_accum;
+      _weights = new_counter;
+
+      // Adjust the physical memory offset of the canvas
+      _memory_offset.x += shift_x;
+      _memory_offset.y += shift_y;
+
+      bbox_1to1.x += shift_x;
+      bbox_1to1.y += shift_y;
+    }
+  }
+}
+
+bool c_canvas_drizzle::add(const cv::Mat & src, const c_image_transform::sptr & transform, const cv::Rect & newCanvasBBox)
+{
+  if (src.empty() || !transform) {
+    CF_ERROR("c_canvas_drizzle::add: Empty input data");
+    return false;
+  }
+
+  std::scoped_lock lock(_mtx);
+
+  cv::Rect ROI = newCanvasBBox;
+
+  if (!_accumulated_frames) {
+    // Initialization on the first frame
+    const cv::Size frameSize = src.size();
+    const cv::Size computedCanvasSize = c_canvas_average::computeCanvasSize(frameSize);
+
+    _canvasSize = cv::Size(std::max(_canvasSize.width, computedCanvasSize.width),
+        std::max(_canvasSize.height, computedCanvasSize.height));
+
+    const cv::Size target_drizzle_size(cvRound(_canvasSize.width * _scale),
+        cvRound(_canvasSize.height * _scale));
+
+    _accumulator = cv::Mat::zeros(target_drizzle_size, CV_MAKETYPE(CV_32F, src.channels()));
+    _weights = cv::Mat1f::zeros(target_drizzle_size);
+
+    const int target_x = _canvasSize.width / 2 - frameSize.width / 2;
+    const int target_y = _canvasSize.height / 2 - frameSize.height / 2;
+
+    ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
+    _memory_offset = cv::Point(0, 0);
+    _last_bbox = ROI;
+  }
+  else {
+    // Boundary checking and canvas memory scrolling
+    maintainCanvasBoundaries(ROI);
+    _last_bbox = ROI;
+  }
+
+  // --- GEOMETRY INJECTION POINT ---
+  // need to temporarily adjust the transform translation
+  // to account for the ROI position on the canvas and the current physical memory offset _memory_offset
+  const cv::Vec2f original_T = transform->translation();
+
+  // Physical position of the frame within the current accumulator matrix:
+  const cv::Vec2f global_shift(ROI.x - _memory_offset.x, ROI.y - _memory_offset.y);
+  transform->set_translation(original_T + global_shift);
+
+  // Call the optimized scattering method.
+  // Since we are passing already allocated and correctly sized _accumulator and _weights,
+  // the drizzle method will simply perform additive accumulation without reallocations!
+  bool success = transform->drizzle(src, _accumulator, _weights, _scale, _pixfrac);
+
+  // Restore the original translation to avoid breaking the external aligner's state.
+  transform->set_translation(original_T);
+
+  if (success) {
+    ++_accumulated_frames;
+  }
+  return success;
+}
+
+bool c_canvas_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask,
+    double dscale, int ddepth, const cv::Rect & rbbox) const
+{
+  cv::Mat local_accumulator;
+  cv::Mat1f local_weights;
+  int local_accumulated_frames = 0;
+  cv::Rect local_last_bbox;
+  cv::Point local_mem_offset;
+
+  synchronized([&]() {
+    local_accumulator = _accumulator;
+    local_weights = _weights;
+    local_accumulated_frames = _accumulated_frames;
+    local_last_bbox = _last_bbox;
+    local_mem_offset = _memory_offset;
+  });
+
+  if (local_accumulated_frames < 1 || local_accumulator.empty()) {
+    return false;
+  }
+
+  const cv::Rect box_1to1 = rbbox.empty() ? local_last_bbox : rbbox;
+
+  // Convert the requested ROI 1:1 to the physical ROI on the accumulator's Drizzle matrix.
+  const cv::Rect drizzle_bbox(
+    cvRound((box_1to1.x - local_mem_offset.x) * _scale),
+    cvRound((box_1to1.y - local_mem_offset.y) * _scale),
+    cvRound(box_1to1.width * _scale),
+    cvRound(box_1to1.height * _scale)
+  );
+
+  // Boundary clipping to physical matrix
+  const cv::Rect cbox(0, 0, local_accumulator.cols, local_accumulator.rows);
+  const cv::Rect clipped_roi = drizzle_bbox & cbox;
+  if (clipped_roi.empty()) {
+    return false;
+  }
+
+  if (avg.needed()) {
+    if (ddepth < 0) {
+      ddepth = local_accumulator.depth();
+    }
+    divideImages(local_accumulator, local_weights, avg,
+        ddepth, dscale);
+  }
+
+  if (mask.needed()) {
+    cv::Mat1f sub_weights = local_weights(clipped_roi);
+    if (mask.fixedType() && mask.depth() == CV_32F) {
+      sub_weights.copyTo(mask);
+    }
+    else {
+      cv::compare(sub_weights, 0, mask, cv::CMP_GT);
     }
   }
 

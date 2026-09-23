@@ -1534,3 +1534,351 @@ void c_bayer_average::generate_bayer_pattern_mask()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+template<class BT>
+static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+    const cv::Mat2f & rmap,
+    const cv::Mat1b & bayer_pattern,
+    const cv::Mat & weigths,
+    float pixfrac)
+{
+  const cv::Mat_<BT> src = bayer_image.getMat();
+
+  if( rmap.empty() ) {
+
+    if( weigths.empty() ) {
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          for( int x = 0; x < acc.cols; ++x ) {
+            const int cc = bayer_pattern[y][x]; // color channel for update
+            acc[y][x][cc] += src[y][x];
+            cntr[y][x][cc] += 1;
+          }
+        }
+      });
+    }
+    else if( weigths.type() == CV_8UC1 ) {
+
+      const cv::Mat1b & w = weigths;
+
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          for( int x = 0; x < acc.cols; ++x ) {
+            if ( w[y][x] ) {
+              const int cc = bayer_pattern[y][x];
+              acc[y][x][cc] += src[y][x];
+              cntr[y][x][cc] += 1;
+            }
+          }
+        }
+      });
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f & w = weigths;
+
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          for( int x = 0; x < acc.cols; ++x ) {
+            const int cc = bayer_pattern[y][x];
+            acc[y][x][cc] += src[y][x] * w[y][x];
+            cntr[y][x][cc] += w[y][x];
+          }
+        }
+      });
+    }
+
+  }
+  else {
+
+    static const auto drizzle_backward_interpolate =
+        [](int x, int y, const cv::Vec2f & p, const cv::Mat_<BT> & src, cv::Mat3f & acc, cv::Mat3f & cntr,
+            const cv::Mat1b & bayer_pattern, float w, float pixfrac) {
+
+            // p[0], p[1] — the center of the target pixel (x, y) projected onto the source frame.
+            // Under the pure-shift approximation, the boundaries of the target pixel in the source frame are:
+            const float target_x_min = p[0] - 0.5f;
+            const float target_x_max = p[0] + 0.5f;
+            const float target_y_min = p[1] - 0.5f;
+            const float target_y_max = p[1] + 0.5f;
+
+            // which source pixels fall within the neighborhood (usually the same 4 neighbors, 9 at most)
+            const int src_x_start = std::max(0, cvFloor(target_x_min));
+            const int src_y_start = std::max(0, cvFloor(target_y_min));
+            const int src_x_end = std::min(src.cols - 1, cvCeil(target_x_max));
+            const int src_y_end = std::min(src.rows - 1, cvCeil(target_y_max));
+
+            const float half_drop = pixfrac * 0.5f;
+
+            // Iterate over candidates in the source frame
+            for (int sy = src_y_start; sy <= src_y_end; ++sy) {
+              for (int sx = src_x_start; sx <= src_x_end; ++sx) {
+
+                // Center of the source pixel
+                const float src_center_x = sx + 0.5f;
+                const float src_center_y = sy + 0.5f;
+
+                // Boundaries of the reduced "drop" of the source pixel
+                const float drop_x_min = src_center_x - half_drop;
+                const float drop_x_max = src_center_x + half_drop;
+                const float drop_y_min = src_center_y - half_drop;
+                const float drop_y_max = src_center_y + half_drop;
+
+                // intersection of two one-dimensional segments (along X and Y)
+                const double overlap_x = std::max(0.0f, std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min));
+                const double overlap_y = std::max(0.0f, std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min));
+                const double s = overlap_x * overlap_y * w;
+                if (s > std::numeric_limits<float>::min() ) {
+                  const int color_idx = bayer_pattern[sy][sx];
+                  acc[y][x][color_idx] += src[sy][sx] * s;
+                  cntr[y][x][color_idx] += s;
+                }
+              }
+            }
+          };
+
+
+    if( weigths.empty() ) {
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          const cv::Vec2f *rmp = rmap[y];
+          for( int x = 0; x < acc.cols; ++x ) {
+            drizzle_backward_interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1, pixfrac);
+          }
+        }
+      });
+    }
+    else if( weigths.type() == CV_8UC1 ) {
+
+      const cv::Mat1b w = weigths;
+
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          const cv::Vec2f *rmp = rmap[y];
+          for( int x = 0; x < acc.cols; ++x ) {
+            if ( w[y][x] ) {
+              drizzle_backward_interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1, pixfrac);
+            }
+          }
+        }
+      });
+    }
+    else if( weigths.type() == CV_32FC1 ) {
+
+      const cv::Mat1f w = weigths;
+
+      parallel_for(0, acc.rows, [&](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          const cv::Vec2f *rmp = rmap[y];
+          for( int x = 0; x < acc.cols; ++x ) {
+            drizzle_backward_interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x], pixfrac);
+          }
+        }
+      });
+    }
+  }
+
+  return true;
+}
+
+
+static bool bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+    const cv::Mat2f & rmap,
+    const cv::Mat1b & bayer_pattern,
+    const cv::Mat & weigths,
+    double pixfrac)
+{
+  CV_DISPATCH(bayer_image.depth(), _bayer_drizzle, bayer_image, acc, cntr, rmap, bayer_pattern, weigths, pixfrac);
+  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d encountered", bayer_image.depth());
+  return false;
+}
+
+
+void c_bayer_drizzle::set_bayer_pattern(COLORID colorid)
+{
+  _colorid = colorid;
+  if ( !_accumulator.size().empty() ) {
+    generate_bayer_pattern_mask();
+  }
+}
+
+COLORID c_bayer_drizzle::bayer_pattern() const
+{
+  return _colorid;
+}
+
+void c_bayer_drizzle::set_pixfrac(double v)
+{
+  _pixfrac = v;
+}
+
+double c_bayer_drizzle::pixfrac() const
+{
+  return _pixfrac;
+}
+
+void c_bayer_drizzle::set_remap(const cv::Mat2f & rmap)
+{
+  _rmap = rmap;
+}
+
+const cv::Mat2f & c_bayer_drizzle::remap() const
+{
+  return _rmap ;
+}
+
+void c_bayer_drizzle::clear()
+{
+  _accumulator.release();
+  _counter.release();
+  _rmap.release();
+  _bayer_pattern.release();
+  _accumulated_frames = 0;
+}
+
+bool c_bayer_drizzle::reinitialize(cv::InputArray src, cv::InputArray accw)
+{
+  return false;
+}
+
+bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
+{
+  const cv::Mat src_bayer = src.getMat();
+  const cv::Mat w = weights.getMat();
+
+  if( _accumulated_frames < 1 ) {
+    const cv::Size image_size = src.size();
+    _accumulator.create(image_size);
+    _counter.create(image_size);
+    _accumulator.setTo(0);
+    _counter.setTo(0);
+    _accumulated_frames = 0;
+    generate_bayer_pattern_mask();
+  }
+
+  if ( !bayer_drizzle(src, _accumulator, _counter, _rmap, _bayer_pattern, w, _pixfrac) ) {
+    CF_ERROR("bayer_drizzle() fails");
+    return false;
+  }
+
+  ++_accumulated_frames;
+
+  return true;
+}
+
+bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+{
+  if( _accumulated_frames < 1 ) {
+    return false;
+  }
+
+  if ( avg.needed() ) {
+    divideImages(_accumulator, _counter, avg, ddepth, dscale);
+  }
+
+  if( mask.needed() ) {
+    cv::Mat msk;
+    cv::compare(_counter, 0, msk, cv::CMP_GT);
+    reduce_color_channels(msk, mask, cv::REDUCE_MAX);
+  }
+
+  return true;
+}
+
+bool c_bayer_drizzle::get_acc_counters(cv::Mat & accw) const
+{
+  if( is_bayer_pattern(_colorid) ) { // should be always true
+    cv::multiply(_counter, cv::Scalar(1, 0.5, 1), accw);
+  }
+  else {
+    _counter.copyTo(accw);
+  }
+
+  return true;
+}
+
+cv::Size c_bayer_drizzle::accumulator_size() const
+{
+  return _accumulator.size();
+}
+
+const cv::Mat & c_bayer_drizzle::accumulator() const
+{
+  return _accumulator;
+}
+
+const cv::Mat & c_bayer_drizzle::counter() const
+{
+  return _counter;
+}
+
+void c_bayer_drizzle::generate_bayer_pattern_mask()
+{
+  _bayer_pattern.create(_accumulator.size());
+
+  switch (_colorid) {
+    case COLORID_BAYER_RGGB:
+      /*
+       * R G
+       * G B
+       * */
+      for ( int y = 0; y < _bayer_pattern.rows / 2; ++y ) {
+        for ( int x = 0; x < _bayer_pattern.cols / 2; ++x ) {
+          _bayer_pattern[2 * y + 0][2 * x + 0] = BAYER_R;
+          _bayer_pattern[2 * y + 0][2 * x + 1] = BAYER_G;
+          _bayer_pattern[2 * y + 1][2 * x + 0] = BAYER_G;
+          _bayer_pattern[2 * y + 1][2 * x + 1] = BAYER_B;
+        }
+      }
+      break;
+
+
+    case COLORID_BAYER_GRBG:
+      /*
+       * G R
+       * B G
+       * */
+      for ( int y = 0; y < _bayer_pattern.rows / 2; ++y ) {
+        for ( int x = 0; x < _bayer_pattern.cols / 2; ++x ) {
+          _bayer_pattern[2 * y + 0][2 * x + 0] = BAYER_G;
+          _bayer_pattern[2 * y + 0][2 * x + 1] = BAYER_R;
+          _bayer_pattern[2 * y + 1][2 * x + 0] = BAYER_B;
+          _bayer_pattern[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_GBRG:
+      /*
+       * G B
+       * R G
+       * */
+      for ( int y = 0; y < _bayer_pattern.rows / 2; ++y ) {
+        for ( int x = 0; x < _bayer_pattern.cols / 2; ++x ) {
+          _bayer_pattern[2 * y + 0][2 * x + 0] = BAYER_G;
+          _bayer_pattern[2 * y + 0][2 * x + 1] = BAYER_B;
+          _bayer_pattern[2 * y + 1][2 * x + 0] = BAYER_R;
+          _bayer_pattern[2 * y + 1][2 * x + 1] = BAYER_G;
+        }
+      }
+      break;
+    case COLORID_BAYER_BGGR:
+      /*
+       * B G
+       * G R
+       * */
+      for ( int y = 0; y < _bayer_pattern.rows / 2; ++y ) {
+        for ( int x = 0; x < _bayer_pattern.cols / 2; ++x ) {
+          _bayer_pattern[2 * y + 0][2 * x + 0] = BAYER_B;
+          _bayer_pattern[2 * y + 0][2 * x + 1] = BAYER_G;
+          _bayer_pattern[2 * y + 1][2 * x + 0] = BAYER_G;
+          _bayer_pattern[2 * y + 1][2 * x + 1] = BAYER_R;
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

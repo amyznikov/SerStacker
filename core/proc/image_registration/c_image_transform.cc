@@ -650,10 +650,8 @@ void c_euclidean_image_transform::scale_transfrom(double factor)
   update_parameters();
 }
 
-double c_euclidean_image_transform::eps(const cv::Mat1f & dp,
-    const cv::Size & image_size)
+double c_euclidean_image_transform::eps(const cv::Mat1f & dp,const cv::Size & image_size)
 {
-
   float dTx = 0, dTy = 0, da = 0, ds = 0, dCx = 0, dCy = 0;
 
   get_parameters(dp, &dTx, &dTy, &da, &ds, &dCx, &dCy);
@@ -978,7 +976,7 @@ cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, c
 
 bool c_euclidean_image_transform::drizzle(cv::InputArray _src,
     cv::InputOutputArray _acc_energy, cv::InputOutputArray _acc_weight,
-    double scale_drizzle, double pixfrac) const
+    double drizzle_scale, double pixfrac) const
 {
   if (_src.empty()) {
     CF_ERROR("c_euclidean_image_transform::drizzle: Input source image is empty");
@@ -990,7 +988,7 @@ bool c_euclidean_image_transform::drizzle(cv::InputArray _src,
   const int src_w = src.cols;
   const int cn = src.channels();
 
-  const cv::Size target_size(cvRound(src_w * scale_drizzle), cvRound(src_h * scale_drizzle));
+  const cv::Size target_size(cvRound(src_w * drizzle_scale), cvRound(src_h * drizzle_scale));
 
   if( _acc_energy.empty() ) {
     _acc_energy.create(target_size, CV_MAKETYPE(CV_32F, cn));
@@ -1017,54 +1015,58 @@ bool c_euclidean_image_transform::drizzle(cv::InputArray _src,
     return false;
   }
 
-  float Tx, Ty, angle, scale_param, Cx, Cy;
-  if (!get_parameters(parameters(), &Tx, &Ty, &angle, &scale_param, &Cx, &Cy)) {
+  float Tx, Ty, angle, scale, Cx, Cy;
+  if (!get_parameters(parameters(), &Tx, &Ty, &angle, &scale, &Cx, &Cy)) {
     CF_ERROR("c_euclidean_image_transform::drizzle: get_parameters() failed");
     return false;
   }
 
-  cv::Matx23f direct_matrix =
-      create_euclidean_transform(cv::Vec2f(Cx, Cy), cv::Vec2f(Tx, Ty), angle, scale_param);
+  const cv::Matx23f direct_matrix =
+      create_euclidean_transform(cv::Vec2f(Cx, Cy), cv::Vec2f(Tx, Ty), angle, scale);
 
   cv::Matx23f inv_M;
   cv::invertAffineTransform(direct_matrix, inv_M);
 
-  const float a00 = inv_M(0, 0); const float a01 = inv_M(0, 1); const float a02 = inv_M(0, 2);
-  const float a10 = inv_M(1, 0); const float a11 = inv_M(1, 1); const float a12 = inv_M(1, 2);
+  const float a00 = inv_M(0, 0);
+  const float a01 = inv_M(0, 1);
+  const float a02 = inv_M(0, 2);
+  const float a10 = inv_M(1, 0);
+  const float a11 = inv_M(1, 1);
+  const float a12 = inv_M(1, 2);
 
-  cv::Mat acc_energy = _acc_energy.getMat();
-  cv::Mat1f acc_weight = _acc_weight.getMat();
+  cv::Mat acc = _acc_energy.getMat();
+  cv::Mat1f accw = _acc_weight.getMat();
 
-  const float r_drop = float(pixfrac * scale_drizzle * 0.5);
-  const float offset = float((scale_drizzle - 1.0) * 0.5);
-  const float fscale = float(scale_drizzle);
+  const float r_drop = float(pixfrac * drizzle_scale * 0.5);
+  const float offset = float((drizzle_scale - 1.0) * 0.5);
+  const float fscale = float(drizzle_scale);
 
   for (int sy = 0; sy < src_h; ++sy) {
 
-    const float base_x = a01 * float(sy) + a02;
-    const float base_y = a11 * float(sy) + a12;
+    const float base_x = a01 * sy + a02;
+    const float base_y = a11 * sy + a12;
 
     const float* src_row = src.ptr<float>(sy);
 
     for (int sx = 0; sx < src_w; ++sx) {
-      const float xf = a00 * float(sx) + base_x;
-      const float yf = a10 * float(sx) + base_y;
-      if (xf < -1.0f || xf >= float(src_w) || yf < -1.0f || yf >= float(src_h)) {
+      const float xf = a00 * sx + base_x;
+      const float yf = a10 * sx + base_y;
+      if (xf < -1 || xf >= src_w || yf < -1 || yf >= src_h) {
         continue;
       }
       const float cx = xf * fscale + offset;
       const float cy = yf * fscale + offset;
 
       const int x_min = std::max(0, cvFloor(cx - r_drop));
-      const int x_max = std::min(acc_energy.cols - 1, cvCeil(cx + r_drop));
+      const int x_max = std::min(acc.cols - 1, cvCeil(cx + r_drop));
       const int y_min = std::max(0, cvFloor(cy - r_drop));
-      const int y_max = std::min(acc_energy.rows - 1, cvCeil(cy + r_drop));
+      const int y_max = std::min(acc.rows - 1, cvCeil(cy + r_drop));
       if (x_min > x_max || y_min > y_max) {
         continue;
       }
 
       const float* src_pixel = src_row + sx * cn;
-      drizzleSplatterKernel(src_pixel, cn, cx, cy, r_drop, acc_energy, acc_weight);
+      drizzleSplatterKernel(src_pixel, cn, cx, cy, r_drop, acc, accw);
     }
   }
 

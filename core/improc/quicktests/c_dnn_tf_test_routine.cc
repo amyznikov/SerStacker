@@ -9,7 +9,7 @@
 
 void c_dnn_tf_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind_browse_for_file(ctls, "model_path", ctx, &this_class::model_path, &this_class::set_model_path, "Specify model_path");
+  ctlbind_browse_for_existing_file(ctls, "model_path", ctx, &this_class::model_path, &this_class::set_model_path, "Specify model_path");
 }
 
 bool c_dnn_tf_test_routine::serialize(c_config_setting settings, bool save)

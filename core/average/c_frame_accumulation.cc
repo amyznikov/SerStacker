@@ -896,294 +896,10 @@ cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
   return _image_size;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void c_frame_accumulation_with_fft::clear()
-{
-  _accumulated_frames = 0;
-  _accumulators.clear();
-  _weights.clear();
-  _rc.x = _rc.y = _rc.width = _rc.height = 0;
-  _fftSize.width =  _fftSize.height = 0;
-  _border_top = 0;
-  _border_bottom = 0;
-  _border_left = 0;
-  _border_right = 0;
-}
-
-bool c_frame_accumulation_with_fft::reinitialize(cv::InputArray src, cv::InputArray accw)
-{
-  return false;
-}
-
-bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
-{
-  (void)(_w);
-
-
-  const int nc = src.channels();
-
-  if ( !_accumulators.empty() && _accumulators.size() != nc ) {
-    CF_ERROR("Number of channels not match, expected %zu channel input image", _accumulators.size());
-    return  false;
-  }
-
-  cv::Mat channels[nc];
-  cv::Mat weights[nc];
-
-  if ( nc == 1 ) {
-    src.getMat().copyTo(channels[0]);
-  }
-  else {
-    cv::split(src.getMat(), channels);
-  }
-
-  const cv::Size src_size =
-      channels[0].size();
-
-  if ( _accumulators.empty() ) {
-
-    _fftSize = fftGetOptimalSize(src_size, cv::Size(0,0), nullptr, false);
-
-    CF_DEBUG("src_size=%dx%d fftSize_=%dx%d",
-        src_size.width, src_size.height,
-        _fftSize.width, _fftSize.height);
-
-
-    if ( src_size == _fftSize ) {
-      _rc.x = _rc.y = _rc.width = _rc.height = 0;
-    }
-    else {
-      _border_top = (_fftSize.height - src_size.height) / 2;
-      _border_bottom = (_fftSize.height - src_size.height - _border_top);
-      _border_left = (_fftSize.width - src_size.width) / 2;
-      _border_right = (_fftSize.width - src_size.width - _border_left);
-      _rc = cv::Rect(_border_left, _border_top, src.cols(), src.rows());
-
-    }
-
-  }
-
-  if ( nc == 1 ) {
-    if ( src_size == _fftSize ) {
-      cv::dft(channels[0], channels[0],
-          cv::DFT_COMPLEX_OUTPUT);
-    }
-    else {
-
-      cv::copyMakeBorder(channels[0], channels[0],
-          _border_top, _border_bottom,
-          _border_left, _border_right,
-          cv::BORDER_REFLECT);
-
-      cv::dft(channels[0], channels[0],
-          cv::DFT_COMPLEX_OUTPUT);
-
-      fftPower(channels[0], weights[0], true);
-    }
-  }
-  else {
-
-    parallel_loop(0, nc, [this, src_size, &channels, &weights](int i) {
-      if ( src_size == _fftSize ) {
-        cv::dft(channels[i], channels[i],
-            cv::DFT_COMPLEX_OUTPUT);
-      }
-      else {
-        cv::Mat tmp;
-        cv::copyMakeBorder(channels[i], tmp,
-            _border_top, _border_bottom,
-            _border_left, _border_right,
-            cv::BORDER_REFLECT);
-
-        channels[i] = tmp;
-        cv::dft(channels[i], channels[i],
-            cv::DFT_COMPLEX_OUTPUT);
-
-      }
-
-      fftPower(channels[i], weights[i], false);
-    });
-  }
-
-  if ( _accumulators.empty() ) {
-
-    _accumulators.resize(nc);
-    _weights.resize(nc);
-
-    for ( int i = 0; i < nc; ++i ) {
-
-      _accumulators[i].create(channels[i].size(), channels[i].type());
-      _accumulators[i].setTo(0);
-
-      _weights[i].create(weights[i].size(), weights[i].type());
-      _weights[i].setTo(0);
-    }
-
-  }
-
-
-  for ( int i = 0; i < nc; ++i ) {
-
-    cv::accumulateProduct(channels[i], weights[i], _accumulators[i]);
-    cv::accumulate(weights[i], _weights[i]);
-  }
-
-
-  ++_accumulated_frames;
-
-  return true;
-}
-
-bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
-{
-
-  const int nc = _accumulators.size();
-  if ( nc < 1 || _accumulators[0].empty() ) {
-    CF_ERROR("c_frame_accumulation_with_fft: accumulator is empty");
-    return false;
-  }
-
-
-  cv::Mat channels[nc];
-
-  if ( ddepth < 0 ) {
-    ddepth = _accumulators[0].depth();
-  }
-
-  for ( int i = 0; i < nc; ++i ) {
-    cv::divide(_accumulators[i], _weights[i], channels[i], dscale, ddepth);
-    cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-  }
-
-  if ( _rc.empty() ) {
-    if ( nc == 1 ) {
-      avg.move(channels[0]);
-    }
-    else {
-      cv::merge(channels, nc, avg);
-    }
-  }
-  else {
-    if ( nc == 1 ) {
-      channels[0](_rc).copyTo(avg);
-    }
-    else {
-      cv::Mat tmp;
-      cv::merge(channels, nc, tmp);
-      tmp(_rc).copyTo(avg);
-    }
-  }
-
-  if ( mask.needed() ) {
-    cv::Mat1b m(avg.size(), 255);
-    mask.move(m);
-  }
-
-
-  return true;
-}
-
-bool c_frame_accumulation_with_fft::get_acc_counters(cv::Mat & accw) const
-{
-  accw.release();
-  return false;
-}
-
-cv::Size c_frame_accumulation_with_fft::accumulator_size() const
-{
-  return _accumulators.empty() ? cv::Size(0,0) : _accumulators[0].size();
-}
-
-const std::vector<cv::Mat> & c_frame_accumulation_with_fft::accumulators() const
-{
-  return _accumulators;
-}
-
-const std::vector<cv::Mat> & c_frame_accumulation_with_fft::weights() const
-{
-  return _weights;
-}
-
-int c_frame_accumulation_with_fft::countNaNs(const cv::Mat & image)
-{
-  int cnt = 0;
-
-  const int nc = image.channels();
-
-  for ( int y = 0; y < image.rows; ++y ) {
-
-    const float * p = image.ptr<const float>(y);
-
-    for ( int x = 0; x < image.cols * nc; ++x ) {
-      if ( std::isnan(p[x]) ) {
-        ++cnt;
-      }
-    }
-  }
-
-  return cnt;
-}
-
-double c_frame_accumulation_with_fft::power(double x)
-{
-  return x * x * x;
-}
-
-double c_frame_accumulation_with_fft::square(double x)
-{
-  return x * x;
-}
-
-bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst, bool mc)
-{
-  if ( src.channels() != 2 || src.depth() != CV_32F ) {
-    CF_ERROR("invalid arg: FP32 2-channel input image expected");
-    return false;
-  }
-
-  const cv::Mat2f csrc = src;
-  cv::Mat2f cmag;
-
-  cmag.create(src.size());
-
-  double scale =
-      square(1. / src.size().area());
-
-
-  if ( !mc ) {
-    for ( int y = 0; y < csrc.rows; ++y ) {
-      for ( int x = 0; x < csrc.cols; ++x ) {
-        const double a = csrc[y][x][0];
-        const double b = csrc[y][x][1];
-        const double p = power((a * a + b * b) * scale);
-        cmag[y][x][0] = cmag[y][x][1] = std::max(scale, p);
-      }
-    }
-  }
-  else {
-    parallel_loop(0, csrc.rows, [&csrc, &cmag, scale](int y) {
-      for ( int x = 0; x < csrc.cols; ++x ) {
-        const double a = csrc[y][x][0];
-        const double b = csrc[y][x][1];
-        const double p = power((a * a + b * b) * scale);
-        cmag[y][x][0] = cmag[y][x][1] = std::max(scale, p);
-      }
-    });
-  }
-
-  dst = std::move(cmag);
-
-  return true;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 template<class BT>
-static bool _bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+static bool _bayer_interpolate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const cv::Mat1b & bayer_pattern,
     const cv::Mat & weigths)
@@ -1322,12 +1038,12 @@ static bool _bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::M
   return true;
 }
 
-static bool bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+static bool bayer_interpolate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const cv::Mat1b & bayer_pattern,
     const cv::Mat & weigths)
 {
-  CV_DISPATCH(bayer_image.depth(), _bayer_accumulate, bayer_image, acc, cntr, rmap, bayer_pattern, weigths);
+  CV_DISPATCH(bayer_image.depth(), _bayer_interpolate, bayer_image, acc, cntr, rmap, bayer_pattern, weigths);
   CF_ERROR("APP BUG: BAD bayer_image.depth()=%d encountered", bayer_image.depth());
   return false;
 }
@@ -1389,8 +1105,8 @@ bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
     generate_bayer_pattern_mask();
   }
 
-  if ( !bayer_accumulate(src, _accumulator, _counter, _rmap, _bayer_pattern, w) ) {
-    CF_ERROR("bayer_accumulate() fails");
+  if ( !bayer_interpolate(src, _accumulator, _counter, _rmap, _bayer_pattern, w) ) {
+    CF_ERROR("bayer_interpolate() fails");
     return false;
   }
 
@@ -1405,25 +1121,9 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
     return false;
   }
 
-  cv::Mat3f img(_accumulator.size(), 0.f);
-
-  for( int y = 0; y < img.rows; ++y ) {
-
-    for( int x = 0; x < img.cols; ++x ) {
-
-      for( int c = 0; c < 3; ++c ) {
-
-        if( _counter[y][x][c] > 0 ) {
-          img[y][x][c] = _accumulator[y][x][c] / _counter[y][x][c];
-        }
-        else {
-          img[y][x][c] = 0;
-        }
-      }
-    }
+  if ( avg.needed() ) {
+    divideImages(_accumulator, _counter, avg, ddepth, dscale);
   }
-
-  avg.move(img);
 
   if( mask.needed() ) {
     cv::Mat msk;

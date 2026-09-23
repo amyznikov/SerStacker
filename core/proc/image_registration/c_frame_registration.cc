@@ -32,8 +32,8 @@ bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
   LOAD_OPTION(settings, *opts, ecch_minimum_image_size);
   LOAD_OPTION(settings, *opts, ecch_max_level);
   LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
-  LOAD_OPTION(settings, *opts, replace_planetary_disk_with_mask);
-  LOAD_OPTION(settings, *opts, se_radius);
+//  LOAD_OPTION(settings, *opts, replace_planetary_disk_with_mask);
+//  LOAD_OPTION(settings, *opts, se_radius);
   return true;
 }
 
@@ -52,8 +52,8 @@ bool save_settings(c_config_setting settings, const c_ecc_registration_options &
   SAVE_OPTION(settings, opts, ecch_minimum_image_size);
   SAVE_OPTION(settings, opts, ecch_max_level);
   SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
-  SAVE_OPTION(settings, opts, replace_planetary_disk_with_mask);
-  SAVE_OPTION(settings, opts, se_radius);
+//  SAVE_OPTION(settings, opts, replace_planetary_disk_with_mask);
+//  SAVE_OPTION(settings, opts, se_radius);
   return true;
 }
 
@@ -580,9 +580,9 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       return false;
     }
 
-    if( _options.ecc.replace_planetary_disk_with_mask ) {
-      insert_planetary_disk_shape(reference_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
-    }
+//    if( _options.ecc.replace_planetary_disk_with_mask ) {
+//      insert_planetary_disk_shape(reference_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
+//    }
 
     if( _options.enable_ecc_registration ) {
 
@@ -762,10 +762,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
-    if( _options.ecc.replace_planetary_disk_with_mask ) {
-      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
-    }
+//    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
+//    if( _options.ecc.replace_planetary_disk_with_mask ) {
+//      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
+//    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1006,67 +1006,67 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
   return true;
 }
 
-bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
-    cv::Mat & dst_ecc_image, cv::Mat & dst_ecc_mask) const
-{
-  cv::Mat planetary_disk_mask;
-
-  bool fOk =
-      simple_planetary_disk_detector(src_ecc_image, src_mask,
-          1, _options.ecc.se_radius,
-          nullptr,
-          nullptr,
-          &planetary_disk_mask);
-
-  if( !fOk ) {
-    CF_ERROR("simple_small_planetary_disk_detector() fails");
-    return false;
-  }
-
-//  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
+//bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
+//    cv::Mat & dst_ecc_image, cv::Mat & dst_ecc_mask) const
+//{
+//  cv::Mat planetary_disk_mask;
 //
-//    cv::Scalar m, s;
+//  bool fOk =
+//      simple_planetary_disk_detector(src_ecc_image, src_mask,
+//          1, _options.ecc.se_radius,
+//          nullptr,
+//          nullptr,
+//          &planetary_disk_mask);
 //
-//    cv::meanStdDev(src_ecc_image, m, s, src_mask);
-//
-//    const double threshold =
-//        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
-//
-//    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
+//  if( !fOk ) {
+//    CF_ERROR("simple_small_planetary_disk_detector() fails");
+//    return false;
 //  }
-//  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
-//  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
-
-
-  src_ecc_image.copyTo(dst_ecc_image);
-
-  if ( !src_mask.empty() ) {
-    cv::bitwise_and(src_mask, ~planetary_disk_mask, dst_ecc_mask );
-  }
-  else {
-    cv::bitwise_not(planetary_disk_mask, dst_ecc_mask);
-  }
-
-  if( !_options.enable_eccflow_registration || _options.eccflow.support_scale < 1 ) {
-    dst_ecc_image.setTo(1, planetary_disk_mask);
-  }
-  else {
-    /*
-     * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
-     * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
-     */
-    double min, max;
-
-    cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
-    cv::minMaxLoc(planetary_disk_mask, &min, &max);
-    cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
-
-    planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
-
-  }
-  return true;
-}
-
+//
+////  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
+////
+////    cv::Scalar m, s;
+////
+////    cv::meanStdDev(src_ecc_image, m, s, src_mask);
+////
+////    const double threshold =
+////        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
+////
+////    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
+////  }
+////  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
+////  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
+//
+//
+//  src_ecc_image.copyTo(dst_ecc_image);
+//
+//  if ( !src_mask.empty() ) {
+//    cv::bitwise_and(src_mask, ~planetary_disk_mask, dst_ecc_mask );
+//  }
+//  else {
+//    cv::bitwise_not(planetary_disk_mask, dst_ecc_mask);
+//  }
+//
+//  if( !_options.enable_eccflow_registration || _options.eccflow.support_scale < 1 ) {
+//    dst_ecc_image.setTo(1, planetary_disk_mask);
+//  }
+//  else {
+//    /*
+//     * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
+//     * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
+//     */
+//    double min, max;
+//
+//    cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
+//    cv::minMaxLoc(planetary_disk_mask, &min, &max);
+//    cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
+//
+//    planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
+//
+//  }
+//  return true;
+//}
+//
 
 bool c_frame_registration::extract_reference_features(cv::InputArray reference_image, cv::InputArray reference_mask)
 {

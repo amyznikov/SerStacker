@@ -241,7 +241,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "display_type", ctx(&S::default_display_type), "");
   ctlbind(ctls, "display_scale", ctx(&S::display_scale), "");
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
-  ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
+  ctlbind_browse_for_existing_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
   ctlbind(ctls, "autoSaveInterval:", ctx, ctx(&S::autoSaveInterval),
       std::function {[](const S * opts) {return !opts->save_substacks;}},

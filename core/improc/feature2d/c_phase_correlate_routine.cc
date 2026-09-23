@@ -191,7 +191,7 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         _referenceMask.copyTo(mask);
         break;
       case DISPLAY_SHIFTED_CURRENT_IMAGE : {
-        shiftImage(_currentImage, image, Translation);
+        shiftImage(image, image, Translation);
         mask.release();
         break;
       }

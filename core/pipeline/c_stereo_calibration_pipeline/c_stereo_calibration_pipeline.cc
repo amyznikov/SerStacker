@@ -169,8 +169,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_stereo_calibration_output_options;
 
-  ctlbind_browse_for_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
-  ctlbind_browse_for_file(ctls, "output_extrinsics_filename", ctx(&S::output_extrinsics_filename), "");
+  ctlbind_browse_for_existing_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
+  ctlbind_browse_for_existing_file(ctls, "output_extrinsics_filename", ctx(&S::output_extrinsics_filename), "");
 
   ctlbind_expandable_group(ctls, "Save Chessboard Frames", "");
   ctlbind(ctls, "save_chessboard_frames", ctx(&S::save_chessboard_frames), "");

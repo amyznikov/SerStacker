@@ -76,6 +76,7 @@
 #include "generic/c_edge_preserving_filter_routine.h"
 #include "generic/c_anisotropic_diffusion_filter_routine.h"
 #include "generic/c_fast_nl_means_denoising_routine.h"
+#include "generic/c_bm3d_denoising_routine.h"
 #include "generic/c_adaptive_gaussian_blur_routine.h"
 #include "generic/c_fft_routine.h"
 #include "generic/c_fft_radial_profile_routine.h"
@@ -340,6 +341,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_edge_preserving_filter_routine::class_factory_instance());
     register_class_factory(c_anisotropic_diffusion_filter_routine::class_factory_instance());
     register_class_factory(c_fast_nl_means_denoising_routine::class_factory_instance());
+    register_class_factory(c_bm3d_denoising_routine::class_factory_instance());
     register_class_factory(c_adaptive_gaussian_blur_routine::class_factory_instance());
 
     register_class_factory(c_set_pixels_routine::class_factory_instance());

@@ -11,7 +11,7 @@
 
 void c_load_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind_browse_for_file(ctls, "filename", ctx(&this_class::_filename), "Path to image file to load");
+  ctlbind_browse_for_existing_file(ctls, "filename", ctx(&this_class::_filename), "Path to image file to load");
   ctlbind(ctls, "artifact_name", ctx(&this_class::_artifact_name), "Name for this image to save");
 }
 

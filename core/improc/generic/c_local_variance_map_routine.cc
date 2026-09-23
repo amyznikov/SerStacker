@@ -23,10 +23,10 @@ void c_local_variance_map_routine::getcontrols(c_control_list & ctls, const ctlb
   ctlbind(ctls, "fullResoltion", ctx(&this_class::_fullResoltion), "Set checked to upscale the map to original resolution");
   ctlbind_menu_button(ctls, "Options...", ctx);
   ctlbind_item(ctls, "Copy c_local_variance_map to clipboard", ctx, [](this_class * _ths) {
-    return ctlbind_copy_config_to_clipboard("c_local_variance_map", _ths->_opts), false;
+    return ctlbind_copy_config_to_clipboard("c_local_variance_map_options", _ths->_opts), false;
   });
   ctlbind_item(ctls, "Paste c_local_variance_map from clipboard", ctx, [](this_class * _ths) {
-    return ctlbind_paste_config_from_clipboard("c_local_variance_map", &_ths->_opts);
+    return ctlbind_paste_config_from_clipboard("c_local_variance_map_options", &_ths->_opts);
   });
 }
 

@@ -302,8 +302,8 @@ cv::Mat Inference::formatToSquare(const cv::Mat & source)
 
 void c_dnn_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-   ctlbind_browse_for_file(ctls, "onnx_model_path", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model_path");
-   ctlbind_browse_for_file(ctls, "classes_text_file", ctx, &this_class::classes_text_file, &this_class::set_classes_text_file, "Specify classes_text_file");
+   ctlbind_browse_for_existing_file(ctls, "onnx_model_path", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model_path");
+   ctlbind_browse_for_existing_file(ctls, "classes_text_file", ctx, &this_class::classes_text_file, &this_class::set_classes_text_file, "Specify classes_text_file");
    ctlbind(ctls, "model_input_shape", ctx, &this_class::model_input_shape, &this_class::set_model_input_shape, "Specify model_input_shape");
    ctlbind(ctls, "run_with_cuda", ctx, &this_class::run_with_cuda, &this_class::set_run_with_cuda, "Specify run_with_cuda");
 }

@@ -26,11 +26,12 @@
 enum frame_accumulation_method
 {
   frame_accumulation_none = -1,
-  frame_accumulation_average = 0,
+  //frame_accumulation_average = 0,
   frame_accumulation_weighted_average,
   frame_accumulation_focus_stack,
-  frame_accumulation_fft,
+  //frame_accumulation_fft,
   frame_accumulation_bayer_average,
+  frame_accumulation_bayer_drizzle,
 };
 
 enum frame_upscale_stage
@@ -87,17 +88,9 @@ struct c_frame_upscale_options
 
 struct c_frame_accumulation_options
 {
-  enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
+  enum frame_accumulation_method accumulation_method = frame_accumulation_weighted_average;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
-
-  c_frame_accumulation_options()
-  {
-    sharpness_measure.dscale = 1;
-    sharpness_measure.kradius = 1;
-    sharpness_measure.uscale = 0;
-  }
-
 };
 
 struct c_image_processing_options
@@ -233,8 +226,6 @@ protected:
   bool run_image_stacking();
   void set_pipeline_stage(int stage);
 
-//  c_roi_selection::sptr create_roi_selection() const;
-
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
 
   c_frame_accumulation::ptr create_frame_accumulation(const c_frame_accumulation_options & opts) const;
@@ -251,12 +242,6 @@ protected:
 
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
       int startpos, int endpos);
-
-//  int select_master_frame(const c_input_sequence::sptr & input_sequence);
-
-//  static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
-//      const cv::Mat & src, const cv::Mat & srcmask,
-//      cv::Mat & dst, cv::Mat & dstmask);
 
   static bool write_image(const std::string & output_file_name,
       const c_image_stacking_output_options & output_options,

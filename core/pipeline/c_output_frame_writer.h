@@ -131,7 +131,7 @@ template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_output_frame_writer_options> & ctx)
 {
   using S = c_output_frame_writer_options;
-  ctlbind_browse_for_file(ctls, "output_filename", ctx(&S::output_filename), "");
+  ctlbind_browse_for_existing_file(ctls, "output_filename", ctx(&S::output_filename), "");
   ctlbind(ctls, "ffmpeg_opts", ctx(&S::ffmpeg_opts), "");
   ctlbind(ctls, "output_image_processor", ctx(&S::output_image_processor), "");
   ctlbind(ctls, "output_pixel_depth", ctx(&S::output_pixel_depth), "");

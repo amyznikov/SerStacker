@@ -46,8 +46,8 @@ const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>(
 void c_stereo_rectification_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Enable rectification", ctx, &this_class::enable_rectification, &this_class::set_enable_rectification, "Enable image rectification");
-  ctlbind_browse_for_file(ctls, "intrinsics", ctx, &this_class::intrinsics_filename, &this_class::set_intrinsics_filename, "Stereo intrinsics YML file");
-  ctlbind_browse_for_file(ctls, "extrinsics", ctx, &this_class::extrinsics_filename, &this_class::set_extrinsics_filename, "Stereo extrinsics YML file");
+  ctlbind_browse_for_existing_file(ctls, "intrinsics", ctx, &this_class::intrinsics_filename, &this_class::set_intrinsics_filename, "Stereo intrinsics YML file");
+  ctlbind_browse_for_existing_file(ctls, "extrinsics", ctx, &this_class::extrinsics_filename, &this_class::set_extrinsics_filename, "Stereo extrinsics YML file");
   ctlbind(ctls, "swap_frames", ctx, &this_class::swap_frames, &this_class::set_swap_frames, "Swap Left and Right frames");
   ctlbind(ctls, "display_mode", ctx, &this_class::display_mode, &this_class::set_display_mode, "Overlay two stereo frames into one frame");
   ctlbind(ctls, "ss_sigma", ctx, &this_class::ss_sigma, &this_class::set_ss_sigma, "ss_sigma");

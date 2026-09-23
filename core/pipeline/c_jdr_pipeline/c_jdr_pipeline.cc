@@ -142,7 +142,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
     ctlbind_expandable_group(ctls, "3. Reference Frame Options ",
         [&, ctx = ctx(&this_class::_reference_frame_options)]() {
 
-          ctlbind_browse_for_file(ctls, "Reference file name", CTL_CONTEXT(ctx, reference_file_name));
+          ctlbind_browse_for_existing_file(ctls, "Reference file name", CTL_CONTEXT(ctx, reference_file_name));
           ctlbind(ctls, "Generate reference frame", CTL_CONTEXT(ctx, generate_reference_frame));
 
           ctlbind_expandable_group(ctls, "Master Frame Selection",

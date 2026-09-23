@@ -251,8 +251,8 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
 
-  ctlbind_browse_for_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
-  ctlbind_browse_for_file(ctls, "output_coverage_frame_filename", ctx(&S::output_coverage_frame_filename), "");
+  ctlbind_browse_for_existing_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
+  ctlbind_browse_for_existing_file(ctls, "output_coverage_frame_filename", ctx(&S::output_coverage_frame_filename), "");
 
   ctlbind(ctls, "Save Coverage Frame", ctx(&S::save_coverage_frame), "");
 

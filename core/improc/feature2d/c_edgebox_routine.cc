@@ -156,7 +156,7 @@ void c_edgebox_routine::getcontrols(c_control_list & ctls, const ctlbind_context
   ctlbind(ctls, "gradient_pscale", ctx(&this_class::_gradient_pscale), "Gradient pyramid scale");
   ctlbind(ctls, "gradient_threshold", ctx(&this_class::_gradient_threshold), "Gradient threshold method");
   ctlbind(ctls, "display", ctx(&this_class::_display), "Display image");
-  ctlbind_browse_for_file(ctls, "model", ctx, &this_class::model, &this_class::set_model, "Model file for createStructuredEdgeDetection()\n" "https://github.com/opencv/opencv_extra/blob/master/testdata/cv/ximgproc/model.yml.gz\n");
+  ctlbind_browse_for_existing_file(ctls, "model", ctx, &this_class::model, &this_class::set_model, "Model file for createStructuredEdgeDetection()\n" "https://github.com/opencv/opencv_extra/blob/master/testdata/cv/ximgproc/model.yml.gz\n");
   ctlbind_expandable_group(ctls, "EdgeBoxes", "Options for cv::ximgproc::EdgeBoxes");
     ctlbind(ctls, "MaxBoxes", ctx, &this_class::MaxBoxes, &this_class::set_MaxBoxes, "max number of boxes to detect");
     ctlbind(ctls, "EdgeMinMag", ctx, &this_class::EdgeMinMag, &this_class::set_EdgeMinMag, "the edge min magnitude");

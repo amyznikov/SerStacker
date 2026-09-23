@@ -41,9 +41,15 @@ bool c_fast_nl_means_denoising_routine::serialize(c_config_setting settings, boo
 bool c_fast_nl_means_denoising_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
 #if HAVE_OpenCV_photo
-  cv::fastNlMeansDenoisingColored(image.getMat(), image, h, hColor,
-      2 * templateWindowRadius + 1,
-      2 * searchWindowRadius + 1);
+  if ( image.channels() == 1 ) {
+    fastNlMeansDenoising(image, image, h,
+        2 * templateWindowRadius + 1, 2 * searchWindowRadius + 1);
+  }
+  else {
+    cv::fastNlMeansDenoisingColored(image.getMat(), image, h, hColor,
+        2 * templateWindowRadius + 1,
+        2 * searchWindowRadius + 1);
+  }
   return true;
 #else
   CF_ERROR("OpenCV module photo is not available. Can not call cv::fastNlMeansDenoisingColored()");

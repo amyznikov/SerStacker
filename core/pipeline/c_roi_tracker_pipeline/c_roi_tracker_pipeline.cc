@@ -102,7 +102,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
   ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
   ctlbind_group(ctls, ctx(&S::save_progress_video));
-    ctlbind_browse_for_file(ctls, "progress_video_filename", ctx(&S::progress_video_filename), "");
+    ctlbind_browse_for_existing_file(ctls, "progress_video_filename", ctx(&S::progress_video_filename), "");
   ctlbind_end_group(ctls);
 }
 

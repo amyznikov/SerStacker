@@ -37,8 +37,8 @@ const c_enum_member* members_of<frame_accumulation_method>()
 {
   static const c_enum_member members[] = {
 
-      { frame_accumulation_average, "average",
-          "Simple average" },
+//      { frame_accumulation_average, "average",
+//          "Simple average" },
 
       { frame_accumulation_weighted_average, "weighted_average",
           "Weighted average with weights proportional to the smoothed sum of squared laplacian and gradient" },
@@ -46,11 +46,14 @@ const c_enum_member* members_of<frame_accumulation_method>()
       { frame_accumulation_bayer_average, "bayer_average",
           "Experimental code for bayer pattern average" },
 
+      { frame_accumulation_bayer_drizzle, "bayer_drizzle",
+          "Experimental code for bayer pattern drizzle" },
+
       { frame_accumulation_focus_stack, "focus_stack",
           "Focus stacking based on paper of Wang and Chang 2011" },
 
-      { frame_accumulation_fft, "fft",
-          "Stupid experiments with fft-based stacking " },
+//      { frame_accumulation_fft, "fft",
+//          "Stupid experiments with fft-based stacking " },
 
       { frame_accumulation_none, "None", },
 
@@ -386,7 +389,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.enable_ecc_registration = false;
     _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
-    _master_options.accumulation.accumulation_method = frame_accumulation_average;
+    _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 //    _master_options.accumulation.lpg.k = 2;
 //    _master_options.accumulation.lpg.p = 2;
 //    _master_options.accumulation.lpg.dscale = 1;
@@ -401,7 +404,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.enable_ecc_registration = false;
     _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _stack_options.registration.enable_eccflow_registration = false;
-    _stack_options.accumulation.accumulation_method = frame_accumulation_average;
+    _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 //    _stack_options.accumulation.lpg.k = 2;
 //    _stack_options.accumulation.lpg.p = 2;
 //    _stack_options.accumulation.lpg.dscale = 1;
@@ -440,14 +443,16 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
 {
   switch (opts.accumulation_method) {
     case frame_accumulation_weighted_average:
-    case frame_accumulation_average:
-      return c_frame_accumulation::ptr(new c_weigthed_average());
+//    case frame_accumulation_average:
+//      return c_frame_accumulation::ptr(new c_weigthed_average());
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
-    case frame_accumulation_fft:
-      return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
+//    case frame_accumulation_fft:
+//      return c_frame_accumulation::ptr(new c_frame_accumulation_with_fft());
     case frame_accumulation_bayer_average:
       return c_frame_accumulation::ptr(new c_bayer_average());
+    case frame_accumulation_bayer_drizzle:
+      return c_frame_accumulation::ptr(new c_bayer_drizzle());
     default:
       break;
   }
@@ -1068,8 +1073,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   const bool save_raw_bayer_image =
-      _master_options.accumulation.accumulation_method ==
-          frame_accumulation_bayer_average;
+      _master_options.accumulation.accumulation_method == frame_accumulation_bayer_average ||
+      _master_options.accumulation.accumulation_method == frame_accumulation_bayer_drizzle;
 
   if( !read_input_frame(input_sequence, _input_options, reference_frame, reference_mask, is_external_master_file, save_raw_bayer_image) ) {
     CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
@@ -1269,8 +1274,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       _generating_master_frame ? _master_options.accumulation :
           _stack_options.accumulation;
 
+  const bool is_bayer_accumulate =
+      accopts.accumulation_method == frame_accumulation_bayer_average ||
+            accopts.accumulation_method == frame_accumulation_bayer_drizzle;
+
   const bool save_raw_bayer_image =
-      accopts.accumulation_method == frame_accumulation_bayer_average;
+      is_bayer_accumulate;
 
   if ( !input_sequence->seek(startpos) ) {
     CF_ERROR("input_sequence->seek(startpos=%d) fails", startpos);
@@ -1534,7 +1543,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       if( _flow_accumulation ) {
 
-
         const cv::Mat2f turbulence =
             compute_turbulent_flow(_frame_registration->image_transform().get(),
                 _frame_registration->current_remap());
@@ -1580,57 +1588,73 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             current_remap);
       }
 
-
-      _frame_registration->custom_remap(current_remap,
-          current_frame, current_frame,
-          current_mask, current_mask,
-          registration_options.interpolation,
-          _generating_master_frame ?
-              ECC_BORDER_REFLECT101 :
-              registration_options.border_mode,
-          registration_options.border_value);
-
-      if( !current_weights.empty() ) {
-
+      if ( is_bayer_accumulate ) {
+        CF_DEBUG("REMAP ONLY WEIGHTS");
+        if( !current_weights.empty() ) {
+          _frame_registration->custom_remap(current_remap,
+              current_weights, current_weights,
+              cv::noArray(), cv::noArray(),
+              registration_options.interpolation,
+              ECC_BORDER_CONSTANT);
+        }
+        else {
+          _frame_registration->custom_remap(current_remap,
+              cv::noArray(), cv::noArray(),
+              current_mask, current_mask,
+              registration_options.interpolation,
+              ECC_BORDER_CONSTANT);
+        }
+      }
+      else {
         _frame_registration->custom_remap(current_remap,
-            current_weights, current_weights,
-            cv::noArray(), cv::noArray(),
+            current_frame, current_frame,
+            current_mask, current_mask,
             registration_options.interpolation,
-            ECC_BORDER_CONSTANT);
-      }
+            _generating_master_frame ?
+                ECC_BORDER_REFLECT101 :
+                registration_options.border_mode,
+            registration_options.border_value);
 
+        if( !current_weights.empty() ) {
 
-      if( !save_aligned_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {
-        CF_ERROR("save_aligned_frame() fails");
-        return false;
-      }
+          _frame_registration->custom_remap(current_remap,
+              current_weights, current_weights,
+              cv::noArray(), cv::noArray(),
+              registration_options.interpolation,
+              ECC_BORDER_CONSTANT);
+        }
 
-      if( canceled() ) {
-        set_status_msg("canceled");
-        break;
-      }
-
-      if( !save_eccflow_video(input_sequence->current_pos() - 1) ) {
-        CF_ERROR("save_eccflow_video() fails");
-        return false;
-      }
-
-      if( canceled() ) {
-        set_status_msg("canceled");
-        break;
-      }
-
-      if( _image_processing_options.aligned_image_processor ) {
-        if( !_image_processing_options.aligned_image_processor->process(current_frame, current_mask) ) {
-          CF_ERROR("aligned_image_processor->process() fails");
+        if( !save_aligned_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {
+          CF_ERROR("save_aligned_frame() fails");
           return false;
         }
+
         if( canceled() ) {
           set_status_msg("canceled");
           break;
         }
-      }
 
+        if( !save_eccflow_video(input_sequence->current_pos() - 1) ) {
+          CF_ERROR("save_eccflow_video() fails");
+          return false;
+        }
+
+        if( canceled() ) {
+          set_status_msg("canceled");
+          break;
+        }
+
+        if( _image_processing_options.aligned_image_processor ) {
+          if( !_image_processing_options.aligned_image_processor->process(current_frame, current_mask) ) {
+            CF_ERROR("aligned_image_processor->process() fails");
+            return false;
+          }
+          if( canceled() ) {
+            set_status_msg("canceled");
+            break;
+          }
+        }
+      }
     }
 
     time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -1642,14 +1666,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     /////////////////////////////////////////////////////////////////////////////////
 
     if( !current_weights.empty() ) {
-
-      if ( !current_mask.empty() ) {
-        multiply_weights(current_mask, current_weights, current_weights,
-            current_mask.depth() == CV_8U ?
-                1. / 255 : 1,
-            CV_32F);
-      }
-
+//      if ( !current_mask.empty() ) {
+//        multiply_weights(current_mask, current_weights, current_weights,
+//            current_mask.depth() == CV_8U ? 1. / 255 : 1,
+//            CV_32F);
+//      }
+//
       current_mask = current_weights;
     }
     /////////////////////////////////////////////////////////////////////////////////
@@ -1683,28 +1705,44 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               input_sequence->colorid());
         }
 
+        CF_DEBUG("bayer_average: current_mask: %dx%d depth=%d",
+            current_mask.cols, current_mask.rows,
+            current_mask.depth());
+
         static const cv::Mat2f empty_remap;
         bayer_average->set_remap(_frame_registration ? _frame_registration->current_remap() : empty_remap);
         bayer_average->add(_raw_bayer_image, current_mask);
+
+
+      }
+      else if( c_bayer_drizzle *bayer_drizzle = dynamic_cast<c_bayer_drizzle*>(_frame_accumulation.get()) ) {
+
+        lock_guard lock(mutex());
+
+        if( bayer_drizzle->accumulated_frames() < 1 ) {
+          bayer_drizzle->set_bayer_pattern(_raw_bayer_colorid);
+          // bayer_average->initialze(raw_bayer_image_.size());
+        }
+
+        if( _input_options.enable_bground_normalization ) {
+          nomalizeImageHistogram(_raw_bayer_image, cv::noArray(), _raw_bayer_image,
+              _input_options.background_normalization_options,
+              input_sequence->colorid());
+        }
+
+        CF_DEBUG("bayer_drizzle: current_mask: %dx%d depth=%d",
+            current_mask.cols, current_mask.rows,
+            current_mask.depth());
+
+        static const cv::Mat2f empty_remap;
+        bayer_drizzle->set_remap(_frame_registration ? _frame_registration->current_remap() : empty_remap);
+        bayer_drizzle->add(_raw_bayer_image, current_mask);
+
 
       }
       else {
 
         lock_guard lock(mutex());
-
-//        if( frame_accumulation_->accumulated_frames() < 1 ) {
-//
-//          const bool fok =
-//              frame_accumulation_->initialze(current_frame.size(),
-//                  current_frame.type(),
-//                  current_mask.empty() ? CV_8UC1 :
-//                      current_mask.type());
-//
-//          if( !fok ) {
-//            CF_ERROR("frame_accumulation_->initialze() fails");
-//            return false;
-//          }
-//        }
 
         if ( _input_options.enable_bground_normalization && current_frame.channels() > 1 ) {
           nomalizeImageHistogram(current_frame, current_mask, current_frame,
@@ -1712,6 +1750,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               input_sequence->colorid());
         }
 
+        CF_DEBUG("_frame_accumulation: current_mask: %dx%d depth=%d",
+            current_mask.cols, current_mask.rows,
+            current_mask.depth());
 
         if ( !_frame_accumulation->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
@@ -1943,9 +1984,9 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
 
 bool c_image_stacking_pipeline::weights_required(const c_frame_accumulation_options & opts) const
 {
-  return opts.accumulation_method == frame_accumulation_weighted_average &&
-      opts.sharpness_measure.kradius > 0;
-
+  return opts.sharpness_measure.kradius > 0;
+//  return opts.accumulation_method == frame_accumulation_weighted_average &&
+//      opts.sharpness_measure.kradius > 0;
 //  return opts.accumulation_method == frame_accumulation_weighted_average &&
 //      opts.lpg.dscale >= 0 && opts.lpg.k >= 0;
 }
@@ -2047,22 +2088,10 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
     const cv::Mat & output_image, const cv::Mat & output_mask)
 {
   INSTRUMENT_REGION("");
-
-  cv::Mat image_to_write;
-
-  if ( output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
-    image_to_write = output_image;
-  }
-  else if ( !mergebgra(output_image, output_mask, image_to_write) ) {
-    CF_ERROR("ERROR: mergebgra() fails");
-    return false;
-  }
-
   CF_DEBUG("image_to_write: %dx%d channels=%d depth=%d output_mask: %dx%d channels=%d depth=%d",
-      image_to_write.cols, image_to_write.rows, image_to_write.channels(), image_to_write.depth(),
+      output_image.cols, output_image.rows, output_image.channels(), output_image.depth(),
       output_mask.cols, output_mask.rows, output_mask.channels(), output_mask.depth());
-
-  return save_image(image_to_write, output_file_name);
+  return save_image(output_image, output_mask, output_file_name);
 }
 
 bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
@@ -2166,9 +2195,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "stack_accumulation")) ) {
 
-    c_frame_accumulation_options & opts =
-        _stack_options.accumulation;
-
+    c_frame_accumulation_options & opts = _stack_options.accumulation;
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     //SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
 
@@ -2378,7 +2405,7 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
 
-  ctlbind_expandable_group(ctls, "weighted_average", "");
+  ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, ctx(&S::sharpness_measure));
 //    ctlbind(ctls,"max_weights_ratio", ctx(&S::max_weights_ratio),
 //        "The pixel will NOT added to the accumulator if its sharpness is less than currently known max sharpness * max_weights_ratio");
@@ -2477,7 +2504,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
 
           ctlbind(ctls, "display_type", CTL_CONTEXT(cctx, default_display_type), "display_type");
           ctlbind_browse_for_directory(ctls, "output_directory",CTL_CONTEXT(cctx, output_directory), "output_directory");
-          ctlbind_browse_for_file(ctls, "output_file_name",CTL_CONTEXT(cctx, output_file_name), "output_file_name");
+          ctlbind_browse_for_existing_file(ctls, "output_file_name",CTL_CONTEXT(cctx, output_file_name), "output_file_name");
 
           ctlbind(ctls, "dump_reference_data_for_debug",CTL_CONTEXT(cctx, dump_reference_data_for_debug), "");
           ctlbind(ctls, "debug_frame_registration",CTL_CONTEXT(cctx, debug_frame_registration), "");

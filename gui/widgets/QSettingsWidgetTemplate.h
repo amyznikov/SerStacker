@@ -395,6 +395,35 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         ctl->setToolTip(c.cdesc.c_str());
         break;
       }
+
+      ////////////////////////////////////////////////////////////////////////
+      case CtlType::BrowseForFile: {
+        QWidget * ctl =
+          currentSettings->add_browse_for_path(c.cname.c_str(),
+            "",
+            QFileDialog::AcceptSave,
+            QFileDialog::AnyFile,
+            [_this, setvalue = c.setvalue](const QString & v) {
+              if ( _this->opts() && setvalue && setvalue(_this->opts(), v.toStdString()) ) {
+                Q_EMIT _this->parameterChanged();
+              }
+            },
+            [_this, getvalue = c.getvalue](QString * v) {
+              if ( _this->opts() && getvalue ) {
+                std::string s;
+                if ( getvalue(_this->opts(), &s) ) {
+                  *v = QString::fromStdString(s);
+                  return true;
+                }
+              }
+              return false;
+            },
+            enablefn(_this, c));
+
+        ctl->setToolTip(c.cdesc.c_str());
+        break;
+      }
+
       ////////////////////////////////////////////////////////////////////////
       case CtlType::BrowseForExistingFile: {
         QWidget * ctl =

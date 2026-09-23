@@ -232,15 +232,6 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
     }
 
-
-
-//    case FILTER_LAPLACIAN_LPASS: {
-//      const int ksize = 0;
-//      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-//      FILTER = fftGenerateLaplacianFilter(fftSize, 1, false);
-//      break;
-//    }
-
     default:
       CF_ERROR("Not supported filter=%d requested", _filterType);
       break;

@@ -58,6 +58,7 @@ struct c_ctlbind
     DoubleSpinBox,
     DoubleSliderSpinBox,
     BrowseForDirectory,
+    BrowseForFile,
     BrowseForExistingFile,
     CommandButton,
     MenuButton,
@@ -753,7 +754,7 @@ void ctlbind_browse_for_directory(c_ctlist<RootObjectType> & ctls, const std::st
 
 
 template<class RootObjectType>
-void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+void ctlbind_browse_for_existing_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, std::string> & ctx,
     const std::string & cdesc = "")
 {
@@ -780,7 +781,7 @@ void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string 
 }
 
 template<class RootObjectType, class StructType, class StringType>
-void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+void ctlbind_browse_for_existing_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
     StringType (StructType::*getv)() const, void (StructType::*setv)(StringType),
     const std::string & cdesc = "")
@@ -815,6 +816,69 @@ void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string 
   ctls.emplace_back(c);
 }
 
+
+template<class RootObjectType>
+void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, std::string> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::BrowseForFile;
+
+  const size_t offset = ctx.offset;
+
+  c.getvalue =
+      [offset](const RootObjectType * obj, std::string * s) -> bool {
+        return obj ? *s = *reinterpret_cast<const std::string*>(reinterpret_cast<const uint8_t*>(obj) + offset), true : false;
+      };
+
+  c.setvalue =
+      [offset](RootObjectType * obj, const std::string & v) -> bool {
+        return obj ? *reinterpret_cast<std::string*>(reinterpret_cast<uint8_t*>(obj) + offset) = v, true : false;
+      };
+
+  ctls.emplace_back(c);
+}
+
+template<class RootObjectType, class StructType, class StringType>
+void ctlbind_browse_for_file(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    StringType (StructType::*getv)() const, void (StructType::*setv)(StringType),
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::BrowseForFile;
+
+  c.getvalue =
+      [offset = ctx.offset, getv](const RootObjectType * obj, std::string * s) -> bool {
+        if ( obj ) {
+          const StructType * obj2 = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+          *s = toString((obj2->*getv)());
+          return true;
+        }
+        return false;
+      };
+
+  c.setvalue =
+      [offset = ctx.offset, setv](RootObjectType * obj, const std::string & s) -> bool {
+        if ( obj ) {
+          StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
+          (obj2->*setv)(s);
+          return true;
+        }
+        return false;
+      };
+
+  ctls.emplace_back(c);
+}
 
 template<class EnumType, class RootObjectType>
 std::enable_if_t<std::is_enum_v<EnumType>, void>

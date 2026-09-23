@@ -58,8 +58,8 @@ void c_segformer2_routine::release_session()
 
 void c_segformer2_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind_browse_for_file(ctls, "onnx_preproc_model", ctx, &this_class::onnx_preproc_model_path, &this_class::set_onnx_preproc_model_path, "Specify onnx preproc model path");
-  ctlbind_browse_for_file(ctls, "onnx_model", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model path");
+  ctlbind_browse_for_existing_file(ctls, "onnx_preproc_model", ctx, &this_class::onnx_preproc_model_path, &this_class::set_onnx_preproc_model_path, "Specify onnx preproc model path");
+  ctlbind_browse_for_existing_file(ctls, "onnx_model", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model path");
 }
 
 bool c_segformer2_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

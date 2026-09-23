@@ -187,8 +187,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_stereo_matcher_stereo_rectification_options;
   ctlbind(ctls, "Enable stereo rectification", ctx(&S::enabled), "");
-  ctlbind_browse_for_file(ctls, "camera_intrinsics_yml", ctx(&S::camera_intrinsics_yml), "");
-  ctlbind_browse_for_file(ctls, "camera_extrinsics_yml", ctx(&S::camera_extrinsics_yml), "");
+  ctlbind_browse_for_existing_file(ctls, "camera_intrinsics_yml", ctx(&S::camera_intrinsics_yml), "");
+  ctlbind_browse_for_existing_file(ctls, "camera_extrinsics_yml", ctx(&S::camera_extrinsics_yml), "");
 }
 
 template<class RootObjectType>

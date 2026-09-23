@@ -328,7 +328,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind_expandable_group(ctls, "Save Poses...");
     ctlbind(ctls, "save_poses", ctx(&S::save_poses), "");
     ctlbind_group(ctls, ctx(&S::save_poses));
-      ctlbind_browse_for_file(ctls, "poses_file_name", ctx(&S::poses_file_name), "");
+      ctlbind_browse_for_existing_file(ctls, "poses_file_name", ctx(&S::poses_file_name), "");
     ctlbind_end_group(ctls);
   ctlbind_end_group(ctls);
 }

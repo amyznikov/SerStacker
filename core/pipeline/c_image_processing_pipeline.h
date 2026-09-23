@@ -274,7 +274,7 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   ctlbind(ctls, "enable color maxtrix", ctx(&S::enable_color_maxtrix), "");
 
   ctlbind_expandable_group(ctls, "missing pixels...", "");
-   ctlbind_browse_for_file(ctls, "missing pixel mask", ctx(&S::missing_pixel_mask_filename), "");
+   ctlbind_browse_for_existing_file(ctls, "missing pixel mask", ctx(&S::missing_pixel_mask_filename), "");
    ctlbind(ctls, "inpaint missing pixels", ctx(&S::inpaint_missing_pixels), "");
    ctlbind(ctls, "missing pixels are black", ctx(&S::missing_pixels_marked_black ), "");
   ctlbind_end_group(ctls);

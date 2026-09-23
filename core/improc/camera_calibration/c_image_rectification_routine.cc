@@ -9,7 +9,7 @@
 
 void c_image_rectification_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind_browse_for_file(ctls, "intrinsics", ctx,
+  ctlbind_browse_for_existing_file(ctls, "intrinsics", ctx,
       &this_class::intrinsics_filename, &this_class::set_intrinsics_filename,
       "Camera intrinsics YML file");
 }

@@ -299,43 +299,6 @@ protected:
   cv::Mat1f G;
 };
 
-
-class c_frame_accumulation_with_fft :
-    public c_frame_accumulation
-{
-public:
-  typedef c_frame_accumulation_with_fft this_class;
-  typedef c_frame_accumulation base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool get_acc_counters(cv::Mat & accw) const final;
-  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
-  void clear() final;
-  cv::Size accumulator_size() const final;
-
-  const std::vector<cv::Mat> & accumulators() const;
-  const std::vector<cv::Mat> & weights() const;
-
-protected:
-  static int countNaNs(const cv::Mat & image);
-  static bool fftPower(const cv::Mat & src, cv::Mat & dst, bool mc);
-  static double power(double x);
-  static double square(double x);
-
-protected:
-  std::vector<cv::Mat> _accumulators;
-  std::vector<cv::Mat> _weights;
-  cv::Rect _rc;
-  cv::Size _fftSize;
-  int _border_top = 0;
-  int _border_bottom = 0;
-  int _border_left = 0;
-  int _border_right = 0;
-};
-
-
 class c_bayer_average :
     public c_frame_accumulation
 {
@@ -420,9 +383,8 @@ protected:
   cv::Mat3f _accumulator;
   cv::Mat3f _counter;
   cv::Mat2f _rmap;
-  double _pixfrac = 0.6;
+  double _pixfrac = 1;
   COLORID _colorid = COLORID_UNKNOWN;
-
 };
 
 #endif /* __c_frame_stacking_h__ */

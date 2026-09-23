@@ -17,7 +17,7 @@ class c_fast_nl_means_denoising_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fast_nl_means_denoising_routine,
-      "fast_nl_means_denoising", "Apply fastNlMeansDenoisingColored(src, dst,h, hColor,templateWindowSize, searchWindowSize)");
+      "fast_nl_means_denoising", "Apply fastNlMeansDenoising()");
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

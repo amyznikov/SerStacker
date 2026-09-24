@@ -23,7 +23,7 @@ enum ROI_SELECTION_MODE {
 
 struct c_roi_selection_options
 {
-  ROI_SELECTION_MODE mode = ROI_SELECTION_RECT;
+  ROI_SELECTION_MODE mode = ROI_SELECTION_NONE;
   cv::BorderTypes borderType = cv::BORDER_DEFAULT;
   cv::Scalar borderValue;
   cv::Size outputSize;

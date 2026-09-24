@@ -26,19 +26,9 @@
 enum frame_accumulation_method
 {
   frame_accumulation_none = -1,
-  //frame_accumulation_average = 0,
   frame_accumulation_weighted_average,
   frame_accumulation_focus_stack,
-  //frame_accumulation_fft,
-  frame_accumulation_bayer_average,
   frame_accumulation_bayer_drizzle,
-};
-
-enum frame_upscale_stage
-{
-  frame_upscale_stage_unknown = -1,
-  frame_upscale_after_align = 1,
-  frame_upscale_before_align = 2,
 };
 
 enum frame_upscale_option
@@ -46,7 +36,6 @@ enum frame_upscale_option
   frame_upscale_none = 0,
   frame_upscale_pyrUp = 1,
   frame_upscale_x15 = 2,
-  frame_upscale_x30 = 3,
 };
 
 struct c_image_stacking_input_options :
@@ -58,16 +47,10 @@ struct c_image_stacking_input_options :
 struct c_frame_upscale_options
 {
   enum frame_upscale_option upscale_option = frame_upscale_none;
-  enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
-
-  bool need_upscale_before_align() const
-  {
-    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_before_align;
-  }
 
   bool need_upscale_after_align() const
   {
-    return upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
+    return upscale_option != frame_upscale_none;
   }
 
   double image_scale() const
@@ -77,8 +60,6 @@ struct c_frame_upscale_options
       return 1.5;
     case frame_upscale_pyrUp:
       return 2;
-    case frame_upscale_x30:
-      return 3;
     default:
       break;
     }
@@ -277,7 +258,7 @@ protected:
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
-  bool upscale_required(frame_upscale_stage current_stage, bool generating_master_frame) const;
+  bool upscale_required(bool generating_master_frame) const;
 
 protected:
   c_image_stacking_input_options _input_options;

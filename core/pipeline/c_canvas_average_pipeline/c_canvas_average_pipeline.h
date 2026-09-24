@@ -11,7 +11,6 @@
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/proc/image_registration/c_frame_registration.h>
-#include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 #include <core/proc/sharpness_measure/c_local_variance_sharpness_measure.h>
 #include <core/improc/c_image_processor.h>
 #include <core/average/c_frame_accumulation.h>

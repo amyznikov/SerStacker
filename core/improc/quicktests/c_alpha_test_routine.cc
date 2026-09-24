@@ -29,18 +29,18 @@
 
 
 
-template<>
-const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
-{
-  static const c_enum_member members[] = {
-      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_DRIZZLED_IMAGE, "DRIZZLED_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_DRIZZLE_ACCUMULATOR, "DRIZZLE_ACCUMULATOR", "" },
-      { c_alpha_test_routine::DISPLAY_DRIZZLE_WEIGHTS, "DRIZZLE_WEIGHTS", "" },
-      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
-  };
-  return members;
-}
+//template<>
+//const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
+//{
+//  static const c_enum_member members[] = {
+//      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
+//      { c_alpha_test_routine::DISPLAY_DRIZZLED_IMAGE, "DRIZZLED_IMAGE", "" },
+//      { c_alpha_test_routine::DISPLAY_DRIZZLE_ACCUMULATOR, "DRIZZLE_ACCUMULATOR", "" },
+//      { c_alpha_test_routine::DISPLAY_DRIZZLE_WEIGHTS, "DRIZZLE_WEIGHTS", "" },
+//      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
+//  };
+//  return members;
+//}
 
 /////////////////////////////////////
 namespace {
@@ -49,14 +49,8 @@ namespace {
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _drizzleScale);
-    SERIALIZE_OPTION(settings, save, *this, _drizzlePixFrac);
-
-    if ( auto group = SERIALIZE_GROUP(settings, save, "Translation")) {
-      SERIALIZE_OPTION(group, save, translation, T);
-    }
-
+    SERIALIZE_OPTION(settings, save, *this, _wienerRadius);
+    SERIALIZE_OPTION(settings, save, *this, _wienerNoiseSigma);
     return true;
   }
   return false;
@@ -64,55 +58,14 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "scale", CTL_CONTEXT(ctx, _drizzleScale), "");
-  ctlbind(ctls, "pixfrac", CTL_CONTEXT(ctx, _drizzlePixFrac), "");
-
-  ctlbind_expandable_group(ctls, "Translation Options",
-      [&, ctx = CTL_CONTEXT(ctx, translation )]() {
-        ctlbind(ctls, "Translation (X;Y):", CTL_CONTEXT(ctx, T), "");
-      });
+  //ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
+  ctlbind(ctls, "Radius", CTL_CONTEXT(ctx, _wienerRadius), "");
+  ctlbind(ctls, "NoiseSigma", CTL_CONTEXT(ctx, _wienerNoiseSigma), "");
 }
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( _display == DISPLAY_CURRENT_IMAGE ) {
-    return true;
-  }
-
-  cv::Mat src, acc, accw;
-  c_translation_image_transform transfrom(translation.T);
-
-  if ( image.depth() == CV_32F ) {
-    src = image.getMat();
-  }
-  else {
-    image.getMat().convertTo(src, CV_32F);
-  }
-
-  if ( !transfrom.drizzle(src, acc, accw, _drizzleScale, _drizzlePixFrac) ) {
-    CF_ERROR("transfrom.drizzle() fails");
-    return false;
-  }
-
-  switch (_display) {
-    case DISPLAY_DRIZZLE_ACCUMULATOR:
-      image.assign(acc);
-      mask.release();
-      break;
-    case DISPLAY_DRIZZLE_WEIGHTS:
-      image.assign(accw);
-      mask.release();
-      break;
-    case DISPLAY_DRIZZLED_IMAGE:
-      divideImages(acc, accw, image);
-      mask.release();
-      break;
-    default:
-      break;
-  }
-
-  return true;
+  return true; // local_wiener_filter(image, mask, _wienerRadius, _wienerNoiseSigma );
 }
 
 

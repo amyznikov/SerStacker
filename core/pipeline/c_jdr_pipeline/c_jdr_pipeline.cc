@@ -1409,7 +1409,7 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
     }
 
     if ( _derotated_avg_weights_writer.is_open() ) {
-      if ( !_derotated_avg_weights_writer.write(_average.counter(), mask, current_master_pos) ) {
+      if ( !_derotated_avg_weights_writer.write(_average.get_counter(), mask, current_master_pos) ) {
         CF_ERROR("[MF %d] _derotated_avg_weights_writer.write() fails for %s", current_master_pos,
             _derotated_avg_weights_writer.cfilename());
         return false;

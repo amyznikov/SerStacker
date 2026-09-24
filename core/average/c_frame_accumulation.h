@@ -21,11 +21,12 @@ public:
 
   virtual bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) = 0;
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
-  virtual bool get_acc_counters(cv::Mat & accw) const = 0;
   virtual bool reinitialize(cv::InputArray src, cv::InputArray accw) = 0;
   virtual void clear() = 0;
 
   virtual cv::Size accumulator_size() const = 0;
+  virtual cv::Mat get_accumulator() const = 0;
+  virtual cv::Mat get_counter() const = 0;
 
   int accumulated_frames() const
   {
@@ -48,14 +49,18 @@ public:
 
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool get_acc_counters(cv::Mat & accw) const final;
   bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
   void clear() final;
 
-  cv::Size accumulator_size() const final;
-
-  const cv::Mat & accumulator() const;
-  const cv::Mat & counter() const;
+  cv::Size accumulator_size() const final {
+    return _accumulator.size();
+  }
+  cv::Mat get_accumulator() const final {
+    return _accumulator;
+  }
+  cv::Mat get_counter() const final {
+    return _weights;
+  }
 
 protected:
   cv::Mat _accumulator;
@@ -81,28 +86,19 @@ public:
     return _canvasSize;
   }
 
-  int accumulated_frames() const
-  {
+  int accumulated_frames() const {
     return _accumulated_frames;
   }
-
-  cv::Size accumulator_size() const
-  {
+  cv::Size accumulator_size() const {
     return _accumulator.size();
   }
-
-  const cv::Mat & accumulator() const
-  {
+  const cv::Mat & accumulator() const {
     return _accumulator;
   }
-
-  const cv::Mat1f & counter() const
-  {
+  const cv::Mat1f & counter() const {
     return _weights;
   }
-
-  const cv::Rect & last_bbox() const
-  {
+  const cv::Rect & last_bbox() const {
     return _last_bbox;
   }
 
@@ -136,6 +132,14 @@ public:
     else {
       return std::forward<Fn>(fn)();
     }
+  }
+
+  const cv::Mat & get_accumulator() const {
+    return _accumulator;
+  }
+
+  const cv::Mat & get_counter() const {
+    return _weights;
   }
 
 protected:
@@ -175,10 +179,18 @@ public:
 
   bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) final;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool get_acc_counters(cv::Mat & accw) const final;
   bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
   void clear() final;
-  cv::Size accumulator_size() const final;
+
+  cv::Size accumulator_size() const final {
+    return _image_size;
+  }
+  cv::Mat get_accumulator() const final {
+    return acc[0];
+  }
+  cv::Mat get_counter() const final {
+    return wwp[0];
+  }
 
 protected:
   static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
@@ -218,19 +230,23 @@ public:
 
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool get_acc_counters(cv::Mat & accw) const final;
   bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
   void clear() final;
-  cv::Size accumulator_size() const final;
 
-  const cv::Mat & accumulator() const;
-  const cv::Mat & counter() const;
+  cv::Size accumulator_size() const final {
+    return _accumulator.size();
+  }
+  cv::Mat get_accumulator() const final {
+    return _accumulator;
+  }
+  cv::Mat get_counter() const final {
+    return _counter;
+  }
 
 protected:
-  void generate_bayer_pattern_mask();
+  void generate_bayer_lookup_mask();
 
 protected:
-  // cv::Mat1b _bayer_pattern;
   int bayer_lookup[2][2];
   cv::Mat3f _accumulator;
   cv::Mat3f _counter;

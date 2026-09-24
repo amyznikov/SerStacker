@@ -97,32 +97,35 @@ struct c_image_stacking_output_options  :
 {
   std::string output_file_name;
 
-  bool dump_reference_data_for_debug = false;
-
-  bool debug_frame_registration = false;
-  std::vector<int> debug_frame_registration_frame_indexes;
+  //bool dump_reference_data_for_debug = false;
+  //bool debug_frame_registration = false;
+  //std::vector<int> debug_frame_registration_frame_indexes;
 
   bool save_preprocessed_frames = false;
   bool save_feature_frames = false;
   bool save_ecc_frames = false;
   bool save_aligned_frames = false;
-  bool save_accumulation_masks = false;
   bool save_incremental_frames = false;
   bool save_eccflow_frames = false;
   bool save_sparse_match_blend_frames = false;
   bool save_sparse_matches_video = false;
-  bool save_acc_weights = false;
+
+  bool save_acc = false;
+  bool save_accm = false;
+  bool save_accw = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_feature_video_options;
   c_output_frame_writer_options output_ecc_video_options;
   c_output_frame_writer_options output_aligned_video_options;
-  c_output_frame_writer_options output_acc_masks_video_options;
   c_output_frame_writer_options output_incremental_video_options;
   c_output_frame_writer_options output_sparse_match_blend_options;
   c_output_frame_writer_options output_sparse_matches_video_options;
   c_eccflow_output_frame_writer_options output_eccflow_options;
 
+  c_output_frame_writer_options output_acc_options;
+  c_output_frame_writer_options output_accm_options;
+  c_output_frame_writer_options output_accw_options;
 };
 
 struct c_image_stacking_master_options

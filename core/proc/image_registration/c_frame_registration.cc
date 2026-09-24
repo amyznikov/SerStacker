@@ -144,10 +144,16 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
   LOAD_OPTION(settings, *opts, interpolation);
   LOAD_OPTION(settings, *opts, border_mode);
   LOAD_OPTION(settings, *opts, border_value);
+  LOAD_OPTION(settings, *opts, enable_phase_correlate);
   LOAD_OPTION(settings, *opts, enable_feature_registration);
   LOAD_OPTION(settings, *opts, enable_ecc_registration);
   LOAD_OPTION(settings, *opts, enable_eccflow_registration);
   LOAD_OPTION(settings, *opts, accumulate_and_compensate_turbulent_flow);
+  LOAD_OPTION(settings, *opts, phase_correlate_min_score);
+
+  if( (section = settings["phase_correlate"]).isGroup() ) {
+    load_settings(section, &opts->phase_correlate);
+  }
 
   if( (section = settings["feature_registration"]).isGroup() ) {
     load_settings(section, &opts->feature_registration);
@@ -161,6 +167,7 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
     load_settings(section, &opts->eccflow);
   }
 
+
   return true;
 }
 
@@ -173,10 +180,16 @@ bool save_settings(c_config_setting settings, const c_image_registration_options
   SAVE_OPTION(settings, opts, interpolation);
   SAVE_OPTION(settings, opts, border_mode);
   SAVE_OPTION(settings, opts, border_value);
+  SAVE_OPTION(settings, opts, enable_phase_correlate);
   SAVE_OPTION(settings, opts, enable_feature_registration);
   SAVE_OPTION(settings, opts, enable_ecc_registration);
   SAVE_OPTION(settings, opts, enable_eccflow_registration);
   SAVE_OPTION(settings, opts, accumulate_and_compensate_turbulent_flow);
+  SAVE_OPTION(settings, opts, phase_correlate_min_score);
+
+  if( (section = settings.add_group("phase_correlate")).isGroup() ) {
+    save_settings(section, opts.phase_correlate);
+  }
 
   if( (section = settings.add_group("feature_registration")).isGroup() ) {
     save_settings(section, opts.feature_registration);
@@ -558,7 +571,27 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   _reference_frame_size = reference_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
-  if( _options.enable_feature_registration ) {
+  /////////////////////////////////////////////////////////////////////////////
+  if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
+    if( !extract_channel(reference_image, reference_ecc_image, reference_mask, reference_ecc_mask,
+        _options.ecc_registration_channel, CV_32F, true) ) {
+      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
+      return false;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  if( _options.enable_phase_correlate ) {
+    if( !_phase_correlate.setup(reference_ecc_image.size(), _options.phase_correlate) ) {
+      CF_ERROR("_phase_correlate.setup() fails");
+      return false;
+    }
+    if( !_phase_correlate.setReferenceImage(reference_ecc_image, reference_ecc_mask) ) {
+      CF_ERROR("_phase_correlate.setReferenceImage() fails");
+      return false;
+    }
+  }
+  else if( _options.enable_feature_registration ) {
 
     // Must be called before create_feature_image() as the
     // detector and descryptor types are used for feature image pre-processing
@@ -574,18 +607,15 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   }
 
   if( _options.enable_ecc_registration  || _options.enable_eccflow_registration ) {
-
-    if( !create_ecc_image(reference_image, reference_mask, reference_ecc_image, reference_ecc_mask) ) {
-      CF_ERROR("create_reference_ecc_image() fails");
-      return false;
+    if ( _ecc_image_preprocessor ) {
+      _ecc_image_preprocessor(reference_ecc_image, reference_ecc_mask);
     }
-
-//    if( _options.ecc.replace_planetary_disk_with_mask ) {
-//      insert_planetary_disk_shape(reference_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
-//    }
+    //  if( !create_ecc_image(reference_image, reference_mask, reference_ecc_image, reference_ecc_mask) ) {
+    //    CF_ERROR("create_reference_ecc_image() fails");
+    //    return false;
+    //  }
 
     if( _options.enable_ecc_registration ) {
-
       _ecch.set_method(_options.ecc.ecc_method);
       _ecch.set_max_eps(_options.ecc.eps);
       // _ecch.set_min_rho(_options.ecc.min_rho);
@@ -644,61 +674,6 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       }
     }
   }
-//
-//
-//  switch (_options.planetary_disk_derotation.derotation_type) {
-//    case planetary_disk_derotation_jovian: {
-//
-//      const c_jovian_derotation_options & opts =
-//          _options.planetary_disk_derotation.jovian_derotation;
-//
-////      jovian_derotation_.set_detector_options(opts.detector_options);
-////      jovian_derotation_.set_min_rotation(opts.min_rotation);
-////      jovian_derotation_.set_max_rotation(opts.max_rotation);
-////      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
-////      jovian_derotation_.set_num_orientations(opts.num_orientations);
-////
-////      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-////          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
-////      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-////        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
-////        return false;
-////      }
-//
-//      _jovian_derotation.detector_options() = opts.detector_options;
-//      _jovian_derotation.detector_options().auto_location = false;
-//      if( !_jovian_derotation.detect(reference_image, reference_mask) ) {
-//        CF_ERROR("jovian_derotation_.detect() fails");
-//        return false;
-//      }
-//
-//
-//      break;
-//    }
-//
-//
-//    case planetary_disk_derotation_saturn : {
-//
-//      const c_saturn_derotation_options & opts =
-//          _options.planetary_disk_derotation.saturn_derotation;
-//
-////      saturn_derotation_.set_detector_options(opts.detector_options);
-////
-////      if( !saturn_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-////        CF_ERROR("saturn_derotation_.setup_reference_image() fails");
-////        return false;
-////      }
-////
-////      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
-//
-//      break;
-//    }
-//
-//    case planetary_disk_derotation_disabled:
-//    default:
-//      break;
-//  }
-
 
   return true;
 }
@@ -731,43 +706,59 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   _current_frame_size = current_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
+    if( !extract_channel(current_image, ecc_image, current_mask, ecc_mask, _options.ecc_registration_channel, CV_32F, true) ) {
+      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
+      return false;
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
-  if( _options.enable_feature_registration ) {
+  if( _options.enable_phase_correlate ) {
+    cv::Vec2f Translation;
+    double score, peak;
+
+    if ( !_phase_correlate.setCurrentImage(ecc_image, ecc_mask) ) {
+      CF_ERROR("_phase_correlate.setCurrentImage() fails");
+      return false;
+    }
+
+    score = _phase_correlate.compute(Translation);
+    peak = _phase_correlate.peakValue();
+    CF_DEBUG("_phase_correlate: score=%g / %g peak=%g Tx=%g Ty=%g", score, _options.phase_correlate_min_score,
+        peak, Translation[0], Translation[1]);
+
+   if ( score < _options.phase_correlate_min_score ) {
+     CF_ERROR("_phase_correlate.compute() fails: Bad score = %g < %g", score, _options.phase_correlate_min_score);
+     return false;
+   }
+
+   _image_transform->set_translation(-Translation);
+   have_transform = true;
+  }
+  else if( _options.enable_feature_registration ) {
 
     t0 = get_realtime_ms();
-//    if( !create_feature_image(current_image, current_mask, _current_feature_image, _current_feature_mask) ) {
-//      CF_ERROR("create_feature_image() fails");
-//      return false;
-//    }
-
-//    _current_status.timings.extract_feature_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
-
     if( !estimate_feature_transform(current_image, current_mask, _image_transform.get()) ) {
       CF_ERROR("estimate_feature_transform() fails");
       return false;
     }
-
     _current_status.timings.estimate_feature_transform = (t1 = get_realtime_ms()) - t0, t0 = t1;
-
     have_transform = true;
   }
 
 
   /////////////////////////////////////////////////////////////////////////////
   if( _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
-
-    if( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask) ) {
-      CF_ERROR("create_current_ecc_image() fails");
-      return false;
+    if ( _ecc_image_preprocessor ) {
+      _ecc_image_preprocessor(ecc_image, ecc_mask);
     }
-
-//    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
-//    if( _options.ecc.replace_planetary_disk_with_mask ) {
-//      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
-//    }
+    //  if( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask) ) {
+    //    CF_ERROR("create_current_ecc_image() fails");
+    //    return false;
+    //  }
   }
-
   /////////////////////////////////////////////////////////////////////////////
 
   if( _options.enable_ecc_registration ) {
@@ -991,82 +982,20 @@ bool c_frame_registration::create_feature_image(cv::InputArray _src, cv::InputAr
   return true;
 }
 
-bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcm,
-    cv::OutputArray dst, cv::OutputArray dstm) const
-{
-  if( !extract_channel(src, dst, srcm, dstm, _options.ecc_registration_channel, CV_32F, true) ) {
-    CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
-    return false;
-  }
-
-  if ( _ecc_image_preprocessor ) {
-    _ecc_image_preprocessor(dst.getMatRef(), dstm.getMatRef());
-  }
-
-  return true;
-}
-
-//bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
-//    cv::Mat & dst_ecc_image, cv::Mat & dst_ecc_mask) const
+//bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcm,
+//    cv::OutputArray dst, cv::OutputArray dstm) const
 //{
-//  cv::Mat planetary_disk_mask;
-//
-//  bool fOk =
-//      simple_planetary_disk_detector(src_ecc_image, src_mask,
-//          1, _options.ecc.se_radius,
-//          nullptr,
-//          nullptr,
-//          &planetary_disk_mask);
-//
-//  if( !fOk ) {
-//    CF_ERROR("simple_small_planetary_disk_detector() fails");
+//  if( !extract_channel(src, dst, srcm, dstm, _options.ecc_registration_channel, CV_32F, true) ) {
+//    CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
 //    return false;
 //  }
 //
-////  if( options_.ecc.planetary_disk_mask_stdev_factor > 0 ) {
-////
-////    cv::Scalar m, s;
-////
-////    cv::meanStdDev(src_ecc_image, m, s, src_mask);
-////
-////    const double threshold =
-////        s[0] * options_.ecc.planetary_disk_mask_stdev_factor;
-////
-////    cv::bitwise_and(planetary_disk_mask, src_ecc_image > threshold, planetary_disk_mask);
-////  }
-////  morphological_smooth_close(planetary_disk_mask, planetary_disk_mask, cv::Mat1b(3, 3, 255));
-////  geo_fill_holes(planetary_disk_mask, planetary_disk_mask, 8);
-//
-//
-//  src_ecc_image.copyTo(dst_ecc_image);
-//
-//  if ( !src_mask.empty() ) {
-//    cv::bitwise_and(src_mask, ~planetary_disk_mask, dst_ecc_mask );
-//  }
-//  else {
-//    cv::bitwise_not(planetary_disk_mask, dst_ecc_mask);
+//  if ( _ecc_image_preprocessor ) {
+//    _ecc_image_preprocessor(dst.getMatRef(), dstm.getMatRef());
 //  }
 //
-//  if( !_options.enable_eccflow_registration || _options.eccflow.support_scale < 1 ) {
-//    dst_ecc_image.setTo(1, planetary_disk_mask);
-//  }
-//  else {
-//    /*
-//     * My current ECC flow implementation produces bugged artifacts when tries to align flat image regions with no gradients.
-//     * Here is temporary workaround to draw artificial planetary disk with radial intensity gradient from center to edges.
-//     */
-//    double min, max;
-//
-//    cv::distanceTransform(planetary_disk_mask, planetary_disk_mask, cv::DIST_L2, cv::DIST_MASK_PRECISE, CV_32F);
-//    cv::minMaxLoc(planetary_disk_mask, &min, &max);
-//    cv::multiply(planetary_disk_mask, planetary_disk_mask, planetary_disk_mask, 1. / (max * max));
-//
-//    planetary_disk_mask.copyTo(dst_ecc_image, planetary_disk_mask > FLT_EPSILON);
-//
-//  }
 //  return true;
 //}
-//
 
 bool c_frame_registration::extract_reference_features(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
@@ -1075,58 +1004,25 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_i
     return false;
   }
 
-//  if( _options.feature_registration.sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
-//
-//    // single planetary disk detection
-//
-//    const c_feature2d_planetary_disk_detector::options &detector_opts =
-//        _options.feature_registration.sparse_feature_extractor_and_matcher.detector.planetary_disk_detector;
-//
-//      const bool fOk =
-//          simple_planetary_disk_detector(reference_feature_image, reference_feature_mask,
-//              detector_opts.gsigma, detector_opts.se_radius,
-//              nullptr,
-//              &_planetary_disk_reference_component_rect,
-//              &_planetary_disk_reference_component_mask,
-//              &_planetary_disk_reference_centroid);
-//
-//      if( !fOk ) {
-//        CF_FATAL("simple_planetary_disk_detector() fails");
-//        return false;
-//      }
-//
-//      if( !_debug_path.empty() ) {
-//        save_image(_planetary_disk_reference_component_mask,
-//            ssprintf("%s/reference_component_mask_.tiff",
-//                _debug_path.c_str()));
-//      }
-//
-//    if( _options.feature_registration.scale != 1 ) {
-//      _planetary_disk_reference_centroid /= _options.feature_registration.scale;
-//    }
-//  }
-  // else
-  {
-    CF_DEBUG("reference_feature_image: %dx%d channels=%d  depth=%d ",
-        _reference_feature_image.cols, _reference_feature_image.rows,
-        _reference_feature_image.channels(),
-        _reference_feature_image.depth());
+  CF_DEBUG("reference_feature_image: %dx%d channels=%d  depth=%d ",
+      _reference_feature_image.cols, _reference_feature_image.rows,
+      _reference_feature_image.channels(),
+      _reference_feature_image.depth());
 
-    CF_DEBUG("reference_feature_mask: %dx%d channels=%d  depth=%d ",
-        _reference_feature_mask.cols, _reference_feature_mask.rows,
-        _reference_feature_mask.channels(),
-        _reference_feature_mask.depth());
+  CF_DEBUG("reference_feature_mask: %dx%d channels=%d  depth=%d ",
+      _reference_feature_mask.cols, _reference_feature_mask.rows,
+      _reference_feature_mask.channels(),
+      _reference_feature_mask.depth());
 
-    if( !_sparse_feature_extractor_and_matcher->setup_reference_frame(_reference_feature_image, _reference_feature_mask) ) {
-      CF_ERROR("sparse_feature_extractor_and_matcher->setup_reference_frame() fails");
-      return false;
-    }
+  if( !_sparse_feature_extractor_and_matcher->setup_reference_frame(_reference_feature_image, _reference_feature_mask) ) {
+    CF_ERROR("sparse_feature_extractor_and_matcher->setup_reference_frame() fails");
+    return false;
+  }
 
-    CF_DEBUG("reference_keypoints: %zu", _sparse_feature_extractor_and_matcher->reference_keypoints().size());
-    if ( _sparse_feature_extractor_and_matcher->reference_keypoints().empty() ) {
-      CF_ERROR("No sparse keypoints extracted");
-      return false;
-    }
+  CF_DEBUG("reference_keypoints: %zu", _sparse_feature_extractor_and_matcher->reference_keypoints().size());
+  if ( _sparse_feature_extractor_and_matcher->reference_keypoints().empty() ) {
+    CF_ERROR("No sparse keypoints extracted");
+    return false;
   }
 
   return true;

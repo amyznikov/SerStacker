@@ -10,7 +10,6 @@
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/proc/feature2d/c_roi_selection.h>
-
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/histogram-tools.h>
@@ -221,7 +220,7 @@ protected:
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask,
       double * output_reference_timestamp);
 
-  bool setup_frame_registration(const c_frame_registration::sptr & frame_registration,
+  bool setup_stack_registration(const c_frame_registration::sptr & frame_registration,
       cv::Mat & reference_frame, cv::Mat & reference_mask);
 
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,

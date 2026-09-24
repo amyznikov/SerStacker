@@ -225,6 +225,7 @@ void c_phase_correlate::generateBandpassFilter()
   }
 
   if ( _csigma > 0  && _calpha > 0) {
+    // Embed also cross-like spectrum features suppression directly into filter instead of pixel space apodization
     fftGenerateInverseCrossFilter(_fftSize, _expectedFrameSize, _crossMask, _csigma, _calpha, false);
     cv::multiply(_bandpassFilter, _crossMask, _bandpassFilter);
   }

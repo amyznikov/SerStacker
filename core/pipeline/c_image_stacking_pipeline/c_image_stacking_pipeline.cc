@@ -518,7 +518,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
         return false;
       }
 
-      if ( !setup_frame_registration(_frame_registration, reference_frame, reference_mask) ) {
+      if ( !setup_stack_registration(_frame_registration, reference_frame, reference_mask) ) {
         CF_ERROR("setup_frame_registration() fails");
         return false;
       }
@@ -655,16 +655,13 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
 
 
-bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registration::sptr & frame_registration,
+bool c_image_stacking_pipeline::setup_stack_registration(const c_frame_registration::sptr & frame_registration,
     cv::Mat & reference_frame, cv::Mat & reference_mask)
 {
   INSTRUMENT_REGION("");
 
   const c_image_registration_options & registration_options =
       frame_registration->options();
-
-  const c_image_stacking_master_options & master_options =
-      _master_options;
 
   if( upscale_required(false) ) {
 

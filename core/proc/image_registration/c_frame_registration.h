@@ -128,8 +128,11 @@ struct c_image_registration_options
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
-  //struct c_planetary_disk_derotation_options planetary_disk_derotation;
+  struct c_phase_correlate_options phase_correlate;
 
+  double phase_correlate_min_score = 0.5;
+
+  bool enable_phase_correlate = true;
   bool enable_feature_registration = true;
   bool enable_ecc_registration = false;
   bool enable_eccflow_registration = false;
@@ -155,6 +158,15 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind_expandable_group(ctls, "Camera Matrix", ""); //  (_this->_master_options.registration.motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION));
     //  PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Phase Correlate", "");
+    ctlbind(ctls, "Enable Phase Correlate", ctx(&S::enable_phase_correlate), "");
+    ctlbind(ctls, "min_score [0..1]",  ctx(&S::phase_correlate_min_score),
+        "Minimal acceptable correlation score to accept frame");
+    ctlbind_group(ctls, ctx(&S::enable_phase_correlate));
+    ctlbind(ctls, ctx(&S::phase_correlate));
+    ctlbind_end_group(ctls);
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Feature Registration Options", "");
@@ -294,9 +306,8 @@ protected:
   virtual bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk) const;
 
-  virtual bool create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-      cv::OutputArray dst, cv::OutputArray dstmsk) const;
-
+//  virtual bool create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
+//      cv::OutputArray dst, cv::OutputArray dstmsk) const;
 //  bool insert_planetary_disk_shape(const cv::Mat & src_ecc_image,
 //      const cv::Mat & src_mask,
 //      cv::Mat & dst_ecc_image,
@@ -329,11 +340,11 @@ protected:
   cv::Mat _reference_feature_mask;
   cv::Mat _current_feature_mask;
 
-  c_sparse_feature_extractor_and_matcher::sptr _sparse_feature_extractor_and_matcher;
-
   c_image_transform::sptr _image_transform;
   cv::Mat1f _image_transform_defaut_parameters;
 
+  c_sparse_feature_extractor_and_matcher::sptr _sparse_feature_extractor_and_matcher;
+  c_phase_correlate _phase_correlate;
   c_ecch _ecch;
   c_eccflow _eccflow;
 

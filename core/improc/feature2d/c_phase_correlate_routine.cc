@@ -261,14 +261,12 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_CART: {
-        //fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
         fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
         fftSwapQuadrants(image, image);
         mask.release();
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_POLAR: {
-        //fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
         fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
         fftSwapQuadrants(image, image);
         fftSpectrumToPolar(image, image);
@@ -280,10 +278,7 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         mask.release();
         break;
       }
-
-
     }
-
   }
   return true;
 }

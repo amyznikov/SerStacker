@@ -857,7 +857,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       _src_mask.create(fftSize, CV_8UC1), _src_mask.setTo(0);
       srcMask.copyTo(_src_mask(rc));
 
-      _src_planes[0].create(fftSize, srcImage.type()), _src_planes[0].setTo(0);
+      _src_planes[0].create(fftSize, srcImage.depth()), _src_planes[0].setTo(0);
       srcImage.copyTo(_src_planes[0](rc), srcMask);
 
       switch (opts.mask_inpaint_method) {

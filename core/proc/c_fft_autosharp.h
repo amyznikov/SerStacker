@@ -87,7 +87,7 @@ public:
 
   void clearCachedData();
 
-public: // Direct access to internal cache data for debug and advaced visualization
+public: // Direct access to internal cache data for debug and advanced visualization
   const std::vector<cv::Mat>& srcPlanes() const
   {
     return _src_planes;

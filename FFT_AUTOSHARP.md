@@ -6,6 +6,23 @@ The c_fft_autosharp is specialized class for deblurring raw Lucky Imaging stacks
 It can correct blur caused by atmospheric turbulence plus averaging of a large number of raw input frames by adjusting the radial profile of
 the Fourier spectrum magnitude in logarithmic coordinates to match target slope.
 
+Two screenshots below illustratre the result of applying the c_fft_autosharp filter to very blurry raw stack
+assembled from ~2000 aligned camera frames.   
+
+Input Image:
+
+![FFT_AUTOSHARP1](./debug/FFT_AUTOSHARP1.png)
+
+Restored Image:
+
+![FFT_AUTOSHARP2](./debug/FFT_AUTOSHARP2.png)
+
+Spectrum Profile:
+
+![FFT_AUTOSHARP3](./debug/FFT_AUTOSHARP3.png)
+
+
+
 ## 🧠 Algorithmic basis
 
 * **In-place CCS Packed Spectrum Processing:** 
@@ -33,7 +50,7 @@ This eliminates the need for an expensive full 2D DFT of the boundary difference
 	in the vicinity of the frequency range matching the requested **macroStructSizePx**.
 
 
-* ** Inverse filtering and BGR output generation:** 
+* **Inverse filtering and BGR output generation:** 
 	The **Inverse filter** generated is applied to all the **periodic (P-) complents** of multi-channel images separatelly
  (**Y, Cr, Cb **), the corresponding **smooth (S-) components** are inserted back, the inverse idft() is performad and finally all 
  the **YCrCb** color planes are convered back to **BGR** colorspace to form the output result.  
@@ -92,17 +109,4 @@ This eliminates the need for an expensive full 2D DFT of the boundary difference
                                     ▼
                          [ OUTPUT: _dstImage ]
 ```
-
-Two screenshots below illustratre the result of applying the c_fft_autosharp filter to very blury raw stack
-accembled from 2000 aligned camera frames.   
-
-Input Image:
-
-![FFT_AUTOSHARP1](./debug/FFT_AUTOSHARP1.png)
-
-
-Restored Image:
-
-![FFT_AUTOSHARP2](./debug/FFT_AUTOSHARP2.png)
-
 

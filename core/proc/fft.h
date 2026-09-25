@@ -216,6 +216,12 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum,
     cv::OutputArray _complexSpectrum);
 
 /**
+ * CV_32FC1 CCS input -> CV_32FC2 Polar (mag/phase) output
+ * */
+bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
+    bool centerDC = false);
+
+/**
  * CV_32FC2 Complex input -> CV_32FC1 CCS packed output
  * Pack full complex spectrum of the signal into OpenCV CCS format.
  **/
@@ -259,7 +265,8 @@ bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
     std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
 
 bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
+    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS,
+    std::vector<cv::Mat1f> * V_SPECTRUMS = nullptr);
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.

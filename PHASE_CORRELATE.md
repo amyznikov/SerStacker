@@ -1,5 +1,7 @@
 # c_phase_correlate
 
+`#include <core/proc/image_registration/c_phase_correlate.h>`
+
 The `c_phase_correlate` is a high-performance C++ class designed for fast sub-pixel translation alignment of shifted video frames under strict execution budgets. It is tailored specifically for **Lucky Imaging Stacking** pipeline, where thousands of short-exposure frames must be evaluated, aligned, and filtered at **maximum FPS**.
 
 The pipeline implements an end-to-end optimized frequency-domain phase correlation algorithm that operates directly on packed real-valued spectra, bypassing conventional overheads to maximize frame throughput.
@@ -271,6 +273,6 @@ When the pipeline attempts to match completely unaligned, heavily corrupted, or 
 
 * **Mitigation Strategy:** To prevent catastrophic misalignment, the software must evaluate the metrics as a combined triplet: `correlationScore()`, `peakValue()`, and the spatial magnitude of the `outputTranslation` vector. If a massive displacement vector is returned alongside a borderline confidence score, the frame must be flagged as a false positive and discarded.
 
-The example screenshot illustrate the correlation peak deforemation dues to very strong image smear caused by telescope vibration.
+The example screenshot illustrate the correlation peak deformation due to very strong image smear caused by telescope vibration.
 
 ![PHASE_CORRELATE](./debug/PHASE_CORRELATE2.png)

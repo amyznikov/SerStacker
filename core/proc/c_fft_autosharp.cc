@@ -89,7 +89,6 @@ const c_enum_member * members_of<FFT_AUTOSHARP_OUTPUT_DISPLAY>()
       { FFT_AUTOSHARP_DISPLAY_INVERSE_FILTER,"INVERSE_FILTER"},
       { FFT_AUTOSHARP_DISPLAY_P_SPECTRUM, "P_SPECTRUM"},
       { FFT_AUTOSHARP_DISPLAY_S_SPECTRUM, "S_SPECTRUM"},
-      { FFT_AUTOSHARP_DISPLAY_V_SPECTRUM, "V_SPECTRUM"},
       { FFT_AUTOSHARP_DISPLAY_RESTORED_SPECTRUM, "RESTORED_SPECTRUM"},
       { FFT_AUTOSHARP_DISPLAY_RESTORED_IMAGE, },
   };
@@ -163,6 +162,8 @@ protected:
 static inline void resampleAndSmoothRadialProfile(const c_radial_spectrum_profile & sp,
     cv::Mat1f & U /*[1][N_uniform]*/)
 {
+  INSTRUMENT_REGION("");
+
   constexpr int N_uniform = 100;
   const int n_bins = sp.size();
 
@@ -235,6 +236,8 @@ static bool estimateNature(const c_radial_spectrum_profile & sp, const std::vect
     double & S1_nature,
     bool print_debug_info)
 {
+  INSTRUMENT_REGION("");
+
   // Frequency start equivalent to frame macro structures (~100 pixels)
   const int n_bins = sp.size();
   const int dctCornerBin = int((n_bins - 1) * M_SQRT1_2);
@@ -324,6 +327,8 @@ static bool computeRadialProfileCorrection(const c_radial_spectrum_profile & sp,
     std::vector<float> & sspec,
     std::vector<float> & correction)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat1f U;
 
   // Resample sp to uniform log scale, blur and save to U matrx [1][N_uniform]
@@ -432,6 +437,8 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
     double macroStructSizePx,
     const c_fft_autosharp_debug_options * debug_opts)
 {
+  INSTRUMENT_REGION("");
+
   const bool print_debug_info =
       debug_opts && debug_opts->print_debug_info;
 
@@ -439,7 +446,7 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
   std::vector<float> sspec; // smoothed radial profile [numBins]
   std::vector<float> correction; // corrections to spectrum module [numBins]
   double S0_target = 0;
-  const int N = sp.size();
+  const int NBins = sp.size();
 
 
   /*
@@ -460,17 +467,14 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
 
   outputFilter.create(fftSize);
 
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
-  const double R = std::sqrt(cx * cx + cy * cy);
-  const int numBins = std::max(1, cvRound(R));
-  const double scaleX = 1.0 / cx;
-  const double scaleY = 1.0 / cy;
-  const float binScale = float(numBins * M_SQRT1_2);
+  // For correct bind scaling it is assumed that radial profile was created by fftRadialProfileCCS()
+  const int cx = fftSize.width / 2, cy = fftSize.height / 2;
+  const float scaleX = float((NBins - 1) * M_SQRT1_2 / cx);
+  const float scaleY = float((NBins - 1) * M_SQRT1_2 / cy);
 
-  const float * corrections = correction.data();
   uint8_t * filter_base = outputFilter.ptr();
   const size_t filter_stride = outputFilter.step;
+  const float * corrections = correction.data();
 
   parallel_for(0, fftSize.height, [=](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
@@ -482,13 +486,12 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
       const float dy2 = dy * dy;
 
       for (int x = 0; x < fftSize.width; ++x) {
-        // the horizontal angular frequency
+        // the horizontal angular frequency to bin index
         const int fx = (x <= fftSize.width / 2) ? x : (fftSize.width - x);
         const float dx = fx * scaleX;
         const float dx2 = dx * dx;
-        const float r = std::sqrt(dx2 + dy2);
-        const int binIndex = std::clamp(cvRound(r * binScale), 0, N - 1);
-        fltp[x] = corrections[binIndex];
+        const int r = (int)(std::sqrt(dx2 + dy2));
+        fltp[x] = corrections[r];
       }
     }
   });
@@ -509,7 +512,7 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
     else {
       fprintf(fp, "I\tX\tS\tSPEC\tSSPEC\tTARGET\tCORRECTION\tSPEC_RESTORED\n");
 
-      for( int i = 0; i < N; ++i ) {
+      for( int i = 0; i < NBins; ++i ) {
         const double yraw = sp.sv(i);
         const double x = sp.xv(i); // log of frequency
         const double y = sp.yv(i); // log of spectrum intensity
@@ -529,12 +532,13 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
   return true;
 }
 
-
 template<class _Tp>
 bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Size & fftSize,
     std::vector<cv::Mat>& outputYCrCbPlanes,
     cv::Rect * outputValidRect)
 {
+  INSTRUMENT_REGION("");
+
   if ( srcImage.empty() || srcImage.channels() != 3 ) {
     CF_ERROR("BGR image expected on input");
     return false;
@@ -560,7 +564,9 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
   }
 
   // Y, Cr, Cb
-  outputYCrCbPlanes.resize(3);
+  if ( outputYCrCbPlanes.size() != 3 ) {
+    outputYCrCbPlanes.resize(3);
+  }
   for ( int c = 0; c < 3; ++c ) {
     outputYCrCbPlanes[c].create(fftSize, CV_32FC1);
   }
@@ -637,22 +643,18 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
           *yp++  = 0, *crp++ = 0, *cbp++ = 0;
         }
 
-        const _Tp * srcp = (const _Tp*)(src_base + (y-border_top) * src_stride);
-        const uint8_t * mskp = (const uint8_t*)(mask_base + (y-border_top) * mask_stride);
+        const _Tp * srcp = (const _Tp*)(src_base + (y - border_top) * src_stride);
+        const uint8_t * mskp = (const uint8_t*)(mask_base + (y - border_top) * mask_stride);
         const int xmax = border_left + srcSize.width;
         for (int x = border_left; x < xmax; ++x, ++mskp, ++yp, ++crp, ++cbp, srcp += 3 ) {
-          if ( !*mskp ) {
-            *yp  = 0, *crp = 0, *cbp = 0;
-          }
-          else {
-            const float b = srcp[0], g = srcp[1], r = srcp[2];
-            const float Y = r * wR + g * wG + b * wB;
-            const float Cr = (r - Y) * kCr;
-            const float Cb = (b - Y) * kCb;
-            *yp  = Y;
-            *crp = Cr;
-            *cbp = Cb;
-          }
+          const float fmask = float(!*mskp);
+          const float b = srcp[0], g = srcp[1], r = srcp[2];
+          const float Y = r * wR + g * wG + b * wB;
+          const float Cr = (r - Y) * kCr;
+          const float Cb = (b - Y) * kCb;
+          *yp  = Y * fmask;
+          *crp = Cr * fmask;
+          *cbp = Cb * fmask;
         }
 
         for (int x = xmax; x < fftSize.width; ++x) {
@@ -669,6 +671,8 @@ static bool bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, con
     std::vector<cv::Mat>& outputYCrCbPlanes,
     cv::Rect * outputValidRect)
 {
+  INSTRUMENT_REGION("");
+
   if ( srcImage.empty() || srcImage.channels() != 3 ) {
     CF_ERROR("3-channel input BGR image expected");
     return false;
@@ -695,6 +699,8 @@ static bool bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, con
 static bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, const cv::Rect & roi,
     cv::OutputArray bgrImage)
 {
+  INSTRUMENT_REGION("");
+
   if( planes.size() != 3 ) {
     CF_ERROR("Invalid input planes size=%zu. Must be 3", planes.size());
     return false;
@@ -790,6 +796,13 @@ void c_fft_autosharp::clearCachedData()
   _src_channels_restored.clear(), _src_channels_restored.shrink_to_fit();
 }
 
+extern bool fftPPSDecompositionCCS2(cv::InputArray _src, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM);
+
+
+extern bool fftPPSDecompositionCCSPlanes2(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
+
 // moon:  /mnt/data/scope/2023-08-04/MOON3/image_stacking1
 // mars: /mnt/data/scope/2022-11-13/s7/CapObj/2022-11-13Z/s2
 bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
@@ -798,6 +811,8 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
     FFT_AUTOSHARP_OUTPUT_DISPLAY outputDisplay,
     const c_fft_autosharp_debug_options * debugOpts)
 {
+  INSTRUMENT_REGION("c_fft_autosharp");
+
   const cv::Size srcSize = _srcImage.size();
   const int cn = _srcImage.channels();
   if ( cn != 1 && cn != 3 ) {
@@ -870,7 +885,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       }
     }
 
-    fftPPSDecompositionCCS(_src_planes[0], _vlap_filter, _src_p[0], _src_s[0], _src_v[0]);
+    fftPPSDecompositionCCS2(_src_planes[0], _vlap_filter, _src_p[0], _src_s[0]);
   }
   else if( cn == 3 ) { // BGR input
     if( _srcMask.empty() || opts.mask_inpaint_method == FFT_AUTOSHARP_INPAINT_DISABLED ) {
@@ -907,8 +922,8 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       }
     }
 
-    if( !fftPPSDecompositionCCSPlanes(_src_planes, _vlap_filter, &_src_p, &_src_s, &_src_v) ) {
-      CF_ERROR("fftPPSDecompositionCCSPlanes() fails");
+    if( !fftPPSDecompositionCCSPlanes2(_src_planes, _vlap_filter, &_src_p, &_src_s) ) {
+      CF_ERROR("fftPPSDecompositionCCSPlanes2() fails");
       return false;
     }
   }
@@ -929,10 +944,6 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       return true;
     case FFT_AUTOSHARP_DISPLAY_S_SPECTRUM:
       _dstImage.assign(_src_s[0]);
-      _dstMask.release();
-      return true;
-    case FFT_AUTOSHARP_DISPLAY_V_SPECTRUM:
-      _dstImage.assign(_src_v[0]);
       _dstMask.release();
       return true;
     default:
@@ -967,15 +978,16 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
     _src_channels_restored.resize(cn);
   }
 
-  // outputDisplay == FFT_AUTOSHARP_DISPLAY_RESTORED_IMAGE
-
   /*
    * Warning: Don't apply filter to S to avoid edge artifacts!
    * */
-  for( int i = 0; i < cn; ++i ) {
-    fftMulSpectrumCCS(_src_p[i], _inverse_filter, _src_p[i]);
-    cv::add(_src_p[i], _src_s[i], _src_p[i]);
-    cv::idft(_src_p[i], _src_channels_restored[i], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+  if ( true ) {
+    INSTRUMENT_REGION("APPLY_FILTER");
+    for( int i = 0; i < cn; ++i ) {
+      fftMulSpectrumCCS(_src_p[i], _inverse_filter, _src_p[i]);
+      cv::add(_src_p[i], _src_s[i], _src_p[i]);
+      cv::idft(_src_p[i], _src_channels_restored[i], cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+    }
   }
 
   if( cn > 1 ) {

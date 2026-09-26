@@ -52,7 +52,7 @@ This eliminates the need for an expensive full 2D DFT of the boundary difference
 
 * **Inverse filtering and BGR output generation:** 
 	The **Inverse filter** generated is applied to all the **periodic (P-) complents** of multi-channel images separatelly
- (**Y, Cr, Cb **), the corresponding **smooth (S-) components** are inserted back, the inverse idft() is performad and finally all 
+ (**Y, Cr, Cb **), the corresponding **smooth (S-) components** are inserted back, the inverse idft() is performed and finally all 
  the **YCrCb** color planes are convered back to **BGR** colorspace to form the output result.  
 
 

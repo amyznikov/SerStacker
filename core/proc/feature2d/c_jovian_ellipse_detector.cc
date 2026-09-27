@@ -480,8 +480,8 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
   }
 
   fftPPSDecomposition(_grayscaleImageCrop, VLAP, INTENSITY_P, cv::noArray());
-  fftSpectrumModule(INTENSITY_P, _radonMagnitude);
-  fftSwapQuadrants(_radonMagnitude);
+  fftSpectrumMagnitude(INTENSITY_P, _radonMagnitude, true);
+  //fftSwapQuadrants(_radonMagnitude);
 
   const double angle =
       fftEstimateRadonOrientation(_radonMagnitude,

@@ -20,17 +20,12 @@ public:
       "fft", "Display fft spectrum from cv::dft()");
 
   enum DisplayType {
-    DisplayModule,
+    DisplayMagnitude,
     DisplayPower,
     DisplayPhase,
     DisplayReal,
     DisplayImag,
-    DisplayCCSTest1,
-    DisplayCCSTest2,
-    DisplayCCSTest3,
-    DisplayCCSTest4,
-    DisplayCCSTest5,
-    DisplayCCSTest6,
+    DisplayPolar,
     };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -38,10 +33,11 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DisplayType _output_display = DisplayPower;
-  bool _dft_scale = false;
-  //cv::BorderTypes _borderType = cv::BORDER_REFLECT101;
-
+  DisplayType _outputDisplay = DisplayPower;
+  bool _dftComplex = false;
+  bool _dftScale = false;
+  bool _centerDC = false;
+  bool _ppsDecomposition = false;
 };
 
 #endif /* __c_fft_routine_h__ */

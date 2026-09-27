@@ -32,13 +32,33 @@ bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst,
     const cv::Size & fftSize,
     bool centerDC = true);
 
-/* Power = Re^2 + Im^2 */
-bool fftSpectrumPower(cv::InputArray src,
-    cv::OutputArray dst);
+/* Magnitude = sqrt(Re^2 + Im^2) */
+bool fftSpectrumMagnitude(cv::InputArray cmplxSpectrum,
+    cv::OutputArray outputSpectrumMagnitude,
+    bool swapQuadrants = false);
 
-/* Module = sqrt(Re^2 + Im^2) */
-bool fftSpectrumModule(cv::InputArray src,
-    cv::OutputArray dst);
+/* Power = Re^2 + Im^2 */
+bool fftSpectrumPower(cv::InputArray cmplxSpectrum,
+    cv::OutputArray outputSpectrumPower,
+    bool swapQuadrants = false);
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC1 Polar Magnitude output
+ * Single-Pass CCS Unpack + Polar Magnitude Conversion
+ * Input:  CV_32FC1 CCS Packed Spectrum
+ * Output: CV_32FC1 Polar Spectrum Magnitude
+ * */
+bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _polarMagnitude,
+    bool centerDC = false);
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC1 Power output
+ * Single-Pass CCS Unpack + Power Computation
+ * Input:  CV_32FC1 CCS Packed Spectrum
+ * Output: CV_32FC1 Spectrum Power
+ * */
+bool fftCCSSpectrumPower(cv::InputArray _ccsSpectrum, cv::OutputArray _polarPower,
+    bool centerDC = false);
 
 bool fftSpectrumPhase(cv::InputArray src,
     cv::OutputArray dst);
@@ -200,14 +220,6 @@ bool fftComputeVSpectrumComplex(cv::InputArray _src,
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
 
 /**
-* @brief Function for automatically determining the position angle from the FFT spectrum module
-* @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
-* @return double Polar axis position angle in degrees [0, 180)
-*/
-double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
-    cv::OutputArray outputDebugHistogram = cv::noArray());
-
-/**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output
  * */
 bool fftUnpackCCSSpectrum(cv::InputArray ccsSpectrum,
@@ -250,6 +262,8 @@ bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
  *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
  *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
  *   may happen because the filter becomes not symmetrical.
+ *
+ *   IN-PLACE Computation is NOT supported, result may be undefined.
  *
  * This function performs element-wise cross-multiplication of two spectra with conjugation of the
  * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
@@ -305,6 +319,14 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 double fftAutoCrossSpectrumWeightedCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray _autoCrossSpectrum);
 
+
+/**
+* @brief Function for automatically determining the position angle from the FFT spectrum module
+* @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
+* @return double Polar axis position angle in degrees [0, 180)
+*/
+double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
+    cv::OutputArray outputDebugHistogram = cv::noArray());
 
 
 

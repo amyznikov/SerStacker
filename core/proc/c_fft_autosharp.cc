@@ -585,6 +585,7 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
 
   if ( srcMask.empty() ) {
     // Little faster path
+
     parallel_for(0, fftSize.height, [=](const auto & range) {
       for (int y = rbegin(range); y < rend(range); ++y) {
         float* __restrict yp  = (float*)(y_base  + y * y_stride);
@@ -647,7 +648,7 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
         const uint8_t * mskp = (const uint8_t*)(mask_base + (y - border_top) * mask_stride);
         const int xmax = border_left + srcSize.width;
         for (int x = border_left; x < xmax; ++x, ++mskp, ++yp, ++crp, ++cbp, srcp += 3 ) {
-          const float fmask = float(!*mskp);
+          const float fmask = *mskp ? 1.f : 0.f;
           const float b = srcp[0], g = srcp[1], r = srcp[2];
           const float Y = r * wR + g * wG + b * wB;
           const float Cr = (r - Y) * kCr;

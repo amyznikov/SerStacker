@@ -169,4 +169,36 @@ static inline bool cv_dispatch_helper(int depth, F&& f, Args&&... args) {
   }
 }
 
+/**
+* Initializer for a safe out-of-place buffer.
+* Checks for memory and type overlaps. If it is in-place, it isolates the buffer.
+* If it is a genuine out-of-place operation with pre-existing memory, it reuses that memory WITHOUT allocations.
+* */
+static inline cv::Mat createOutOfPlace(cv::InputArray src, cv::OutputArray dst, int rows, int cols, int dtype)
+{
+  const cv::Mat srcMat = src.getMat();
+  const cv::Mat dstMat = dst.getMatRef();
+  if (src.getObj() == dst.getObj() || dstMat.data == srcMat.data || dstMat.type() != dtype || dstMat.size() != srcMat.size()) {
+    return cv::Mat(rows, cols, dtype);
+  }
+
+  dst.create(rows, cols, dtype);
+  return dst.getMatRef();
+}
+
+static inline cv::Mat createOutOfPlace(cv::InputArray src, cv::OutputArray dst, const cv::Size & size, int dtype)
+{
+  return createOutOfPlace(src, dst, size.height, size.width, dtype);
+}
+
+static inline cv::Mat createOutOfPlaceSameSize(cv::InputArray src, cv::OutputArray dst, int dtype)
+{
+  return createOutOfPlace(src, dst, src.rows(), src.cols(), dtype);
+}
+
+static inline void assignOutOfPlace(cv::OutputArray dst, const cv::Mat& m)
+{
+    dst.assign(m);
+}
+
 #endif /* __pixtype_h__ */

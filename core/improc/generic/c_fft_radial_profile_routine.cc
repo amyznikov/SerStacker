@@ -57,8 +57,8 @@ bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::Input
       fftPPSDecomposition(channels[i], VLAP, channels[i], cv::noArray());
     }
 
-    fftSpectrumModule(channels[i], channels[i]);
-    fftSwapQuadrants(channels[i]);
+    fftSpectrumMagnitude(channels[i], channels[i], true);
+    // fftSwapQuadrants(channels[i]);
     if ( _profileToImage) {
       fftRadialProfile(channels[i], radial_profile);
       fftRadialProfileToImage(radial_profile, fftSize, (cv::Mat1f&) channels[i]);

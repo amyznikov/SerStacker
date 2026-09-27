@@ -7,6 +7,7 @@
 
 #include "fft.h"
 #include <core/proc/run-loop.h>
+#include <core/proc/pixtype.h>
 #include <core/debug.h>
 
 static int fftFindOptimalSize(int srcSize, int psfRadius, bool forceEvenSize)
@@ -156,7 +157,7 @@ void fftSwapQuadrants(cv::InputArray _src, cv::OutputArray _dst)
     return;
   }
 
-  cv::Mat dst(src.size(), src.type());
+  cv::Mat dst = createOutOfPlaceSameSize(src, _dst, src.type());
 
   const int cx = (src.cols + 1) >> 1;
   const int cy = (src.rows + 1) >> 1;
@@ -178,7 +179,7 @@ void fftSwapQuadrants(cv::InputArray _src, cv::OutputArray _dst)
   src_q2.copyTo(dst_q2);
   src_q3.copyTo(dst_q3);
 
-  _dst.move(dst);
+  assignOutOfPlace(_dst, dst);
 }
 
 
@@ -214,53 +215,162 @@ void fftSwapQuadrants(cv::InputOutputArray _spec)
   _spec.move(dst);
 }
 
-/* Power = Re^2 + Im^2 */
-bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
+/* Module = sqrt(Re^2 + Im^2) */
+bool fftSpectrumMagnitude(cv::InputArray _cart, cv::OutputArray _dst, bool swapQuadrants)
 {
-  if ( _src.type() != CV_32FC2 ) {
-    CF_ERROR("Invalid argument: CV_32FC2 input image expected ");
+  if( _cart.empty() || _cart.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 complex spectrum is expected on input");
     return false;
   }
 
   if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid fixed type output argument: CV_32FC1 output image expected ");
+    CF_ERROR("Invalid argument: CV_32FC1 spectrum magnitude is expected on output");
     return false;
   }
 
-  const cv::Mat2f src = _src.getMat();
-  const cv::Size size = _src.size();
-  _dst.create(size, CV_32FC1);
-  cv::Mat1f dst = _dst.getMatRef();
+  if( _dst.fixedSize() && _dst.size() != _cart.size() ) {
+    CF_ERROR("Invalid argument: output spectrum fixed size %dx%d does not match input size %dx%d",
+        _dst.cols(), _dst.rows(), _cart.cols(), _cart.rows());
+    return false;
+  }
 
-  parallel_for(0, size.height, [&, size](const auto & range) {
-    for ( int y = rbegin(range); y < rend(range); ++y ) {
-      const float * srcp = (const float * )src[y];
-      float * __restrict dstp = dst[y];
-      for ( int x = 0; x < size.width; ++x, srcp += 2 ) {
-        * dstp ++ = srcp[0] * srcp[0] + srcp[1] * srcp[1];
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
+
+  const cv::Size size = _cart.size();
+  const cv::Mat2f cart = _cart.getMat();
+  const uint8_t * cart_base = cart.ptr();
+  const size_t cart_stride = cart.step;
+
+  cv::Mat1f polar = createOutOfPlace(_cart, _dst, size, CV_32FC1);
+  uint8_t * polar_base = polar.ptr();
+  const size_t polar_stride = polar.step;
+
+  if (!swapQuadrants) {
+    parallel_for(0, size.height, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const float * cartp = (const float * )(cart_base + y * cart_stride);
+        float * __restrict polarp = (float * )(polar_base + y * polar_stride);
+
+        for ( int x = 0; x < size.width; ++x, cartp += 2, polarp += 1 ) {
+          const float re = cartp[0];
+          const float im = cartp[1];
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          polarp[0] = (max_val >= safe_max) ? std::numeric_limits<float>::max() :
+              (max_val > safe_min ? std::sqrt(re * re + im * im) : 0);
+        }
       }
-    }
-  });
+    });
+  }
+  else {
+    // Centers for shifts
+    const int cx = size.width / 2;
+    const int cy = size.height / 2;
 
+    parallel_for(0, size.height, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        // target row dst_y accounting for the offset
+        const int dst_y = (y < cy) ? (y + size.height - cy) : (y - cy);
+
+        const float * cartp = (const float * )(cart_base + y * cart_stride);
+        float * __restrict polarp = (float * )(polar_base + dst_y * polar_stride);
+
+        for ( int x = 0; x < size.width; ++x, cartp += 2 ) {
+          // target column dst_x accounting for the shift
+          const int dst_x = (x < cx) ? (x + size.width - cx) : (x - cx);
+
+          const float re = cartp[0];
+          const float im = cartp[1];
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          polarp[dst_x] = (max_val >= safe_max) ? std::numeric_limits<float>::max() :
+              (max_val > safe_min ? std::sqrt(re * re + im * im) : 0);
+        }
+      }
+    });
+  }
+
+  assignOutOfPlace(_dst, polar);
   return true;
 }
 
-/* Module = sqrt(Re^2 + Im^2) */
-bool fftSpectrumModule(cv::InputArray _src, cv::OutputArray _dst)
+/* Power = Re^2 + Im^2 */
+bool fftSpectrumPower(cv::InputArray _cart, cv::OutputArray _dst, bool swapQuadrants)
 {
-  if ( _src.type() != CV_32FC2 ) {
-    CF_ERROR("Invalid argument: CV_32FC2 input image expected ");
+  if( _cart.empty() || _cart.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 complex spectrum is expected on input");
     return false;
   }
 
   if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid fixed type output argument: CV_32FC1 output image expected ");
+    CF_ERROR("Invalid argument: CV_32FC1 spectrum power is expected on output");
     return false;
   }
 
-  std::vector<cv::Mat> planes;
-  cv::split(_src, planes);
-  cv::magnitude(planes[0], planes[1], _dst);
+  if( _dst.fixedSize() && _dst.size() != _cart.size() ) {
+    CF_ERROR("Invalid argument: output spectrum fixed size %dx%d does not match input size %dx%d",
+        _dst.cols(), _dst.rows(), _cart.cols(), _cart.rows());
+    return false;
+  }
+
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
+
+  const cv::Size size = _cart.size();
+
+  const cv::Mat2f cart = _cart.getMat();
+  const uint8_t * cart_base = cart.ptr();
+  const size_t cart_stride = cart.step;
+
+  cv::Mat1f polar = createOutOfPlace(_cart, _dst, size, CV_32FC1);
+  uint8_t * polar_base = polar.ptr();
+  const size_t polar_stride = polar.step;
+
+  if ( !swapQuadrants ) {
+
+    parallel_for(0, size.height, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const float * cartp = (const float * )(cart_base + y * cart_stride);
+        float * __restrict polarp = (float * )(polar_base + y * polar_stride);
+
+        for ( int x = 0; x < size.width; ++x, cartp += 2, polarp += 1 ) {
+          const float re = cartp[0];
+          const float im = cartp[1];
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          polarp[0] = (max_val >= safe_max) ? std::numeric_limits<float>::max() :
+              (max_val > safe_min ? (re * re + im * im) : 0);
+        }
+      }
+    });
+  }
+  else {
+    // Centers for shifts
+    const int cx = size.width / 2;
+    const int cy = size.height / 2;
+
+    parallel_for(0, size.height, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        // target row dst_y accounting for the offset
+        const int dst_y = (y < cy) ? (y + size.height - cy) : (y - cy);
+
+        const float * cartp = (const float * )(cart_base + y * cart_stride);
+        float * __restrict polarp = (float * )(polar_base + dst_y * polar_stride);
+
+        for ( int x = 0; x < size.width; ++x, cartp += 2 ) {
+          // target column dst_x accounting for the shift
+          const int dst_x = (x < cx) ? (x + size.width - cx) : (x - cx);
+
+          const float re = cartp[0];
+          const float im = cartp[1];
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          polarp[dst_x] = (max_val >= safe_max) ? std::numeric_limits<float>::max() :
+              (max_val > safe_min ? (re * re + im * im) : 0);
+        }
+      }
+    });
+  }
+
+  assignOutOfPlace(_dst, polar);
+
   return true;
 }
 
@@ -299,6 +409,328 @@ bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
     _dst.move(tmp);
   }
 
+  return true;
+}
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC1 Polar Magnitude output
+ * Single-Pass CCS Unpack + Polar Magnitude Conversion
+ * Input:  CV_32FC1 CCS Packed Spectrum
+ * Output: CV_32FC1 Polar Spectrum Magnitude
+ * */
+bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _outputMagnitude, bool centerDC)
+{
+  if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
+    CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
+    return false;
+  }
+  if ( _outputMagnitude.fixedType() && _outputMagnitude.type() != CV_32FC1 ) {
+    CF_ERROR("CV_32FC1 output spectrum Magnitude destination expected");
+    return false;
+  }
+
+  const int rows = _ccsSpectrum.rows(); // M
+  const int cols = _ccsSpectrum.cols(); // N
+  const int half_rows = (rows + 1) / 2;
+  const int half_cols = (cols + 1) / 2;
+  const bool has_even_rows = (rows & 1) == 0;
+  const bool has_even_cols = (cols & 1) == 0;
+
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
+
+  const int shift_y = centerDC ? (rows / 2) : 0;
+  const int shift_x = centerDC ? (cols / 2) : 0;
+
+  const cv::Mat1f ccsSpectrum = _ccsSpectrum.getMat();
+  const uint8_t * ccs_base = ccsSpectrum.ptr();
+  const size_t ccs_stride = ccsSpectrum.step;
+
+  cv::Mat1f outputMagnitude = createOutOfPlaceSameSize(_ccsSpectrum, _outputMagnitude, CV_32FC1);
+  uint8_t * polar_base = outputMagnitude.ptr();
+  const size_t polar_stride = outputMagnitude.step;
+
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+
+      const int dst_y = ((y + shift_y) < rows) ? y + shift_y : y + shift_y - rows;
+      float * __restrict polarp = (float*)(polar_base + dst_y * polar_stride);
+
+      // 1. DC (X = 0)
+      if ( true ) {
+        const int dst_x = shift_x;
+        float re = 0, im = 0;
+        if (y == 0) {
+          re = *((const float *)(ccs_base + 0 * ccs_stride));
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = *((const float *)(ccs_base + (rows - 1) * ccs_stride));
+        }
+        else if (y < half_rows) {
+          re = *((const float *)(ccs_base + (2 * y - 1) * ccs_stride));
+          im = *((const float *)(ccs_base + (2 * y) * ccs_stride));
+        }
+        else {
+          const int sym_y = rows - y;
+          re = *((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride));
+          im = -*((const float *)(ccs_base + (2 * sym_y) * ccs_stride));
+        }
+
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x] = std::sqrt(re * re + im * im);
+        }
+        else {
+          polarp[dst_x] = 0;
+        }
+      }
+
+      // 2. Inner columns (0 < X < N/2)
+      const float * ccsp = (const float * )(ccs_base + y * ccs_stride);
+      const float * ccsp_sym = (const float *)(ccs_base + (y ? (rows - y) : 0 ) * ccs_stride);
+
+      for (int x = 1; x < half_cols; ++x) {
+        // Current element (x)
+        if ( true ) {
+          const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+          const float re = ccsp[2 * x - 1];
+          const float im = ccsp[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_x] = std::sqrt(re * re + im * im);
+          }
+          else {
+            polarp[dst_x] = 0;
+          }
+        }
+
+        // Symmetrical element (sym_x), conjugation
+        if ( true ) {
+          const int sym_x = cols - x;
+          const int dst_sym_x = ((sym_x + shift_x) < cols) ? sym_x + shift_x : sym_x + shift_x - cols;
+          const float re = ccsp_sym[2 * x - 1];
+          const float im = -ccsp_sym[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_sym_x] = std::numeric_limits<float>::max(); // mag
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_sym_x] = std::sqrt(re * re + im * im);
+          }
+          else {
+            polarp[dst_sym_x] = 0;
+          }
+        }
+      }
+
+      // 3. Nyquist column X = N/2
+      if (has_even_cols) {
+        const int last_ccs_col = cols - 1;
+        const int x = cols / 2;
+        const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+        float re = 0.0f;
+        float im = 0.0f;
+
+        if (y == 0) {
+          re = ((const float *)(ccs_base + 0 * ccs_stride))[last_ccs_col];
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = ((const float *)(ccs_base + (rows - 1) * ccs_stride))[last_ccs_col];
+        }
+        else if (y < half_rows) {
+          re = ((const float *)(ccs_base + (2 * y - 1) * ccs_stride))[last_ccs_col];
+          im = ((const float *)(ccs_base + (2 * y) * ccs_stride))[last_ccs_col];
+        }
+        else {
+          const int sym_y = rows - y;
+          re = ((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride))[last_ccs_col];
+          im = -((const float *)(ccs_base + (2 * sym_y) * ccs_stride))[last_ccs_col];
+        }
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x] = std::sqrt(re * re + im * im);
+        }
+        else {
+          polarp[dst_x] = 0;
+        }
+      }
+    }
+  });
+
+  assignOutOfPlace(_outputMagnitude, outputMagnitude);
+
+  return true;
+}
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC1 Power output
+ * Single-Pass CCS Unpack + Power Computation
+ * Input:  CV_32FC1 CCS Packed Spectrum
+ * Output: CV_32FC1 Spectrum Power
+ * */
+bool fftCCSSpectrumPower(cv::InputArray _ccsSpectrum, cv::OutputArray _outputPower, bool centerDC)
+{
+  if( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
+    CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
+    return false;
+  }
+
+  if( _outputPower.fixedType() && _outputPower.type() != CV_32FC1 ) {
+    CF_ERROR("CV_32FC1 spectrum power output destination expected");
+    return false;
+  }
+
+  const int rows = _ccsSpectrum.rows(); // M
+  const int cols = _ccsSpectrum.cols(); // N
+  const int half_rows = (rows + 1) / 2;
+  const int half_cols = (cols + 1) / 2;
+  const bool has_even_rows = (rows & 1) == 0;
+  const bool has_even_cols = (cols & 1) == 0;
+
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
+
+  const int shift_y = centerDC ? (rows / 2) : 0;
+  const int shift_x = centerDC ? (cols / 2) : 0;
+
+  const cv::Mat1f ccsSpectrum = _ccsSpectrum.getMat();
+  const uint8_t * ccs_base = ccsSpectrum.ptr();
+  const size_t ccs_stride = ccsSpectrum.step;
+
+  cv::Mat1f outputPower = createOutOfPlaceSameSize(_ccsSpectrum, _outputPower, CV_32FC1);
+  uint8_t * polar_base = outputPower.ptr();
+  const size_t polar_stride = outputPower.step;
+
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+
+      const int dst_y = ((y + shift_y) < rows) ? y + shift_y : y + shift_y - rows;
+      float * __restrict polarp = (float*)(polar_base + dst_y * polar_stride);
+
+      // 1. DC (X = 0)
+      if ( true ) {
+        const int dst_x = shift_x;
+        float re = 0, im = 0;
+        if (y == 0) {
+          re = *((const float *)(ccs_base + 0 * ccs_stride));
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = *((const float *)(ccs_base + (rows - 1) * ccs_stride));
+        }
+        else if (y < half_rows) {
+          re = *((const float *)(ccs_base + (2 * y - 1) * ccs_stride));
+          im = *((const float *)(ccs_base + (2 * y) * ccs_stride));
+        }
+        else {
+          const int sym_y = rows - y;
+          re = *((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride));
+          im = -*((const float *)(ccs_base + (2 * sym_y) * ccs_stride));
+        }
+
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x] = (re * re + im * im);
+        }
+        else {
+          polarp[dst_x] = 0;
+        }
+      }
+
+      // 2. Inner columns (0 < X < N/2)
+      const float * ccsp = (const float * )(ccs_base + y * ccs_stride);
+      const float * ccsp_sym = (const float *)(ccs_base + (y ? (rows - y) : 0 ) * ccs_stride);
+
+      for (int x = 1; x < half_cols; ++x) {
+        // Current element (x)
+        if ( true ) {
+          const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+          const float re = ccsp[2 * x - 1];
+          const float im = ccsp[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_x] = (re * re + im * im);
+          }
+          else {
+            polarp[dst_x] = 0;
+          }
+        }
+
+        // Symmetrical element (sym_x), conjugation
+        if ( true ) {
+          const int sym_x = cols - x;
+          const int dst_sym_x = ((sym_x + shift_x) < cols) ? sym_x + shift_x : sym_x + shift_x - cols;
+          const float re = ccsp_sym[2 * x - 1];
+          const float im = -ccsp_sym[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_sym_x] = std::numeric_limits<float>::max(); // mag
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_sym_x] = (re * re + im * im);
+          }
+          else {
+            polarp[dst_sym_x] = 0;
+          }
+        }
+      }
+
+      // 3. Nyquist column X = N/2
+      if (has_even_cols) {
+        const int last_ccs_col = cols - 1;
+        const int x = cols / 2;
+        const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+        float re = 0.0f;
+        float im = 0.0f;
+
+        if (y == 0) {
+          re = ((const float *)(ccs_base + 0 * ccs_stride))[last_ccs_col];
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = ((const float *)(ccs_base + (rows - 1) * ccs_stride))[last_ccs_col];
+        }
+        else if (y < half_rows) {
+          re = ((const float *)(ccs_base + (2 * y - 1) * ccs_stride))[last_ccs_col];
+          im = ((const float *)(ccs_base + (2 * y) * ccs_stride))[last_ccs_col];
+        }
+        else {
+          const int sym_y = rows - y;
+          re = ((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride))[last_ccs_col];
+          im = -((const float *)(ccs_base + (2 * sym_y) * ccs_stride))[last_ccs_col];
+        }
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x] = std::numeric_limits<float>::max(); // mag
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x] = (re * re + im * im);
+        }
+        else {
+          polarp[dst_x] = 0;
+        }
+      }
+    }
+  });
+
+  assignOutOfPlace(_outputPower, outputPower);
   return true;
 }
 
@@ -443,8 +875,7 @@ bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSp
   const uint8_t * ccs_base = ccsSpectrum.ptr();
   const size_t ccs_stride = ccsSpectrum.step;
 
-  _polarSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f polarSpectrum = _polarSpectrum.getMatRef();
+  cv::Mat polarSpectrum = createOutOfPlaceSameSize(_ccsSpectrum, _polarSpectrum, CV_32FC2);
   uint8_t * polar_base = polarSpectrum.ptr();
   const size_t polar_stride = polarSpectrum.step;
 
@@ -577,6 +1008,8 @@ bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSp
       }
     }
   });
+
+  assignOutOfPlace(_polarSpectrum, polarSpectrum);
 
   return true;
 }
@@ -1478,10 +1911,10 @@ bool fftComputeVSpectrumComplex(cv::InputArray _src, cv::OutputArray _complexSpe
   cv::subtract(src.row(0), src.row(rows - 1), drow, cv::noArray(), CV_32F);
   cv::subtract(src.col(0), src.col(cols - 1), dcol, cv::noArray(), CV_32F);
 
-  // Two complex 1D DFT in CV_32FC2 of size 1 x N and 1 x M
+  // Two complex 1D DFT in CV_32FC2 of size 1 x N and M x 1
   cv::Mat drow_complex, dcol_complex;
   cv::dft(drow, drow_complex, cv::DFT_COMPLEX_OUTPUT);
-  cv::dft(dcol.t(), dcol_complex, cv::DFT_COMPLEX_OUTPUT);
+  cv::dft(dcol, dcol_complex, cv::DFT_COMPLEX_OUTPUT);
 
   // Precompute trigonometric tables
   std::vector<float> cosx(cols), sinx(cols);
@@ -1495,9 +1928,8 @@ bool fftComputeVSpectrumComplex(cv::InputArray _src, cv::OutputArray _complexSpe
     sinx[x] = std::sin(x * CV_2PI / cols);
   }
 
-  // Output complex 2D  CV_32FC2 matrix
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f V_COMPLEX = _complexSpectrum.getMatRef();
+  // Output complex 2D CV_32FC2 matrix
+  cv::Mat2f V_COMPLEX = createOutOfPlace(_src, _complexSpectrum, rows, cols, CV_32FC2);
   uint8_t * const out_spec_base = V_COMPLEX.ptr();
   const size_t out_spec_stride = V_COMPLEX.step;
 
@@ -1550,6 +1982,8 @@ bool fftComputeVSpectrumComplex(cv::InputArray _src, cv::OutputArray _complexSpe
   // Reset singularity in DC component
   V_COMPLEX(0, 0) = cv::Vec2f(0.0f, 0.0f);
 
+  assignOutOfPlace(_complexSpectrum, V_COMPLEX);
+
   return true;
 }
 
@@ -1562,7 +1996,9 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
   const int rows = src.rows;
   const int cols = src.cols;
 
-  cv::Mat dst = cv::Mat::zeros(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
+  // cv::Mat dst = cv::Mat::zeros(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
+  cv::Mat dst = createOutOfPlace(_src, _dst, rows, cols, CV_MAKETYPE(CV_32F, src.channels()));
+  dst.setTo(cv::Scalar::all(0));
 
   cv::Mat d;
   cv::subtract(src.row(0), src.row(rows - 1), d, cv::noArray(), CV_32F);
@@ -1573,7 +2009,8 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
   cv::add(dst.col(0), d, dst.col(0), cv::noArray(), CV_32F);
   cv::subtract(dst.col(cols - 1), d, dst.col(cols - 1), cv::noArray(), CV_32F);
 
-  _dst.move(dst);
+  assignOutOfPlace(_dst, dst);
+  //_dst.move(dst);
 }
 
 // DFT with Periodic + Smooth Decomposition.
@@ -1793,111 +2230,6 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
   return mask;
 }
 
-
-/**
-* @brief Function for automatically determining the position angle from the FFT spectrum module
-* @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
-* @return double Polar axis position angle in degrees [0, 180)
-*/
-double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
-    cv::OutputArray outputDebugHistogram /*= cv::noArray()*/)
-{
-  const cv::Size fftSize = fftSpectrum.size();
-  const int cx = fftSize.width / 2;
-  const int cy = fftSize.height / 2;
-
-  // Step over only the very core (15 px) and
-  // take the entire beam up to the mid frequencies (150 px)
-  const int Rmin = 5;
-  const int Rmax = 0.33 * cx;
-  const double Rmin2 = Rmin * Rmin;
-  const double Rmax2 = Rmax * Rmax;
-
-  // Resolution of Nyquist histogram
-  const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
-  const double bin_step = 180.0 / num_bins;
-
-  cv::Mat1f HIST(1, num_bins, 0.0f);
-  float * __restrict histp = HIST[0];
-
-  // Scan range
-  const int y_start = std::max(0, cy - Rmax);
-  const int y_end   = std::min(fftSpectrum.rows, cy + Rmax);
-  const int x_start = std::max(0, cx - Rmax);
-  const int x_end   = std::min(fftSpectrum.cols, cx + Rmax);
-
-  for (int y = y_start; y < y_end; ++y) {
-    const float * srcp = fftSpectrum[y];
-    const double dy = y - cy;
-    const double dy2 = dy * dy;
-
-    for (int x = x_start; x < x_end; ++x) {
-      const double dx = x - cx;
-      const double dx2 = dx * dx;
-      const double r2 = dx2 + dy2;
-
-      if( r2 >= Rmin2 && r2 <= Rmax2 ) {
-
-        // Collapse symmetric FFT spectrum into a hemisphere [0, 180)
-        double angle = std::atan2(dy, dx) * 180.0 / CV_PI;
-        if( angle < 0 ) {
-          angle += 180;
-        }
-
-        const int bin_idx = int(angle / bin_step);
-        if( bin_idx >= 0 && bin_idx < num_bins ) {
-          //const float w = float(srcp[x] * sqrt(r2));
-          const float w = float(srcp[x]);
-          histp[bin_idx] += w;
-        }
-      }
-    }
-  }
-
-  cv::Mat1f H, Hp;
-  double globalMin, globalMax, globalRange;
-  cv::Point globalMaxPos;
-
-  const int border = num_bins / 2;
-  const cv::Rect roi(border, 0, num_bins, 1);
-  const int hksize = 55;
-  const int hpksize = 25;
-
-  cv::copyMakeBorder(HIST, H, 0, 0, border, border, cv::BORDER_WRAP);
-  cv::GaussianBlur(H, H, cv::Size(hksize, 1), 0, 0);
-  cv::GaussianBlur(H, Hp, cv::Size(hpksize, 1), 0, 0);
-  cv::subtract(H, Hp, Hp);
-
-  if( outputDebugHistogram.needed() ) {
-    cv::transpose(H(roi), outputDebugHistogram);
-  }
-
-  cv::minMaxLoc(H(roi), &globalMin, &globalMax, nullptr, &globalMaxPos);
-  if( !((globalRange = globalMax - globalMin) > 0) ) {
-    return 0;
-  }
-
-  const int center = globalMaxPos.x + border;
-  double X = center * H(0, center);
-  double W = H(0, center);
-
-  for( int i = center - 1; i >= 0 && Hp(0, i) > 0; --i ) {
-    const double h = H(0, i);
-    X += i * h;
-    W += h;
-  }
-  for( int i = center + 1; i < H.cols && Hp(0, i) > 0; ++i ) {
-    const double h = H(0, i);
-    X += i * h;
-    W += h;
-  }
-
-  const double angle = (X / W - border) * bin_step;
-  //CF_DEBUG("FFT: angle=%g", angle);
-
-  return angle;
-}
-
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output
  * */
@@ -1923,8 +2255,9 @@ bool fftUnpackCCSSpectrum(cv::InputArray _ccsSpectrum, cv::OutputArray _complexS
   const uint8_t * ccs_base = ccsSpectrum.ptr();
   const size_t ccs_stride = ccsSpectrum.step;
 
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+//  _complexSpectrum.create(rows, cols, CV_32FC2);
+//  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+  cv::Mat2f complexSpectrum = createOutOfPlace(_ccsSpectrum, _complexSpectrum, rows, cols, CV_32FC2);
   uint8_t * cmplx_base = complexSpectrum.ptr();
   const size_t cmplx_stride = complexSpectrum.step;
 
@@ -2001,6 +2334,7 @@ bool fftUnpackCCSSpectrum(cv::InputArray _ccsSpectrum, cv::OutputArray _complexS
     }
   });
 
+  assignOutOfPlace(_complexSpectrum, complexSpectrum);
   return true;
 }
 
@@ -2029,8 +2363,9 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum, cv::OutputAr
   const uint8_t * ccs_base = ccsSpectrum.ptr();
   const size_t ccs_stride = ccsSpectrum.step;
 
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+//  _complexSpectrum.create(rows, cols, CV_32FC2);
+//  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+  cv::Mat2f complexSpectrum = createOutOfPlaceSameSize(_ccsSpectrum, _complexSpectrum, CV_32FC2);
   uint8_t * cmplx_base = complexSpectrum.ptr();
   const size_t cmplx_stride = complexSpectrum.step;
 
@@ -2119,6 +2454,7 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum, cv::OutputAr
     }
   });
 
+  assignOutOfPlace(_complexSpectrum, complexSpectrum);
   return true;
 }
 
@@ -2149,8 +2485,9 @@ bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum, cv::OutputArray _ccsSpe
   const uint8_t * cmplx_base = complexSpectrum.ptr();
   const size_t cmplx_stride = complexSpectrum.step;
 
-  _ccsSpectrum.create(rows, cols, CV_32FC1);
-  cv::Mat1f ccsSpectrum = _ccsSpectrum.getMatRef();
+//  _ccsSpectrum.create(rows, cols, CV_32FC1);
+//  cv::Mat1f ccsSpectrum = _ccsSpectrum.getMatRef();
+  cv::Mat1f ccsSpectrum = createOutOfPlaceSameSize(_complexSpectrum, _ccsSpectrum, CV_32FC1);
   uint8_t * ccs_base = ccsSpectrum.ptr();
   const size_t ccs_stride = ccsSpectrum.step;
 
@@ -2209,6 +2546,7 @@ bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum, cv::OutputArray _ccsSpe
     }
   });
 
+  assignOutOfPlace(_ccsSpectrum, ccsSpectrum);
   return true;
 }
 
@@ -2635,6 +2973,8 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
  *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
  *   may happen because the filter becomes not symmetrical.
  *
+ *   IN-PLACE Computation is NOT supported, result may be undefined.
+ *
  * This function performs element-wise cross-multiplication of two spectra with conjugation of the
  * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
  * Mathematically, for each frequency it computes: \f$ DST = filter \cdot \frac{S_1 \cdot S_2^*}{|S_1 \cdot S_2^*|} \f$
@@ -2914,6 +3254,7 @@ double fftAutoCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum, const cv::Ma
 
   _autoCrossSpectrum.create(rows, cols, CV_32FC1);
   cv::Mat1f autoCrossSpectrum = _autoCrossSpectrum.getMatRef();
+
   uint8_t * cross_base = autoCrossSpectrum.ptr();
   const size_t cross_stride = autoCrossSpectrum.step;
 
@@ -3012,3 +3353,106 @@ double fftAutoCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum, const cv::Ma
   return total_energy.load();
 }
 
+/**
+* @brief Function for automatically determining the position angle from the FFT spectrum module
+* @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
+* @return double Polar axis position angle in degrees [0, 180)
+*/
+double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
+    cv::OutputArray outputDebugHistogram /*= cv::noArray()*/)
+{
+  const cv::Size fftSize = fftSpectrum.size();
+  const int cx = fftSize.width / 2;
+  const int cy = fftSize.height / 2;
+
+  // Step over only the very core (15 px) and
+  // take the entire beam up to the mid frequencies (150 px)
+  const int Rmin = 5;
+  const int Rmax = 0.33 * cx;
+  const double Rmin2 = Rmin * Rmin;
+  const double Rmax2 = Rmax * Rmax;
+
+  // Resolution of Nyquist histogram
+  const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
+  const double bin_step = 180.0 / num_bins;
+
+  cv::Mat1f HIST(1, num_bins, 0.0f);
+  float * __restrict histp = HIST[0];
+
+  // Scan range
+  const int y_start = std::max(0, cy - Rmax);
+  const int y_end   = std::min(fftSpectrum.rows, cy + Rmax);
+  const int x_start = std::max(0, cx - Rmax);
+  const int x_end   = std::min(fftSpectrum.cols, cx + Rmax);
+
+  for (int y = y_start; y < y_end; ++y) {
+    const float * srcp = fftSpectrum[y];
+    const double dy = y - cy;
+    const double dy2 = dy * dy;
+
+    for (int x = x_start; x < x_end; ++x) {
+      const double dx = x - cx;
+      const double dx2 = dx * dx;
+      const double r2 = dx2 + dy2;
+
+      if( r2 >= Rmin2 && r2 <= Rmax2 ) {
+
+        // Collapse symmetric FFT spectrum into a hemisphere [0, 180)
+        double angle = std::atan2(dy, dx) * 180.0 / CV_PI;
+        if( angle < 0 ) {
+          angle += 180;
+        }
+
+        const int bin_idx = int(angle / bin_step);
+        if( bin_idx >= 0 && bin_idx < num_bins ) {
+          //const float w = float(srcp[x] * sqrt(r2));
+          const float w = float(srcp[x]);
+          histp[bin_idx] += w;
+        }
+      }
+    }
+  }
+
+  cv::Mat1f H, Hp;
+  double globalMin, globalMax, globalRange;
+  cv::Point globalMaxPos;
+
+  const int border = num_bins / 2;
+  const cv::Rect roi(border, 0, num_bins, 1);
+  const int hksize = 55;
+  const int hpksize = 25;
+
+  cv::copyMakeBorder(HIST, H, 0, 0, border, border, cv::BORDER_WRAP);
+  cv::GaussianBlur(H, H, cv::Size(hksize, 1), 0, 0);
+  cv::GaussianBlur(H, Hp, cv::Size(hpksize, 1), 0, 0);
+  cv::subtract(H, Hp, Hp);
+
+  if( outputDebugHistogram.needed() ) {
+    cv::transpose(H(roi), outputDebugHistogram);
+  }
+
+  cv::minMaxLoc(H(roi), &globalMin, &globalMax, nullptr, &globalMaxPos);
+  if( !((globalRange = globalMax - globalMin) > 0) ) {
+    return 0;
+  }
+
+  const int center = globalMaxPos.x + border;
+  double X = center * H(0, center);
+  double W = H(0, center);
+
+  for( int i = center - 1; i >= 0 && Hp(0, i) > 0; --i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+  for( int i = center + 1; i < H.cols && Hp(0, i) > 0; ++i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+
+  const double angle = (X / W - border) * bin_step;
+  //CF_DEBUG("FFT: angle=%g", angle);
+
+  return angle;
+}

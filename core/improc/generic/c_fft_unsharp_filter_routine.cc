@@ -51,7 +51,7 @@ static bool fftDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuad
 
   if ( _spec.type() == CV_32FC2 ) {
     cv::Mat1f magnitude;
-    fftSpectrumModule(_spec, _dst);
+    fftSpectrumMagnitude(_spec, _dst);
     if ( swapQuadrants )  {
       fftSwapQuadrants(_dst.getMatRef());
     }
@@ -164,22 +164,22 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
     real_channels[i].convertTo(real_channels[i], CV_32F);
     fftImageToSpectrum(real_channels[i], complex_channels[i], fftSize, true);
     if ( _display == DISPLAY_SRC_SPECTRUM_MODULE ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
+      fftSpectrumMagnitude(complex_channels[i], real_channels[i]);
       continue;
     }
     if ( _display == DISPLAY_SRC_SPECTRUM_POWER ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
+      fftSpectrumMagnitude(complex_channels[i], real_channels[i]);
       cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
       continue;
     }
 
     fftMulSpectrum(complex_channels[i], FILTER, complex_channels[i]);
     if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
+      fftSpectrumMagnitude(complex_channels[i], real_channels[i]);
       continue;
     }
     if ( _display == DISPLAY_FILTERED_SPECTRUM_POWER ) {
-      fftSpectrumModule(complex_channels[i], real_channels[i]);
+      fftSpectrumMagnitude(complex_channels[i], real_channels[i]);
       cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
       continue;
     }

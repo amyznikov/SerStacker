@@ -940,86 +940,6 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
   });
 }
 
-
-bool dctRadialProfile(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
-{
-  INSTRUMENT_REGION("");
-  if( dctSpectrum.empty() ) {
-    return false;
-  }
-
-  const int maxW = dctSpectrum.cols;
-  const int maxH = dctSpectrum.rows;
-
-  const float R = std::sqrt(maxW * maxW + maxH * maxH);
-  const int numBins = std::max(1, int(R));
-  const float binScale = float(numBins * M_SQRT1_2);
-
-  std::vector<float> radialSum(numBins, 0.0f);
-  std::vector<float> radialCount(numBins, 0.0f);
-
-  const float scaleX = float(1.0 / maxW);
-  const float scaleY = float(1.0 / maxH);
-
-  for( int y = 0; y < maxH; ++y ) {
-    const float dy = y * scaleY;
-    const float dy2 = dy * dy;
-    const float * srcp = dctSpectrum[y];
-
-    for( int x = 0; x < maxW; ++x ) {
-      const float dx = x * scaleX;
-      const float dx2 = dx * dx;
-      const float r = std::sqrt(dx2 + dy2);
-      const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-      radialSum[bin] += std::abs(srcp[x]);
-      radialCount[bin] += 1;
-    }
-  }
-
-  outputProfile.create(1, numBins);
-  float * __restrict dstp = outputProfile[0];
-  for( int i = 0; i < numBins; ++i ) {
-    dstp[i] = (float) (radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0f);
-  }
-
-  return true;
-}
-
-void dctRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
-    cv::Mat1f & outputImage)
-{
-  const cv::Size & size = outputImageSize;
-
-  const int numBins = radialProfile.cols;
-  const float binScale = float(numBins * M_SQRT1_2);
-
-  const float scaleX = float(1. / size.width);
-  const float scaleY = float(1. / size.height);
-
-  outputImage.create(size);
-
-  parallel_for(0, size.height, [=, &radialProfile, &outputImage](const auto & range) {
-
-    const float * bins = radialProfile[0];
-
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = outputImage[y];
-
-      const float dy = y * scaleY;
-      const float dy2 = dy * dy;
-
-      for (int x = 0; x < size.width; ++x) {
-        const float dx = x * scaleX;
-        const float dx2 = dx * dx;
-        const float r = std::sqrt(dx2 + dy2);
-        const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-        dstp[x] = bins[bin];
-      }
-    }
-  });
-}
-
-
 // Space Isotropic Gaussian
 cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space, double gain, bool centerDC)
 {
@@ -1205,44 +1125,6 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
   return FILTER;
 }
 
-
-cv::Mat1f dctGenerateRampFilter(const cv::Size & dctSize, double gain)
-{
-  // Isotropic Gradient for DCT
-  // For DCT, the DC component (zero frequency) is strictly at top-left (0,0).
-  // Frequencies increase radially towards the bottom-right.
-  //  fx = x / width
-  //  fy = y / height
-  // Gradient:
-  //  2 * PI * sqrt(fx^2 + fy^2)
-
-  cv::Mat1f FILTER(dctSize);
-
-  const float scaleX = float(CV_2PI / dctSize.width);
-  const float scaleY = float(CV_2PI / dctSize.height);
-  const float fgain = float(gain);
-
-  parallel_for(0, dctSize.height, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER[y];
-
-      const float dy = float(y) * scaleY;
-      const float dy2 = dy * dy;
-
-      for (int x = 0; x < dctSize.width; ++x) {
-        const float dx = float(x) * scaleX;
-        const float dx2 = dx * dx;
-
-        const float dr = std::sqrt(dx2 + dy2);
-        dstp[x] = fgain * dr;
-      }
-    }
-  });
-
-  FILTER(0, 0) = 0.0f;
-
-  return FILTER;
-}
 
 // Multiplicative Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)

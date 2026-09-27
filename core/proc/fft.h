@@ -48,13 +48,6 @@ bool fftSpectrumPhase(cv::InputArray src,
 bool fftRadialProfile(const cv::Mat1f & spectrumModule,
     cv::Mat1f & output_profile);
 
-bool dctRadialProfile(const cv::Mat1f & dctSpectrum,
-    cv::Mat1f & outputProfile);
-
-void dctRadialProfileToImage(const cv::Mat1f & radialProfile,
-    const cv::Size & outputImageSize,
-    cv::Mat1f & outputImage);
-
 // DFT Radial Profile for packed OpenCV CCS spectrum module.
 bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum,
     cv::Mat1f & outputProfile);
@@ -95,8 +88,6 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
 
 cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
-
-cv::Mat1f dctGenerateRampFilter(const cv::Size & dctSize, double gain = 1);
 
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,

@@ -467,7 +467,7 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
 
   outputFilter.create(fftSize);
 
-  // For correct bind scaling it is assumed that radial profile was created by fftRadialProfileCCS()
+  // For correct bin scaling it is assumed that radial profile was created by fftRadialProfileCCS()
   const int cx = fftSize.width / 2, cy = fftSize.height / 2;
   const float scaleX = float((NBins - 1) * M_SQRT1_2 / cx);
   const float scaleY = float((NBins - 1) * M_SQRT1_2 / cy);
@@ -796,13 +796,6 @@ void c_fft_autosharp::clearCachedData()
   _src_channels_restored.clear(), _src_channels_restored.shrink_to_fit();
 }
 
-extern bool fftPPSDecompositionCCS2(cv::InputArray _src, const cv::Mat1f & VLAP,
-    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM);
-
-
-extern bool fftPPSDecompositionCCSPlanes2(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
-
 // moon:  /mnt/data/scope/2023-08-04/MOON3/image_stacking1
 // mars: /mnt/data/scope/2022-11-13/s7/CapObj/2022-11-13Z/s2
 bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
@@ -885,7 +878,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       }
     }
 
-    fftPPSDecompositionCCS2(_src_planes[0], _vlap_filter, _src_p[0], _src_s[0]);
+    fftPPSDecompositionCCS(_src_planes[0], _vlap_filter, _src_p[0], _src_s[0]);
   }
   else if( cn == 3 ) { // BGR input
     if( _srcMask.empty() || opts.mask_inpaint_method == FFT_AUTOSHARP_INPAINT_DISABLED ) {
@@ -922,7 +915,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       }
     }
 
-    if( !fftPPSDecompositionCCSPlanes2(_src_planes, _vlap_filter, &_src_p, &_src_s) ) {
+    if( !fftPPSDecompositionCCSPlanes(_src_planes, _vlap_filter, _src_p, _src_s) ) {
       CF_ERROR("fftPPSDecompositionCCSPlanes2() fails");
       return false;
     }
@@ -950,7 +943,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       break;
   }
 
-  fftRadialProfileCCS(_src_p[0], _radial_profile);
+  fftRadialProfileCCS2(_src_p[0], _radial_profile);
 
   const bool fOK =
       createDFTInverseBlurCorrectionFilter(_inverse_filter, _radial_profile, fftSize,

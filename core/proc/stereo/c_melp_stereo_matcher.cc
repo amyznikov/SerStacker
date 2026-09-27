@@ -399,17 +399,10 @@ void c_melp_stereo_matcher::sad(int disp,
     const c_block_pyramid::sptr & rp,
     cv::Mat1f & dists)
 {
-  const c_blockarray &la =
-      lp->a;
-
-  const c_blockarray &ra =
-      rp->a;
-
-  const int rows =
-      rp->a.rows();
-
-  const int cols =
-      rp->a.cols();
+  const c_blockarray &la = lp->a;
+  const c_blockarray &ra = rp->a;
+  const int rows = rp->a.rows();
+  const int cols = rp->a.cols();
 
   if ( dists.size() != rp->a.size() ) {
     dists.create(rp->a.size());
@@ -418,12 +411,8 @@ void c_melp_stereo_matcher::sad(int disp,
   dists.setTo(0);
 
   for( int y = 0; y < rows; ++y ) {
-
     for( int x = 0; x < cols - disp; ++x ) {
-
-      dists[y][x] =
-          absdiff(ra[y][x],
-              la[y][x + disp]);
+      dists[y][x] = absdiff(ra[y][x], la[y][x + disp]);
     }
   }
 }

@@ -46,14 +46,9 @@
 template<class VectorType, class T>
 bool fit_exponential(const VectorType & x, const VectorType & y, T * a, T * b, T * c)
 {
-  const size_t n =
-      x.size();
-
-  const T x1 =
-      x[0];
-
-  const T y1 =
-      y[0];
+  const size_t n = x.size();
+  const T x1 = x[0];
+  const T y1 = y[0];
 
   T M00, M01, M11;
   T I00, I01, I11;

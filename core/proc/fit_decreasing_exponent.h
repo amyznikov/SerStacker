@@ -35,8 +35,7 @@ bool fit_decreasing_exponent(const VectorType & x, const VectorType & y, T * a, 
 {
   c_line_estimate<T> line;
 
-  const size_t n =
-      x.size();
+  const size_t n = x.size();
 
   //
   // Use logarithm of numerical derivative dy/dx for estimation of parameter 'C'

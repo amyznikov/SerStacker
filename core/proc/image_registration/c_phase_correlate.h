@@ -134,7 +134,7 @@ public: // public access for debug & visualization purposes
 
 protected: // internal helpers
   void generateBandpassFilter();
-  bool computeCorrelationMap();
+  //bool computeCorrelationMap();
   double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
 
 protected: // internal data

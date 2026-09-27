@@ -25,24 +25,12 @@ bool fftCopyMakeBorder(cv::InputArray src,
     cv::Rect * outrc = nullptr,
     cv::BorderTypes borderType = cv::BORDER_REFLECT101);
 
+void fftSwapQuadrants(cv::InputOutputArray spec);
+void fftSwapQuadrants(cv::InputArray src, cv::OutputArray dst);
+
 bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst,
     const cv::Size & fftSize,
     bool centerDC = true);
-
-bool fftImageToSpectrum(cv::InputArray image, std::vector<cv::Mat2f> & output_complex_channels,
-    const cv::Size & fftSize = cv::Size(0, 0),
-    bool centerDC = true);
-
-void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
-    cv::OutputArray dst);
-
-
-void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
-    cv::OutputArray dst,
-    const cv::Rect & rc);
-
-void fftSwapQuadrants(cv::InputOutputArray spec);
-void fftSwapQuadrants(cv::InputArray src, cv::OutputArray dst);
 
 /* Power = Re^2 + Im^2 */
 bool fftSpectrumPower(cv::InputArray src,
@@ -55,16 +43,10 @@ bool fftSpectrumModule(cv::InputArray src,
 bool fftSpectrumPhase(cv::InputArray src,
     cv::OutputArray dst);
 
+// DFT Radial Profile for unpacked spectrum module
+// The DC is assumed at center cx = cols / 2,  cy = rows / 2
 bool fftRadialProfile(const cv::Mat1f & spectrumModule,
     cv::Mat1f & output_profile);
-
-// DFT Radial Profile for packed OpenCV CCS format.
-bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum,
-    cv::Mat1f & outputProfile);
-
-void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
-    const cv::Size & outputImageSize,
-    cv::Mat1f & outputImage);
 
 bool dctRadialProfile(const cv::Mat1f & dctSpectrum,
     cv::Mat1f & outputProfile);
@@ -73,22 +55,31 @@ void dctRadialProfileToImage(const cv::Mat1f & radialProfile,
     const cv::Size & outputImageSize,
     cv::Mat1f & outputImage);
 
-bool fftSpectrumToPolar(const cv::Mat & src,
-    cv::Mat & magnitude,
-    cv::Mat & phase);
+// DFT Radial Profile for packed OpenCV CCS spectrum module.
+bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum,
+    cv::Mat1f & outputProfile);
 
-void fftSpectrumToPolar(cv::Mat2f & spec);
+// DFT Radial Profile for packed OpenCV CCS spectrum power^0.5.
+bool fftRadialProfileCCS2(const cv::Mat1f & ccsSpectrum,
+    cv::Mat1f & outputProfile);
+
+// The DC is assumed at center cx = cols / 2,  cy = rows / 2
+void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
+    const cv::Size & outputImageSize,
+    cv::Mat1f & outputImage);
+
+/**
+ * CV_32FC2 complex input -> CV_32FC2 Polar (mag/phase) output
+ * */
+bool fftSpectrumToPolar(cv::InputOutputArray complexSpectrum);
 bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPolar);
 
-bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
-    cv::Mat & dst );
+/**
+ * CV_32FC1 CCS input -> CV_32FC2 Polar (mag/phase) output
+ * */
+bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
+    bool centerDC = false);
 
-bool fftAccumulatePowerSpectrum(const cv::Mat & src,
-    cv::Mat & acc,
-    float & cnt);
-
-bool fftMaxPowerSpectrum(const cv::Mat & src,
-    cv::Mat & acc);
 
 // Space Isotropic Gaussian
 cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
@@ -130,13 +121,6 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);
 
-bool fftMulSpectrum(cv::InputArray complexSpectrum,
-    const cv::Mat1f & filter,
-    cv::OutputArray dst);
-
-// Create V-Matrix for Periodic+Smooth Decomposition
-void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
-
 // Create smooth circular cosine window to mask the corners of a planetary disk ROIs
 cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size);
 
@@ -165,25 +149,18 @@ void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & re
 
 
 /**
- * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
- * Implements Virginie Moizan decomposition directly into fft domain avoiding extra call to cv::dft().
- * The src must be singke-channel real image
- *
- * The classic way to get the same output is to use the cv::dft():
- *   cv::Mat V;
- *   fftCreateVMatrix(SRC, V);
- *   cv::dft(V, V_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
- *
- * TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum() into single function
- */
-bool fftComputeVSpectrumComplex(cv::InputArray _src,
-    cv::OutputArray _complexSpectrum);
-
-// DFT with Periodic + Smooth Decomposition.
-// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-// The target fftSize (FFT padding) is defined by the VLAP.size()
-// TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum() into single function
+* @brief DFT with Virginie Moizan decomposition into periodic and smooth components (Periodic + Smooth) in Complex CV_32FC2 format.
+* Combines boundary edges V-spectrum generation, Laplacian filtering (S), and subtraction (P).
+* The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
+*   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+*  The target fftSize (FFT padding) is defined by the VLAP.size()
+*
+* @param[in]  _src          Input single-channel real image (CV_32FC1).
+* @param[in]  VLAP          Inverse Laplace filter (size M x N, type CV_32FC1, DC at top-left corner).
+* @param[out] P_SPECTRUM    Output Complex spectrum of the PERIODIC component (size M x N, type CV_32FC2).
+* @param[out] S_SPECTRUM    Output Complex spectrum of the SMOOTH component (size M x N, type CV_32FC2).
+* @param[out] V_SPECTRUM    Optional Output Complex spectrum of the SMOOTH component (size M x N, type CV_32FC2).
+**/
 bool fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
     cv::OutputArray V_SPECTRUM = cv::noArray());
@@ -194,6 +171,42 @@ bool fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
 bool fftPPSDecompositionPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
     std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
     std::vector<cv::Mat2f> * V_SPECTRUMS = nullptr);
+
+/**
+* @brief DFT with Virginie Moizan decomposition into periodic and smooth components (Periodic + Smooth) in OpenCV CCS format.
+* Combines boundary edges V-spectrum generation, Laplacian filtering (S), and subtraction (P) into a single pass.
+* The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
+*   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+*  The target fftSize (FFT padding) is defined by the VLAP.size()
+*
+* @param[in]  _src          Input single-channel real image (CV_32FC1).
+* @param[in]  VLAP          Inverse Laplace filter (size M x N, type CV_32FC1, DC at top-left corner).
+* @param[out] P_SPECTRUM    Output CCS spectrum of the PERIODIC component (size M x N, type CV_32FC1).
+* @param[out] S_SPECTRUM    Output CCS spectrum of the SMOOTH component (size M x N, type CV_32FC1).
+**/
+bool fftPPSDecompositionCCS(cv::InputArray _src, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM);
+
+bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat1f> & P_SPECTRUMS, std::vector<cv::Mat1f> & S_SPECTRUMS);
+
+/**
+ * Analytical computation of the 2D Complex CV_32FC2 boundary edges spectrum V via 1D DFT of rows and columns.
+ * Implements Virginie Moizan decomposition directly into fft domain avoiding extra call to cv::dft().
+ * The src must be singke-channel real image
+ *
+ * The classic way to get the same output is to use the cv::dft():
+ *   cv::Mat V;
+ *   fftCreateVMatrix(SRC, V);
+ *   cv::dft(V, V_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+ */
+bool fftComputeVSpectrumComplex(cv::InputArray _src,
+    cv::OutputArray _complexSpectrum);
+
+/*
+ * Create boundary edges V-Matrix for Periodic+Smooth Decomposition
+ * */
+void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
 
 /**
 * @brief Function for automatically determining the position angle from the FFT spectrum module
@@ -216,57 +229,30 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum,
     cv::OutputArray _complexSpectrum);
 
 /**
- * CV_32FC1 CCS input -> CV_32FC2 Polar (mag/phase) output
- * */
-bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
-    bool centerDC = false);
-
-/**
  * CV_32FC2 Complex input -> CV_32FC1 CCS packed output
  * Pack full complex spectrum of the signal into OpenCV CCS format.
  **/
 bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum,
     cv::OutputArray _ccsSpectrum);
 
+
 /**
-* @brief Performs element-wise multiplication of a general-purpose real filter by a
-*        complex spectrum in OpenCV CCS format.
+* @brief Performs element-wise multiplication of a complex spectrum by a general-purpose real filter
+* @param[in] inputComplexSpectrum Input complex spectrum (size M x N, type CV_32FC2).
 * @param[in] filter Real filter (size M x N, type CV_32FC1). Each pixel corresponds to a frequency.
+* @param[out] outputComplexSpectrum Output spectrum resulting from the multiplication, in CV_32FC2 complex format.
+*/
+bool fftMulSpectrum(cv::InputArray inputComplexSpectrum, const cv::Mat1f & filter,
+    cv::OutputArray outputComplexSpectrum);
+
+/**
+* @brief Performs element-wise multiplication of a CCS packed spectrum by a general-purpose real filter
 * @param[in] ccsSpectrum Input spectrum in OpenCV CCS format (size M x N, type CV_32FC1).
+* @param[in] filter Real filter (size M x N, type CV_32FC1). Each pixel corresponds to a frequency.
 * @param[out] ccsOutputSpectrum Output spectrum resulting from the multiplication, in OpenCV CCS format.
 */
 bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray ccsOutputSpectrum);
-
-
-/*
- * Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
- * Implements Virginie Moizan decomposition.
- * Saves ~2.0 ms from ~15 ms on a 1024x1024 grayscale frame by eliminating the 2D DFT.
- * // The src must be singke-channel real image
- */
-bool fftComputeVSpectrumCCS(cv::InputArray _src,
-    cv::OutputArray ccsOutputVSpectrum);
-
-
-/*
- * DFT with Periodic + Smooth Decomposition with CCS output.
- * Uses Virginie Moizan decomposition.
- * The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
- *   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
- * The target fftSize (FFT padding) is defined by the VLAP.size()
- * The inputImage must be single-channel of any depth
- **/
-bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
-    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
-    cv::OutputArray V_SPECTRUM = cv::noArray());
-
-bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
-
-bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS,
-    std::vector<cv::Mat1f> * V_SPECTRUMS = nullptr);
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.

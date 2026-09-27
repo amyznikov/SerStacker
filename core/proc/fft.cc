@@ -148,67 +148,6 @@ bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst, const cv::Siz
   return true;
 }
 
-bool fftImageToSpectrum(cv::InputArray _src, std::vector<cv::Mat2f> & complex_channels,
-    const cv::Size & fftSize, bool centerDC)
-{
-  if( _src.depth() != CV_32F ) {
-    CF_ERROR("Invalid argument: CV_32F input image expected");
-    return false;
-  }
-
-  cv::Mat src_padded;
-  if( fftSize.empty() ||  _src.size() == fftSize ) {
-    src_padded = _src.getMat();
-  }
-  else {
-    fftCopyMakeBorder(_src, src_padded, fftSize);
-  }
-
-  const int cn = _src.channels();
-  complex_channels.resize(cn);
-
-  for( int i = 0; i < cn; ++i ) {
-    cv::dft(src_padded, complex_channels[i], cv::DFT_COMPLEX_OUTPUT);
-    if( centerDC ) {
-      fftSwapQuadrants(complex_channels[i]);
-    }
-  }
-
-  return true;
-}
-
-void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::OutputArray dst)
-{
-  const int cn = complex_channels.size();
-
-  if ( cn == 1 ) {
-    cv::idft(complex_channels[0], dst, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-  }
-  else {
-    cv::Mat channels[cn];
-
-    for ( int i = 0; i < cn; ++i ) {
-      cv::idft(complex_channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-    }
-
-    cv::merge(channels, cn, dst);
-  }
-}
-
-void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
-    cv::OutputArray dst,
-    const cv::Rect & rc)
-{
-  if ( rc.empty() ) {
-    fftImageFromSpectrum(complex_channels, dst);
-  }
-  else {
-    cv::Mat tmp;
-    fftImageFromSpectrum(complex_channels, tmp);
-    dst.move(tmp = tmp(rc));
-  }
-}
-
 void fftSwapQuadrants(cv::InputArray _src, cv::OutputArray _dst)
 {
   const cv::Mat src = _src.getMat();
@@ -363,79 +302,92 @@ bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
   return true;
 }
 
-
-
-
-bool fftSpectrumToPolar(const cv::Mat & src, cv::Mat & magnitude, cv::Mat & phase)
+/**
+ * CV_32FC2 complex input -> CV_32FC2 Polar (mag/phase) output
+ * */
+bool fftSpectrumToPolar(cv::InputOutputArray spectrum)
 {
-  if ( src.channels() != 2 || src.depth() != CV_32F ) {
-    CF_DEBUG("invalid arg: FP32 2-channel input image expected");
+  if( spectrum.empty() || spectrum.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 input/output spectrum is expected");
     return false;
   }
 
-  const cv::Mat2f csrc = src;
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
 
-  magnitude.create(src.size(), CV_32F);
-  cv::Mat1f cmag = magnitude;
+  const cv::Size size = spectrum.size();
 
-  phase.create(src.size(), CV_32F);
-  cv::Mat1f cphase = phase;
+  cv::Mat2f spec = spectrum.getMatRef();
+  uint8_t * spec_base = spec.ptr();
+  const size_t spec_stride = spec.step;
 
-  parallel_loop(0, src.rows, [&](int y) {
-    for ( int x = 0; x < csrc.cols; ++x ) {
-      cmag[y][x] = sqrt(csrc[y][x][0]*csrc[y][x][0] + csrc[y][x][1]*csrc[y][x][1] );
-      cphase[y][x] = atan2(csrc[y][x][1], csrc[y][x][0]);
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict sp = (float * )(spec_base + y * spec_stride);
+      for ( int x = 0; x < size.width; ++x, sp += 2 ) {
+        const float re = sp[0];
+        const float im = sp[1];
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          sp[0] = std::numeric_limits<float>::max(); // mag
+          sp[1] = 0; // phase
+        }
+        else if (max_val > safe_min ) {
+          sp[0] = std::sqrt(re * re + im * im);
+          sp[1] = std::atan2(im, re);
+        }
+        else {
+          sp[0] = 0;
+          sp[1] = 0;
+        }
+      }
     }
   });
 
   return true;
 }
 
-void fftSpectrumToPolar(cv::Mat2f & spec)
+/**
+ * CV_32FC2 complex input -> CV_32FC2 Polar (mag/phase) output
+ * */
+bool fftSpectrumToPolar(cv::InputArray _cart, cv::OutputArray _polar)
 {
-  static const float safety_thresh = std::sqrt(std::numeric_limits<float>::min());
-  static constexpr float minmag = std::numeric_limits<float>::min();
-
-  parallel_for(0, spec.rows, [&](const auto & range) {
-    for ( int y = rbegin(range); y < rend(range); ++y ) {
-      float * __restrict sp = (float * )spec[y];
-      for ( int x = 0; x < spec.cols; ++x, sp += 2 ) {
-        const float re = sp[0];
-        const float im = sp[1];
-        float mag = 0, phase = 0;
-        if (std::abs(re) > safety_thresh || std::abs(im) > safety_thresh) {
-          if ((mag = std::sqrt(re * re + im * im)) > minmag ) {
-            phase = std::atan2(im, re);
-          }
-        }
-        sp[0] = mag;
-        sp[1] = phase;
-      }
-    }
-  });
-}
-
-bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPolar)
-{
-  if( spectrumCart.empty() || spectrumCart.type() != CV_32FC2 ) {
-    CF_ERROR("Invalid argument: CV_32FC2 input spectum is expected");
+  if( _cart.empty() || _cart.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 complex spectrum is expected on input");
     return false;
   }
 
-  const cv::Mat2f cart = spectrumCart.getMat();
+  if ( _polar.fixedType() && _polar.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 polar spectrum is expected on output");
+    return false;
+  }
 
-  spectrumPolar.create(cart.size(), CV_32FC2);
-  cv::Mat2f polar = spectrumPolar.getMatRef();
+  if( _polar.fixedSize() && _polar.size() != _cart.size() ) {
+    CF_ERROR("Invalid argument: output spectrum fixed size %dx%d does not match input size %dx%d",
+        _polar.cols(), _polar.rows(), _cart.cols(), _cart.rows());
+    return 0;
+  }
 
   static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
   static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
 
-  parallel_for(0, cart.rows, [&](const auto & range) {
-    for ( int y = rbegin(range); y < rend(range); ++y ) {
-      const float * cartp = (const float * )cart[y];
-      float * __restrict polarp = (float * )polar[y];
+  const cv::Size size = _cart.size();
 
-      for ( int x = 0; x < cart.cols; ++x, cartp += 2, polarp += 2 ) {
+  const cv::Mat2f cart = _cart.getMat();
+  const uint8_t * cart_base = cart.ptr();
+  const size_t cart_stride = cart.step;
+
+  _polar.create(size, CV_32FC2);
+  cv::Mat2f polar = _polar.getMatRef();
+  uint8_t * polar_base = polar.ptr();
+  const size_t polar_stride = polar.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * cartp = (const float * )(cart_base + y * cart_stride);
+      float * __restrict polarp = (float * )(polar_base + y * polar_stride);
+
+      for ( int x = 0; x < size.width; ++x, cartp += 2, polarp += 2 ) {
         const float re = cartp[0];
         const float im = cartp[1];
         const float max_val = std::fmax(std::abs(re), std::abs(im));
@@ -458,110 +410,179 @@ bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPol
   return true;
 }
 
-bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::Mat & dst )
+/**
+ * Single-Pass CCS Unpack + Polar Conversion (Magnitude, Phase)
+ * Input:  CV_32FC1 CCS Packed Spectrum
+ * Output: CV_32FC2 Polar Spectrum (Channel 0: Magnitude, Channel 1: Phase)
+ * */
+bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum, bool centerDC)
 {
-  const cv::Mat1f cmag = magnitude;
-  const cv::Mat1f cphase = phase;
-
-  dst.create(cmag.size(), CV_32FC2);
-  cv::Mat2f cdst = dst;
-
-  parallel_loop(0, cdst.rows, [&](int y) {
-    for ( int x = 0; x < cdst.cols; ++x ) {
-      const float sa = std::sin(cphase[y][x]);
-      const float ca = std::cos(cphase[y][x]);
-      cdst[y][x][0] = cmag[y][x] * ca;
-      cdst[y][x][1] = cmag[y][x] * sa;
-    }
-  });
-
-  return true;
-}
-
-bool fftRadialProfile(const cv::Mat1f & spectrumModule, cv::Mat1f & outputProfile)
-{
-  // Include corners
-  // The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
-  const int cx = spectrumModule.cols / 2;
-  const int cy = spectrumModule.rows / 2;
-  const float R = std::sqrt(cx * cx + cy * cy);
-  const int numBins = std::max(1, int(R));
-
-  std::vector<float> radialSum(numBins, 0.0f);
-  std::vector<float> radialCount(numBins, 0.0f);
-
-  const float scaleX = float(1. / cx);
-  const float scaleY = float(1. / cy);
-  const float binScale = float(numBins * M_SQRT1_2);
-
-  for( int y = 0; y <= cy; ++y ) {
-    const float dy = (y - cy) * scaleY;
-    const float dy2 = dy * dy;
-
-    const float * srcp = spectrumModule[y];
-    const int xmax = (y == cy) ? (cx + 1) : spectrumModule.cols;
-    for( int x = 0; x < xmax; ++x ) {
-      const float dx = (x - cx) *  scaleX;
-      const float dx2 = dx * dx;
-
-      // Dimensionless radius of the ellipse:
-      // 0.0 at the center, 1.0 at the sides of the matrix, ~1.414 at the corners
-      const float r = std::sqrt(dx2 + dy2);
-      const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-      const int w = (y < cy ? 2 : (x == cx ? 1 : 2));
-      radialSum[bin] += srcp[x] * w;
-      radialCount[bin] += w;
-    }
+  if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
+    CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
+    return false;
+  }
+  if ( _polarSpectrum.fixedType() && _polarSpectrum.type() != CV_32FC2 ) {
+    CF_ERROR("CV_32FC2 polar output spectrum destination expected");
+    return false;
   }
 
-  outputProfile.create(1, numBins);
-  float * __restrict dstp = outputProfile[0];
-  for( int i = 0; i < numBins; ++i ) {
-    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0f);
-  }
+  const int rows = _ccsSpectrum.rows(); // M
+  const int cols = _ccsSpectrum.cols(); // N
+  const int half_rows = (rows + 1) / 2;
+  const int half_cols = (cols + 1) / 2;
+  const bool has_even_rows = (rows & 1) == 0;
+  const bool has_even_cols = (cols & 1) == 0;
 
-  return true;
-}
+  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
+  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
 
-void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
-    cv::Mat1f & outputImage)
-{
-  const cv::Size & size = outputImageSize;
+  const int shift_y = centerDC ? (rows / 2) : 0;
+  const int shift_x = centerDC ? (cols / 2) : 0;
 
-  const float cx = size.width / 2;
-  const float cy = size.height / 2;
-  const int numBins = radialProfile.cols;
+  const cv::Mat1f ccsSpectrum = _ccsSpectrum.getMat();
+  const uint8_t * ccs_base = ccsSpectrum.ptr();
+  const size_t ccs_stride = ccsSpectrum.step;
 
-  const float scaleX = float(1.f / cx);
-  const float scaleY = float(1.f / cy);
-  const float binScale = float(numBins * M_SQRT1_2);
+  _polarSpectrum.create(rows, cols, CV_32FC2);
+  cv::Mat2f polarSpectrum = _polarSpectrum.getMatRef();
+  uint8_t * polar_base = polarSpectrum.ptr();
+  const size_t polar_stride = polarSpectrum.step;
 
-  outputImage.create(size);
-
-  parallel_for(0, size.height, [=, &radialProfile, &outputImage](const auto & range) {
-
-    const float * bins = radialProfile[0];
-
+  parallel_for(0, rows, [=](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = outputImage[y];
 
-      const float dy = (y - cy) * scaleY;
-      const float dy2 = dy * dy;
+      const int dst_y = ((y + shift_y) < rows) ? y + shift_y : y + shift_y - rows;
+      cv::Vec2f * __restrict polarp = (cv::Vec2f*)(polar_base + dst_y * polar_stride);
 
-      for (int x = 0; x < size.width; ++x) {
-        const float dx = (x - cx) * scaleX;
-        const float dx2 = dx * dx;
-        const float r = std::sqrt(dx2 + dy2);
-        const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-        dstp[x] = bins[bin];
+      // 1. DC (X = 0)
+      if ( true ) {
+        const int dst_x = shift_x;
+        float re = 0, im = 0;
+        if (y == 0) {
+          re = *((const float *)(ccs_base + 0 * ccs_stride));
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = *((const float *)(ccs_base + (rows - 1) * ccs_stride));
+        }
+        else if (y < half_rows) {
+          re = *((const float *)(ccs_base + (2 * y - 1) * ccs_stride));
+          im = *((const float *)(ccs_base + (2 * y) * ccs_stride));
+        }
+        else {
+          const int sym_y = rows - y;
+          re = *((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride));
+          im = -*((const float *)(ccs_base + (2 * sym_y) * ccs_stride));
+        }
+
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
+          polarp[dst_x][1] = 0;
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x][0] = std::sqrt(re * re + im * im);
+          polarp[dst_x][1] = std::atan2(im, re);
+        }
+        else {
+          polarp[dst_x][0] = 0;
+          polarp[dst_x][1] = 0;
+        }
+      }
+
+      // 2. Inner columns (0 < X < N/2)
+      const float * ccsp = (const float * )(ccs_base + y * ccs_stride);
+      const float * ccsp_sym = (const float *)(ccs_base + (y ? (rows - y) : 0 ) * ccs_stride);
+
+      for (int x = 1; x < half_cols; ++x) {
+        // Current element (x)
+        if ( true ) {
+          const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+          const float re = ccsp[2 * x - 1];
+          const float im = ccsp[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
+            polarp[dst_x][1] = 0; // phase
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_x][0] = std::sqrt(re * re + im * im);
+            polarp[dst_x][1] = std::atan2(im, re);
+          }
+          else {
+            polarp[dst_x][0] = 0;
+            polarp[dst_x][1] = 0;
+          }
+        }
+
+        // Symmetrical element (sym_x), conjugation
+        if ( true ) {
+          const int sym_x = cols - x;
+          const int dst_sym_x = ((sym_x + shift_x) < cols) ? sym_x + shift_x : sym_x + shift_x - cols;
+          const float re = ccsp_sym[2 * x - 1];
+          const float im = -ccsp_sym[2 * x];
+
+          const float max_val = std::fmax(std::abs(re), std::abs(im));
+          if (max_val >= safe_max) {
+            polarp[dst_sym_x][0] = std::numeric_limits<float>::max(); // mag
+            polarp[dst_sym_x][1] = 0; // phase
+          }
+          else if (max_val > safe_min ) {
+            polarp[dst_sym_x][0] = std::sqrt(re * re + im * im);
+            polarp[dst_sym_x][1] = std::atan2(im, re);
+          }
+          else {
+            polarp[dst_sym_x][0] = 0;
+            polarp[dst_sym_x][1] = 0;
+          }
+        }
+      }
+
+      // 3. Nyquist column X = N/2
+      if (has_even_cols) {
+        const int last_ccs_col = cols - 1;
+        const int x = cols / 2;
+        const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
+        float re = 0.0f;
+        float im = 0.0f;
+
+        if (y == 0) {
+          re = ((const float *)(ccs_base + 0 * ccs_stride))[last_ccs_col];
+        }
+        else if (has_even_rows && y == rows / 2) {
+          re = ((const float *)(ccs_base + (rows - 1) * ccs_stride))[last_ccs_col];
+        }
+        else if (y < half_rows) {
+          re = ((const float *)(ccs_base + (2 * y - 1) * ccs_stride))[last_ccs_col];
+          im = ((const float *)(ccs_base + (2 * y) * ccs_stride))[last_ccs_col];
+        }
+        else {
+          const int sym_y = rows - y;
+          re = ((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride))[last_ccs_col];
+          im = -((const float *)(ccs_base + (2 * sym_y) * ccs_stride))[last_ccs_col];
+        }
+        const float max_val = std::fmax(std::abs(re), std::abs(im));
+        if (max_val >= safe_max) {
+          polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
+          polarp[dst_x][1] = 0; // phase
+        }
+        else if (max_val > safe_min ) {
+          polarp[dst_x][0] = std::sqrt(re * re + im * im);
+          polarp[dst_x][1] = std::atan2(im, re);
+        }
+        else {
+          polarp[dst_x][0] = 0;
+          polarp[dst_x][1] = 0;
+        }
       }
     }
   });
+
+  return true;
 }
 
-// DFT Radial Profile for packed OpenCV CCS spectrum.
+// DFT Radial Profile for packed OpenCV CCS spectrum module.
 // Include corners. The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
-// TODO: check if mag = sqrt(re^2 + im^2) is really required for radial profile, as it is any way will logarithmed
 bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum, cv::Mat1f & outputProfile)
 {
   INSTRUMENT_REGION("");
@@ -697,6 +718,228 @@ bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum, cv::Mat1f & outputProfil
   return true;
 }
 
+// DFT Radial Profile for packed OpenCV CCS spectrum power^0.5.
+// Include corners. The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
+bool fftRadialProfileCCS2(const cv::Mat1f & ccsSpectrum, cv::Mat1f & outputProfile)
+{
+  INSTRUMENT_REGION("");
+
+  if( ccsSpectrum.empty() ) {
+    return false;
+  }
+
+  const int rows = ccsSpectrum.rows;
+  const int cols = ccsSpectrum.cols;
+  const int cx = cols / 2, cy = rows / 2;
+  const int Rmax = (int)(std::sqrt(cx * cx + cy * cy));
+  const int numBins = Rmax + 1;
+  const float scaleX = float(Rmax * M_SQRT1_2 / cx);
+  const float scaleY = float(Rmax * M_SQRT1_2 / cy);
+
+  std::vector<float> globalSum(numBins, 0.0f);
+  std::vector<float> globalCount(numBins, 0.0f);
+  std::mutex mtx;
+
+  const bool is_even_x = (cols % 2 == 0);
+  const bool is_even_y = (rows % 2 == 0);
+
+  const uint8_t * spec_base = ccsSpectrum.ptr();
+  const size_t spec_stride = ccsSpectrum.step;
+
+  parallel_for(0, rows, [=, &globalSum, &globalCount, &mtx](const auto & range) {
+
+    std::vector<float> localSum(numBins, 0.0f);
+    std::vector<float> localCount(numBins, 0.0f);
+
+    float * __restrict lsump = localSum.data();
+    float * __restrict lcountp = localCount.data();
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * srcp = (const float * )(spec_base + y * spec_stride);
+
+      // True vertical frequency for outer axes (Intel IPL logic)
+      int true_freq_y = 0;
+      bool is_pure_real_axis_point = false;
+      if (y == 0) {
+        true_freq_y = 0; // DC
+        is_pure_real_axis_point = true;
+      }
+      else if (is_even_y && y == rows - 1) {
+        true_freq_y = rows / 2; // Vertical Nyquist
+        is_pure_real_axis_point = true;
+      }
+      else {
+        // Even rows of the CCS matrix contain Im components;
+        // Odd rows contain Re components.
+        true_freq_y = ((y & 1) == 0) ? (y / 2) : ((y + 1) / 2);
+      }
+
+      // DC(X = 0) Vertical axis
+      if ( true ) {
+        // Dimensionless dy for vertical axes
+        const float dy = true_freq_y * scaleY;
+        const int bin = (int)(dy);
+
+        if (is_pure_real_axis_point) {
+          // DC or vertical Nyquist — unique isolated real spectral points
+          lsump[bin] += srcp[0] * srcp[0];
+          lcountp[bin] += 1;
+        }
+        else {
+          // Intermediate axis cell (Re or Im). Since the x=0 axis is symmetric
+          // only with respect to the left/right half-plane, its weight is 2.
+          // Each component (Re and Im) will be added independently during the parallel_for pass.
+          lsump[bin] += 2 * srcp[0] * srcp[0];
+          lcountp[bin] += 2;
+        }
+      }
+
+      // For internal columns (X = 1 ... half_cols - 1), the physical frequency along Y follows
+      // the standard grid of the unshifted spectrum.
+      // Each point is complex and has a hidden mirror counterpart in the right (unpacked) part of the spectrum.
+      // Therefore, its weight is strictly equal to 2.
+      if ( true ) {
+        const int half_cols = (cols + 1) / 2;
+        const float dy = float( ((y <= rows / 2) ? y : (rows - y)) * scaleY);
+        const float dy2 = dy * dy;
+
+        for (int x = 1; x < half_cols; ++x) {
+          const float dx = x * scaleX;
+          const int r = (int )(std::sqrt(dx * dx + dy2));
+          const int bin = r;
+          const float re = srcp[2 * x - 1];
+          const float im = srcp[2 * x];
+          const float mag = (re * re + im * im);
+          lsump[bin] += 2 * mag;
+          lcountp[bin] += 2;
+        }
+      }
+
+      // Nyquist column X = N/2 if cols is even, the physical index is cols - 1
+      if (is_even_x) {
+        // Dimensionless dy for vertical axes
+        const int last_ccs_col = cols - 1;
+        const float dx = (cols / 2) * scaleX;
+        const float dy = true_freq_y * scaleY;
+        const float dx2 = dx * dx;
+        const float dy2 = dy * dy;
+        const int r = (int)(std::sqrt(dx2 + dy2));
+        const int bin = r;
+
+        if (is_pure_real_axis_point) {
+          // Horizontal (0, N/2) or diagonal (M/2, N/2) Nyquist — purely real points
+          lsump[bin] += srcp[last_ccs_col] * srcp[last_ccs_col];
+          lcountp[bin] += 1;
+        }
+        else {
+          // Intermediate horizontal Nyquist component (broadcast to left/right, weight 2)
+          lsump[bin] += 2 * srcp[last_ccs_col] * srcp[last_ccs_col];
+          lcountp[bin] += 2;
+        }
+      }
+    }
+
+    std::lock_guard<std::mutex> lock(mtx);
+    for (int b = 0; b < numBins; ++b) {
+      globalSum[b] += lsump[b];
+      globalCount[b] += lcountp[b];
+    }
+  });
+
+  outputProfile.create(1, numBins);
+  float * __restrict dstp = outputProfile.ptr<float>(0);
+  for( int i = 0; i < numBins; ++i ) {
+    dstp[i] = (globalCount[i] > 0.0f) ? std::sqrt(globalSum[i] / globalCount[i]) : 0.0f;
+  }
+
+  return true;
+}
+
+// DFT Radial Profile for unpacked spectrum module
+// Include corners
+// The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
+// The DC is assumed at center cx = cols / 2,  cy = rows / 2
+bool fftRadialProfile(const cv::Mat1f & spectrumModule, cv::Mat1f & outputProfile)
+{
+  const int rows = spectrumModule.rows;
+  const int cols = spectrumModule.cols;
+  const int cx = cols / 2, cy = rows / 2;
+  const int Rmax = (int)(std::sqrt(cx * cx + cy * cy));
+  const int numBins = Rmax + 1;
+  const float scaleX = float(Rmax * M_SQRT1_2 / cx);
+  const float scaleY = float(Rmax * M_SQRT1_2 / cy);
+
+  std::vector<float> radialSum(numBins, 0.0f);
+  std::vector<float> radialCount(numBins, 0.0f);
+
+  for( int y = 0; y <= cy; ++y ) {
+    const float dy = (y - cy) * scaleY;
+    const float dy2 = dy * dy;
+
+    const float * srcp = spectrumModule[y];
+    const int xmax = (y == cy) ? (cx + 1) : spectrumModule.cols;
+    for( int x = 0; x < xmax; ++x ) {
+      const float dx = (x - cx) *  scaleX;
+      const float dx2 = dx * dx;
+
+      // Dimensionless radius of the ellipse:
+      // 0.0 at the center, 1.0 at the sides of the matrix, ~1.414 at the corners
+      const int w = (y < cy ? 2 : (x == cx ? 1 : 2));
+      const int r = (int)(std::sqrt(dx2 + dy2));
+      //const int bin = std::clamp(r, 0, numBins - 1);
+      const int bin = r;
+      radialSum[bin] += srcp[x] * w;
+      radialCount[bin] += w;
+    }
+  }
+
+  outputProfile.create(1, numBins);
+  float * __restrict dstp = outputProfile[0];
+  for( int i = 0; i < numBins; ++i ) {
+    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0f);
+  }
+
+  return true;
+}
+
+
+// The DC is assumed at center cx = cols / 2,  cy = rows / 2
+void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
+    cv::Mat1f & outputImage)
+{
+  const cv::Size & size = outputImageSize;
+  const int NBins = radialProfile.cols;
+
+  // For correct bin scaling it is assumed that radial profile
+  // was created by fftRadialProfileCCS() or fftRadialProfile()
+  const int cx = size.width / 2, cy = size.height / 2;
+  const float scaleX = float((NBins - 1) * M_SQRT1_2 / cx);
+  const float scaleY = float((NBins - 1) * M_SQRT1_2 / cy);
+
+  outputImage.create(size);
+
+  parallel_for(0, size.height, [=, &radialProfile, &outputImage](const auto & range) {
+
+    const float * bins = radialProfile[0];
+
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = outputImage[y];
+
+      const float dy = (y - cy) * scaleY;
+      const float dy2 = dy * dy;
+
+      for (int x = 0; x < size.width; ++x) {
+        const float dx = (x - cx) * scaleX;
+        const float dx2 = dx * dx;
+        const int r = (int)(std::sqrt(dx2 + dy2));
+        //const int bin = std::clamp(r, 0, NBins - 1);
+        const int bin = r;
+        dstp[x] = bins[bin];
+      }
+    }
+  });
+}
+
 
 bool dctRadialProfile(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
 {
@@ -776,134 +1019,6 @@ void dctRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
   });
 }
 
-bool fftAccumulatePowerSpectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
-{
-  static const auto compute_magnitue =
-      [](cv::Mat & src) {
-
-        typedef std::complex<float> complex;
-
-        const cv::Mat_<complex> spec = src;
-        cv::Mat1f mag(spec.size());
-
-        for ( int y = 0; y < spec.rows; ++y ) {
-          for ( int x = 0; x < spec.cols; ++x ) {
-            mag[y][x] = std::abs(spec[y][x]);
-          }
-        }
-
-        src = std::move(mag);
-      };
-
-
-  cv::Mat img;
-  cv::Size fft_size;
-
-  const int cn = src.channels();
-  cv::Mat channels[cn];
-
-  if ( !acc.empty() && cnt > 0 ) {
-    fft_size = acc.size();
-  }
-  else {
-    fft_size = fftGetOptimalSize(src.size(), cv::Size(32,32));
-    acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
-    acc.setTo(0);
-    cnt = 0;
-  }
-
-  fftCopyMakeBorder(src, img, fft_size, nullptr);
-
-  if ( cn == 1 ) {
-    channels[0] = img;
-  }
-  else {
-    cv::split(img, channels);
-  }
-
-  for ( int i = 0; i < cn; ++i ) {
-    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
-    compute_magnitue(channels[i]);
-  }
-
-  if ( cn > 1 ) {
-    cv::merge(channels, cn, img);
-  }
-  else {
-    img = channels[0];
-  }
-
-  cv::add(acc, img, acc);
-  ++cnt;
-
-  return true;
-}
-
-bool fftMaxPowerSpectrum(const cv::Mat & src, cv::Mat & acc)
-{
-  static const auto compute_magnitue =
-      [](cv::Mat & src) {
-
-        typedef std::complex<float> complex;
-
-        const cv::Mat_<complex> spec = src;
-        cv::Mat1f mag(spec.size());
-
-        for ( int y = 0; y < spec.rows; ++y ) {
-          for ( int x = 0; x < spec.cols; ++x ) {
-            mag[y][x] = std::abs(spec[y][x]);
-          }
-        }
-
-        src = std::move(mag);
-      };
-
-
-  cv::Size fft_size;
-  cv::Mat img, spec;
-
-  const int cn = src.channels();
-  cv::Mat channels[cn];
-
-  if ( !acc.empty() ) {
-    fft_size = acc.size();
-  }
-  else {
-    fft_size = fftGetOptimalSize(src.size(), cv::Size(32, 32));
-    acc.create(fft_size, CV_MAKETYPE(CV_32F, src.channels()));
-    acc.setTo(0);
-  }
-
-  if ( !fftCopyMakeBorder(src, img, fft_size, nullptr) ) {
-    CF_ERROR("copyMakeFFTBorder(src=%dx%d, img, fft_size=%dx%d) fails",
-        src.cols, src.rows, fft_size.width, fft_size.height);
-    return false;
-  }
-
-  if ( cn == 1 ) {
-    channels[0] = img;
-  }
-  else {
-    cv::split(img, channels);
-  }
-
-
-  for ( int i = 0; i < cn; ++i ) {
-    cv::dft(channels[i], channels[i], cv::DFT_COMPLEX_OUTPUT);
-    compute_magnitue(channels[i]);
-  }
-
-  if ( cn > 1 ) {
-    cv::merge(channels, cn, img);
-  }
-  else {
-    img = channels[0];
-  }
-
-  cv::max(acc, img, acc);
-
-  return true;
-}
 
 // Space Isotropic Gaussian
 cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space, double gain, bool centerDC)
@@ -1316,6 +1431,7 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
 {
   cv::Mat1f FILTER(fftSize);
 
+  //  FIXME: check how to interpret abnormal input gain argument
   //  if (grain_size <= 0) {
   //    grain_size = 1;
   //  }
@@ -1454,19 +1570,6 @@ void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & re
   });
 }
 
-bool fftMulSpectrum(cv::InputArray complexSpectrum, const cv::Mat1f & filter,
-    cv::OutputArray dst)
-{
-  cv::Mat2f F;
-  const cv::Mat planes[] {
-      filter, filter
-  };
-  cv::merge(planes, 2, F);
-  cv::multiply(F, complexSpectrum, dst);
-
-  return true;
-}
-
 /**
  * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
  * Implements Virginie Moizan decomposition directly into fft domain avoiding extra call to cv::dft().
@@ -1595,8 +1698,6 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
 // The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
 // const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
 // The target fftSize (FFT padding) is defined by the VLAP.size()
-// TODO: Check if it has sense to combine fftComputeVSpectrumComplex() with fftMulSpectrum()
-// into single function
 bool fftPPSDecomposition(cv::InputArray _src, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
     cv::OutputArray outputV_SPECTRUM /*= cv::noArray()*/)
@@ -2139,176 +2240,6 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum, cv::OutputAr
   return true;
 }
 
-/**
- * Single-Pass CCS Unpack + Polar Conversion (Magnitude, Phase)
- * Input:  CV_32FC1 CCS Packed Spectrum
- * Output: CV_32FC2 Polar Spectrum (Channel 0: Magnitude, Channel 1: Phase)
- * */
-bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum, bool centerDC)
-{
-  if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
-    CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
-    return false;
-  }
-  if ( _polarSpectrum.fixedType() && _polarSpectrum.type() != CV_32FC2 ) {
-    CF_ERROR("CV_32FC2 polar output spectrum destination expected");
-    return false;
-  }
-
-  const int rows = _ccsSpectrum.rows(); // M
-  const int cols = _ccsSpectrum.cols(); // N
-  const int half_rows = (rows + 1) / 2;
-  const int half_cols = (cols + 1) / 2;
-  const bool has_even_rows = (rows & 1) == 0;
-  const bool has_even_cols = (cols & 1) == 0;
-
-  static const float safe_min = std::sqrt(std::numeric_limits<float>::min()); // ~1.08e-19f
-  static const float safe_max = std::sqrt(std::numeric_limits<float>::max()); // ~1.84e19f;
-
-  const int shift_y = centerDC ? (rows / 2) : 0;
-  const int shift_x = centerDC ? (cols / 2) : 0;
-
-  const cv::Mat1f ccsSpectrum = _ccsSpectrum.getMat();
-  const uint8_t * ccs_base = ccsSpectrum.ptr();
-  const size_t ccs_stride = ccsSpectrum.step;
-
-  _polarSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f polarSpectrum = _polarSpectrum.getMatRef();
-  uint8_t * polar_base = polarSpectrum.ptr();
-  const size_t polar_stride = polarSpectrum.step;
-
-  parallel_for(0, rows, [=](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-
-      const int dst_y = ((y + shift_y) < rows) ? y + shift_y : y + shift_y - rows;
-      cv::Vec2f * __restrict polarp = (cv::Vec2f*)(polar_base + dst_y * polar_stride);
-
-      // 1. DC (X = 0)
-      if ( true ) {
-        const int dst_x = shift_x;
-        float re = 0, im = 0;
-        if (y == 0) {
-          re = *((const float *)(ccs_base + 0 * ccs_stride));
-        }
-        else if (has_even_rows && y == rows / 2) {
-          re = *((const float *)(ccs_base + (rows - 1) * ccs_stride));
-        }
-        else if (y < half_rows) {
-          re = *((const float *)(ccs_base + (2 * y - 1) * ccs_stride));
-          im = *((const float *)(ccs_base + (2 * y) * ccs_stride));
-        }
-        else {
-          const int sym_y = rows - y;
-          re = *((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride));
-          im = -*((const float *)(ccs_base + (2 * sym_y) * ccs_stride));
-        }
-
-        const float max_val = std::fmax(std::abs(re), std::abs(im));
-        if (max_val >= safe_max) {
-          polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
-          polarp[dst_x][1] = 0;
-        }
-        else if (max_val > safe_min ) {
-          polarp[dst_x][0] = std::sqrt(re * re + im * im);
-          polarp[dst_x][1] = std::atan2(im, re);
-        }
-        else {
-          polarp[dst_x][0] = 0;
-          polarp[dst_x][1] = 0;
-        }
-      }
-
-      // 2. Inner columns (0 < X < N/2)
-      const float * ccsp = (const float * )(ccs_base + y * ccs_stride);
-      const float * ccsp_sym = (const float *)(ccs_base + (y ? (rows - y) : 0 ) * ccs_stride);
-
-      for (int x = 1; x < half_cols; ++x) {
-        // Current element (x)
-        if ( true ) {
-          const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
-          const float re = ccsp[2 * x - 1];
-          const float im = ccsp[2 * x];
-
-          const float max_val = std::fmax(std::abs(re), std::abs(im));
-          if (max_val >= safe_max) {
-            polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
-            polarp[dst_x][1] = 0; // phase
-          }
-          else if (max_val > safe_min ) {
-            polarp[dst_x][0] = std::sqrt(re * re + im * im);
-            polarp[dst_x][1] = std::atan2(im, re);
-          }
-          else {
-            polarp[dst_x][0] = 0;
-            polarp[dst_x][1] = 0;
-          }
-        }
-
-        // Symmetrical element (sym_x), conjugation
-        if ( true ) {
-          const int sym_x = cols - x;
-          const int dst_sym_x = ((sym_x + shift_x) < cols) ? sym_x + shift_x : sym_x + shift_x - cols;
-          const float re = ccsp_sym[2 * x - 1];
-          const float im = -ccsp_sym[2 * x];
-
-          const float max_val = std::fmax(std::abs(re), std::abs(im));
-          if (max_val >= safe_max) {
-            polarp[dst_sym_x][0] = std::numeric_limits<float>::max(); // mag
-            polarp[dst_sym_x][1] = 0; // phase
-          }
-          else if (max_val > safe_min ) {
-            polarp[dst_sym_x][0] = std::sqrt(re * re + im * im);
-            polarp[dst_sym_x][1] = std::atan2(im, re);
-          }
-          else {
-            polarp[dst_sym_x][0] = 0;
-            polarp[dst_sym_x][1] = 0;
-          }
-        }
-      }
-
-      // 3. Nyquist column X = N/2
-      if (has_even_cols) {
-        const int last_ccs_col = cols - 1;
-        const int x = cols / 2;
-        const int dst_x = ((x + shift_x) < cols) ? x + shift_x : x + shift_x - cols;
-        float re = 0.0f;
-        float im = 0.0f;
-
-        if (y == 0) {
-          re = ((const float *)(ccs_base + 0 * ccs_stride))[last_ccs_col];
-        }
-        else if (has_even_rows && y == rows / 2) {
-          re = ((const float *)(ccs_base + (rows - 1) * ccs_stride))[last_ccs_col];
-        }
-        else if (y < half_rows) {
-          re = ((const float *)(ccs_base + (2 * y - 1) * ccs_stride))[last_ccs_col];
-          im = ((const float *)(ccs_base + (2 * y) * ccs_stride))[last_ccs_col];
-        }
-        else {
-          const int sym_y = rows - y;
-          re = ((const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride))[last_ccs_col];
-          im = -((const float *)(ccs_base + (2 * sym_y) * ccs_stride))[last_ccs_col];
-        }
-        const float max_val = std::fmax(std::abs(re), std::abs(im));
-        if (max_val >= safe_max) {
-          polarp[dst_x][0] = std::numeric_limits<float>::max(); // mag
-          polarp[dst_x][1] = 0; // phase
-        }
-        else if (max_val > safe_min ) {
-          polarp[dst_x][0] = std::sqrt(re * re + im * im);
-          polarp[dst_x][1] = std::atan2(im, re);
-        }
-        else {
-          polarp[dst_x][0] = 0;
-          polarp[dst_x][1] = 0;
-        }
-      }
-    }
-  });
-
-  return true;
-}
 
 /**
  * CV_32FC2 Complex input -> CV_32FC1 CCS packed output
@@ -2400,7 +2331,69 @@ bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum, cv::OutputArray _ccsSpe
 }
 
 /**
-* @brief Performs element-wise multiplication of complex spectrum in OpenCV CCS format
+* @brief Performs element-wise multiplication of a complex spectrum by a general-purpose real filter
+* @param[in] complexSpectrum Input complex spectrum (size M x N, type CV_32FC2).
+* @param[in] filter Real filter (size M x N, type CV_32FC1). Each pixel corresponds to a frequency.
+* @param[out] outputComplexSpectrum Output spectrum resulting from the multiplication, in CV_32FC2 complex format.
+*/
+bool fftMulSpectrum(cv::InputArray _inputComplexSpectrum, const cv::Mat1f & filter,
+    cv::OutputArray _outputComplexSpectrum)
+{
+  INSTRUMENT_REGION("");
+
+  if ( _inputComplexSpectrum.empty() || _inputComplexSpectrum.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 complex spectrum is expected on input");
+    return false;
+  }
+
+  if ( _outputComplexSpectrum.fixedType() && _outputComplexSpectrum.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 oupyr complex spectrum is expected on output");
+    return false;
+  }
+
+  if ( _outputComplexSpectrum.fixedSize() && _outputComplexSpectrum.size() != _inputComplexSpectrum.size() ) {
+    CF_ERROR("Output complex spectrum fixed size not match to input spectrum size");
+    return false;
+  }
+
+  if ( filter.size() != _inputComplexSpectrum.size() ) {
+    CF_ERROR("Filter size not match to input spectrum size");
+    return false;
+  }
+
+  const cv::Size fftSize = _inputComplexSpectrum.size();
+  const cv::Mat2f srcSpectrum = _inputComplexSpectrum.getMat();
+  const uint8_t * src_base = srcSpectrum.ptr();
+  const size_t src_stride = srcSpectrum.step;
+
+  _outputComplexSpectrum.create(fftSize, CV_32FC2);
+  cv::Mat2f outputSpectrum = _outputComplexSpectrum.getMatRef();
+  uint8_t * dst_base = outputSpectrum.ptr();
+  const size_t dst_stride = outputSpectrum.step;
+
+  const uint8_t * filter_base = filter.ptr();
+  const size_t filter_stride = filter.step;
+  parallel_for(0, fftSize.height, [=](const auto & range) {
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * fltp = (const float *)(filter_base + y * filter_stride);
+      const float * srcp = (const float *)(src_base + y * src_stride);
+      float * __restrict dstp = (float *)(dst_base + y * dst_stride);
+
+      for( int x = 0; x < fftSize.width; ++x, ++fltp, srcp += 2, dstp += 2 ) {
+        const float w = fltp[0];
+        const float re = srcp[0];
+        const float im = srcp[1];
+        dstp[0] = w * re;
+        dstp[1] = w * im;
+      }
+    }
+  });
+
+  return true;
+}
+
+/**
+* @brief Perform element-wise multiplication of complex spectrum in OpenCV CCS format
 *      by a general-purpose real amplitude filter by a
 * @param[in] ccsInputSpectrum Input spectrum in OpenCV CCS format (size M x N, type CV_32FC1).
 * @param[in] filter Real filter (size M x N, type CV_32FC1).
@@ -2499,228 +2492,19 @@ bool fftMulSpectrumCCS(cv::InputArray _ccsInputSpectrum, const cv::Mat1f & filte
 }
 
 
-// Analytical computation of the 2D CCS boundary differences spectrum via 1D DFT of rows and columns.
-// Implements Virginie Moizan decomposition.
-// Saves ~2.0 ms from ~15 ms on a 1024x1024 grayscale frame by eliminating the 2D DFT.
-// The src must be single-channel real image
-bool fftComputeVSpectrumCCS(cv::InputArray _src, cv::OutputArray ccsOutputVSpectrum)
-{
-  if( _src.empty() || _src.channels() != 1 ) {
-    CF_ERROR("Single-channel input image expected");
-    return false;
-  }
-
-  if ( ccsOutputVSpectrum.fixedType() && ccsOutputVSpectrum.type() != CV_32FC1 ) {
-    CF_ERROR("CV_32FC1 output V spectrum destination expected");
-    return false;
-  }
-
-  if ( ccsOutputVSpectrum.fixedSize() && ccsOutputVSpectrum.size() != _src.size() ) {
-    CF_ERROR("Output matrix size %dx%d not match to input image size %dx%d",
-        ccsOutputVSpectrum.cols(), ccsOutputVSpectrum.rows(),
-        _src.cols(), _src.rows() );
-    return false;
-  }
-
-  const cv::Mat src = _src.getMat();
-  const int rows = src.rows;
-  const int cols = src.cols;
-  const bool is_even_rows = (rows % 2 == 0);
-  const bool is_even_x = (cols % 2 == 0);
-
-  const int half_rows = (rows + 1) / 2;
-  const int half_cols = (cols + 1) / 2;
-
-  // One-dimensional boundary differences
-  cv::Mat drow, dcol;
-  cv::subtract(src.row(0), src.row(rows - 1), drow, cv::noArray(), CV_32F);
-  cv::subtract(src.col(0), src.col(cols - 1), dcol, cv::noArray(), CV_32F);
-
-  // Two complex 1D DFT in CV_32FC2 of size 1 x N and M x 1
-  cv::Mat drow_complex, dcol_complex;
-  cv::dft(drow, drow_complex, cv::DFT_COMPLEX_OUTPUT);
-  cv::dft(dcol, dcol_complex, cv::DFT_COMPLEX_OUTPUT);
-
-  // Precompute trigonometric tables
-  std::vector<float> cosx(cols), sinx(cols);
-  std::vector<float> cosy(rows), siny(rows);
-  for (int y = 0; y < rows; ++y) {
-    cosy[y] = std::cos(y * CV_2PI / rows);
-    siny[y] = std::sin(y * CV_2PI / rows);
-  }
-  for (int x = 0; x < cols; ++x) {
-    cosx[x] = std::cos(x * CV_2PI / cols);
-    sinx[x] = std::sin(x * CV_2PI / cols);
-  }
-
-  // Output CCS packed CV_32FC1 spectrum
-  ccsOutputVSpectrum.create(rows, cols, CV_32FC1);
-  cv::Mat1f V_SPECTRUM = ccsOutputVSpectrum.getMatRef();
-  uint8_t * const out_spec_base = V_SPECTRUM.ptr();
-  const size_t out_spec_stride = V_SPECTRUM.step;
-
-  const cv::Vec2f* drow_p = (const cv::Vec2f*)drow_complex.ptr();
-  const cv::Vec2f* dcol_p = (const cv::Vec2f*)dcol_complex.ptr();
-  const float * cosX = cosx.data();
-  const float * cosY = cosy.data();
-  const float * sinX = sinx.data();
-  const float * sinY = siny.data();
-
-  // Single-pass assembly of the analytical CCS matrix
-  parallel_for(0, rows, [=](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict ccsp = (float * )(out_spec_base + y * out_spec_stride);
-
-      // COLUMN X = 0  contribution strictly for the current physical row y
-      int true_freq_y = 0;
-      bool is_im_row = false;
-      if (y == 0) {
-        true_freq_y = 0;
-      }
-      else if (is_even_rows && y == rows - 1) {
-        true_freq_y = rows / 2;
-      }
-      else {
-        is_im_row = ((y & 1) == 0);
-        true_freq_y = is_im_row ? (y / 2) : ((y + 1) / 2);
-      }
-
-      // The contribution of columns dcol_p at x=0 is 0.
-      // All energy at x=0 comes from drow_p[0] (horizontal DC),
-      // modulated by the vertical frequency true_freq_y.
-      // Rotate the horizontal DC component of the rows around the vertical Y-axis
-      const float re_r_0 = drow_p[0][0];
-      const float im_r_0 = drow_p[0][1];
-      const float rx_re_0 = re_r_0 * (1.0f - cosY[true_freq_y]) + im_r_0 * sinY[true_freq_y];
-      const float rx_im_0 = -re_r_0 * sinY[true_freq_y] + im_r_0 * (1.0f - cosY[true_freq_y]);
-      ccsp[0] = is_im_row ? rx_im_0 : rx_re_0;
-
-      // INNER COLUMNS Linear pass along x from 1 to half_cols - 1
-      const float re_c = dcol_p[y][0];
-      const float im_c = dcol_p[y][1];
-      const float cY = cosY[y];
-      const float sY = sinY[y];
-
-      for (int x = 1; x < half_cols; ++x) {
-        // Row difference contribution modulated along Y
-        // Column difference contribution modulated along X
-        const float re_r = drow_p[x][0];
-        const float im_r = drow_p[x][1];
-        const float cX = cosX[x];
-        const float sX = sinX[x];
-        const float rx_re = re_r * (1.0f - cY) + im_r * sY;
-        const float rx_im = -re_r * sY + im_r * (1.0f - cY);
-        const float ry_re = re_c * (1.0f - cX) + im_c * sX;
-        const float ry_im = -re_c * sX + im_c * (1.0f - cX);
-        ccsp[2 * x - 1] = rx_re + ry_re;
-        ccsp[2 * x]     = rx_im + ry_im;
-      }
-
-      // Nyquist column X = N/2 if cols is even, index is cols - 1
-      if (is_even_x) {
-        // For the horizontal Nyquist frequency, the contribution of dcol_p depends on true_freq_y
-        // Extract Re/Im from dcol_p for true_freq_y and multiply by (1 - cos(pi)) = 2
-        // The contribution of rows at the horizontal Nyquist frequency nq_x rotates along the Y-axis
-        const int last_ccs_col = cols - 1;
-        const int nq_x = cols / 2;
-        const float re_c_nq = dcol_p[true_freq_y][0];
-        const float im_c_nq = dcol_p[true_freq_y][1];
-        const float ry_re_nq = re_c_nq * 2.0f;
-        const float ry_im_nq = im_c_nq * 2.0f;
-        const float re_r_nq = drow_p[nq_x][0];
-        const float im_r_nq = drow_p[nq_x][1];
-        const float rx_re_nq = re_r_nq * (1.0f - cosY[true_freq_y]) + im_r_nq * sinY[true_freq_y];
-        const float rx_im_nq = -re_r_nq * sinY[true_freq_y] + im_r_nq * (1.0f - cosY[true_freq_y]);
-        const float res_re = rx_re_nq + ry_re_nq;
-        const float res_im = rx_im_nq + ry_im_nq;
-        ccsp[last_ccs_col] = is_im_row ? res_im : res_re;
-      }
-    }
-  });
-
-  // Reset singularity in DC component
-  V_SPECTRUM(0, 0) = 0.0f;
-  return true;
-}
-
-/*
- * DFT with Periodic + Smooth Decomposition with CCS output.
- * Uses Virginie Moizan decomposition.
- * The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
- *   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
- * The target fftSize (FFT padding) is defined by the VLAP.size()
- **/
-bool fftPPSDecompositionCCS(cv::InputArray _src, const cv::Mat1f & VLAP,
-    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
-    cv::OutputArray outputV_SPECTRUM)
-{
-  INSTRUMENT_REGION("sc");
-
-  if( _src.empty() || _src.channels() != 1 ) {
-    CF_ERROR("Single-channel input image expected");
-    return false;
-  }
-
-  if ( _src.size() != VLAP.size() ) {
-    CF_ERROR("Input image size %dx%d not match to VLAP filter size %dx%d",
-        _src.cols(), _src.rows(), VLAP.cols, VLAP.rows);
-    return false;
-  }
-
-  if ( P_SPECTRUM.fixedType() && P_SPECTRUM.type() != CV_32FC1 ) {
-    CF_ERROR("CV_32FC1 output P spectrum destination expected");
-    return false;
-  }
-
-  if ( P_SPECTRUM.fixedSize() && P_SPECTRUM.size() != _src.size() ) {
-    CF_ERROR("Output P matrix size %dx%d not match to input image size %dx%d",
-        P_SPECTRUM.cols(), P_SPECTRUM.rows(),
-        _src.cols(), _src.rows() );
-    return false;
-  }
-
-  if ( S_SPECTRUM.needed() ) {
-    if ( S_SPECTRUM.fixedType() && S_SPECTRUM.type() != CV_32FC1 ) {
-      CF_ERROR("CV_32FC1 output S spectrum destination expected");
-      return false;
-    }
-    if ( S_SPECTRUM.fixedSize() && S_SPECTRUM.size() != _src.size() ) {
-      CF_ERROR("Output S matrix size %dx%d not match to input image size %dx%d",
-          S_SPECTRUM.cols(), S_SPECTRUM.rows(),
-          _src.cols(), _src.rows() );
-      return false;
-    }
-  }
-
-  const cv::Size fftSize = VLAP.size();
-  const cv::Mat SRC = _src.getMat();
-  cv::Mat SRC_SPECTRUM, V_SPECTRUM;
-
-  cv::dft(SRC, SRC_SPECTRUM, cv::DFT_REAL_OUTPUT);
-  fftComputeVSpectrumCCS(SRC, V_SPECTRUM);
-
-  if ( S_SPECTRUM.needed() ) {
-    fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUM);
-    cv::subtract(SRC_SPECTRUM, S_SPECTRUM, P_SPECTRUM);
-  }
-  else {
-    cv::Mat S_SPECTRUM_TMP;
-    fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUM_TMP);
-    cv::subtract(SRC_SPECTRUM, S_SPECTRUM_TMP, P_SPECTRUM);
-  }
-
-  if ( outputV_SPECTRUM.needed() ) {
-    outputV_SPECTRUM.move(V_SPECTRUM);
-  }
-
-  return true;
-}
-
-
 /**
- * @brief Internal worker for processing a single plane (channel).
+ * @brief Internal worker for DFT with Virginie Moizan Periodic + Smooth decomposition n OpenCV CCS format in single pass.
  * Handles the geometry and uses shared trigonometry tables.
- **/
+ * Combines boundary edges V-spectrum generation, Laplacian filtering (S), and subtraction (P) in single pass.
+ * The target fftSize (FFT padding) is defined by the VLAP.size()
+ * The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC = false.
+ *   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+ *
+ * @param[in]  src_pane      Input single-channel real image (CV_32FC1).
+ * @param[in]  VLAP          Inverse Laplace filter (size M x N, type CV_32FC1, DC at top-left corner).
+ * @param[out] P_SPECTRUM    Output CCS spectrum of the PERIODIC component (size M x N, type CV_32FC1).
+ * @param[out] S_SPECTRUM    Output CCS spectrum of the SMOOTH component (size M x N, type CV_32FC1).
+**/
 static void fftPPSDecompositionCCS2(const cv::Mat & src_plane, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
     std::vector<float> & cosx, std::vector<float> & sinx,
@@ -2890,7 +2674,7 @@ static void fftPPSDecompositionCCS2(const cv::Mat & src_plane, const cv::Mat1f &
 * @param[out] P_SPECTRUM    Output CCS spectrum of the PERIODIC component (size M x N, type CV_32FC1).
 * @param[out] S_SPECTRUM    Output CCS spectrum of the SMOOTH component (size M x N, type CV_32FC1).
 **/
-bool fftPPSDecompositionCCS2(cv::InputArray _src, const cv::Mat1f & VLAP,
+bool fftPPSDecompositionCCS(cv::InputArray _src, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM)
 {
   INSTRUMENT_REGION("");
@@ -2907,9 +2691,8 @@ bool fftPPSDecompositionCCS2(cv::InputArray _src, const cv::Mat1f & VLAP,
     return false;
   }
 
-  // Empty trigonometry tables, will initialized inside of the actual worker
-  std::vector<float> cosx, sinx;
-  std::vector<float> cosy, siny;
+  // Trigonometry tables will be initialized inside of the actual worker
+  std::vector<float> cosx, sinx, cosy, siny;
 
   fftPPSDecompositionCCS2(src, VLAP,
       P_SPECTRUM, S_SPECTRUM,
@@ -2919,19 +2702,23 @@ bool fftPPSDecompositionCCS2(cv::InputArray _src, const cv::Mat1f & VLAP,
   return true;
 }
 
-bool fftPPSDecompositionCCSPlanes2(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS)
+bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat1f> & P_SPECTRUMS, std::vector<cv::Mat1f> & S_SPECTRUMS)
 {
   INSTRUMENT_REGION("");
 
-  if( planes.empty() || P_SPECTRUMS == nullptr || S_SPECTRUMS == nullptr ) {
-    CF_ERROR("Invalid input/output arguments");
+  if( planes.empty() ) {
+    CF_ERROR("No input planes specified");
+    return false;
+  }
+
+  if( VLAP.empty() ) {
+    CF_ERROR("No VLAP filter specified");
     return false;
   }
 
   const cv::Size fftSize = VLAP.size();
   const int cn = (int)planes.size();
-
   for( int c = 0; c < cn; ++c ) {
     if( planes[c].size() != fftSize ) {
       CF_ERROR("Bad image size on plane %d: %dx%d not match to VLAP filter size %dx%d",
@@ -2945,144 +2732,20 @@ bool fftPPSDecompositionCCSPlanes2(const std::vector<cv::Mat> & planes, const cv
     }
   }
 
-  P_SPECTRUMS->resize(cn);
-  S_SPECTRUMS->resize(cn);
+  // Shared trigonometry tables for all channels will be initialized inside of the actual worker
+  std::vector<float> cosx, sinx, cosy, siny;
 
-  // Shared trigonometry tables for all channels
-  std::vector<float> cosx, sinx;
-  std::vector<float> cosy, siny;
+  P_SPECTRUMS.resize(cn);
+  S_SPECTRUMS.resize(cn);
 
   for( int c = 0; c < cn; ++c ) {
     fftPPSDecompositionCCS2(planes[c], VLAP,
-        P_SPECTRUMS->at(c), S_SPECTRUMS->at(c),
+        P_SPECTRUMS[c], S_SPECTRUMS[c],
         cosx, sinx, cosy, siny);
   }
 
   return true;
 }
-
-
-// DFT with Periodic + Smooth Decomposition with CCS output.
-// Uses Virginie Moizan decomposition.
-// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-// The target fftSize (FFT padding) is defined by the VLAP.size()
-bool fftPPSDecompositionCCS(cv::InputArray _src, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS)
-{
-  if( _src.empty() ) {
-    CF_ERROR("Single-channel input image expected");
-    return false;
-  }
-
-  if ( _src.size() != VLAP.size() ) {
-    CF_ERROR("Input image size %dx%d not match to VLAP filter size %dx%d",
-        _src.cols(), _src.rows(), VLAP.cols, VLAP.rows);
-    return false;
-  }
-
-  const cv::Size fftSize = VLAP.size();
-  const cv::Mat SRC = _src.getMat();
-  const int cn = _src.channels();
-
-  std::vector<cv::Mat1f> src_channels(cn);
-  cv::Mat SRC_SPECTRUM, V_SPECTRUM, S_TMP;
-
-  if ( cn == 1 ) {
-    src_channels[0] = SRC;
-  }
-  else {
-    cv::split(SRC, src_channels);
-  }
-
-  P_SPECTRUMS->resize(cn);
-  if ( S_SPECTRUMS != nullptr ) {
-    S_SPECTRUMS->resize(cn);
-  }
-
-  for ( int i = 0; i < cn; ++i ) {
-    cv::dft(src_channels[i], SRC_SPECTRUM, cv::DFT_REAL_OUTPUT);
-    fftComputeVSpectrumCCS(src_channels[i], V_SPECTRUM);
-
-    if ( S_SPECTRUMS != nullptr ) {
-      fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUMS->at(i));
-      cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(i), P_SPECTRUMS->at(i));
-    }
-    else {
-      fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_TMP);
-      cv::subtract(SRC_SPECTRUM, S_TMP, P_SPECTRUMS->at(i));
-    }
-  }
-
-  return true;
-}
-
-// DFT with Periodic + Smooth Decomposition with CCS output.
-// Uses Virginie Moizan decomposition.
-// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-// The target fftSize (FFT padding) is defined by the VLAP.size()
-bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
-    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS,
-    std::vector<cv::Mat1f> * V_SPECTRUMS /*= nullptr*/)
-{
-  INSTRUMENT_REGION("mc");
-
-  if( planes.empty() ) {
-    CF_ERROR("Input argument is empty");
-    return false;
-  }
-
-  const cv::Size fftSize = VLAP.size();
-  if ( fftSize.empty() ) {
-    CF_ERROR("Bad VLAP: empty");
-    return false;
-  }
-
-  const int cn = (int)planes.size();
-  for ( int c = 0; c < cn; ++c ) {
-    if ( planes[c].size() != fftSize ) {
-      CF_ERROR("Bad image size on plane %d: %dx%d not match to VLAP filter size %dx%d",
-          c, planes[c].cols, planes[c].rows, VLAP.cols, VLAP.rows);
-      return false;
-    }
-  }
-
-  P_SPECTRUMS->resize(cn);
-  if ( S_SPECTRUMS != nullptr ) {
-    S_SPECTRUMS->resize(cn);
-  }
-  if ( V_SPECTRUMS != nullptr ) {
-    V_SPECTRUMS->resize(cn);
-  }
-
-  cv::Mat SRC_SPECTRUM, V_SPECTRUM, S_SPECTRUM;
-
-  for ( int c = 0; c < cn; ++c ) {
-    cv::dft(planes[c], SRC_SPECTRUM, cv::DFT_REAL_OUTPUT);
-
-    if (V_SPECTRUMS == nullptr)  {
-      fftComputeVSpectrumCCS(planes[c], V_SPECTRUM);
-    }
-    else {
-      fftComputeVSpectrumCCS(planes[c], V_SPECTRUMS->at(c));
-      V_SPECTRUM = V_SPECTRUMS->at(c);
-    }
-
-    if ( S_SPECTRUMS == nullptr ) {
-      fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUM);
-    }
-    else {
-      fftMulSpectrumCCS(V_SPECTRUM, VLAP, S_SPECTRUMS->at(c));
-      S_SPECTRUM = S_SPECTRUMS->at(c);
-    }
-
-    cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(c), P_SPECTRUMS->at(c));
-  }
-
-  return true;
-}
-
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.

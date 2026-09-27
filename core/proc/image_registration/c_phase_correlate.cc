@@ -316,25 +316,25 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
   return true;
 }
 
-bool c_phase_correlate::computeCorrelationMap()
-{
-  const bool fOK =
-      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
-          _bandpassFilter, _crossSpectrum);
-
-  if( !fOK ) {
-    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
-    return false;
-  }
-
-  cv::idft(_crossSpectrum, _correlationMap,
-      cv::DFT_REAL_OUTPUT); // |cv::DFT_SCALE
-
-  return true;
-}
+//bool c_phase_correlate::computeCorrelationMap()
+//{
+//  const bool fOK =
+//      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
+//          _bandpassFilter, _crossSpectrum);
+//
+//  if( !fOK ) {
+//    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+//    return false;
+//  }
+//
+//  cv::idft(_crossSpectrum, _correlationMap,
+//      cv::DFT_REAL_OUTPUT); // |cv::DFT_SCALE
+//
+//  return true;
+//}
 
 /**
- * @brief Computes phase correlation and estimates the precise 2D translation vector.
+ * @brief Computes phase correlation map and estimates the precise 2D translation vector.
  * @details Executes cross-spectrum phase evaluation, performs an inverse DFT, interpolates
  *          the subpixel peak, and shifts the result back to original unscaled pixel units,
  *          accounting for downscaling and crop offsets.
@@ -349,10 +349,22 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     return -1;
   }
 
-  if ( !computeCorrelationMap() ) {
-    CF_ERROR("computeCorrelationMap() fails");
-    return -1;
+  const bool fOK =
+      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
+          _bandpassFilter, _crossSpectrum);
+
+  if( !fOK ) {
+    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+    return false;
   }
+
+  cv::idft(_crossSpectrum, _correlationMap,
+      cv::DFT_REAL_OUTPUT); // |cv::DFT_SCALE
+
+//  if ( !computeCorrelationMap() ) {
+//    CF_ERROR("computeCorrelationMap() fails");
+//    return -1;
+//  }
 
   cv::Point2f peakPos;
 

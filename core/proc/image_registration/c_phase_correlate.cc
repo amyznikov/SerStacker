@@ -135,6 +135,7 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
   _gsigma = opts.gsigma;
   _csigma = opts.csigma;
   _calpha = opts.calpha;
+  _whiten_specs = opts.whiten_specs;
 
   // pre-generate bandpass filter for expected frame size
   generateBandpassFilter();
@@ -176,7 +177,7 @@ void c_phase_correlate::generateBandpassFilter()
 {
   // fsigma = sqrt(2)/ (CV_PI * _gsigma)
   // rho2 = (u^2 + v^2) / fsigma^2;
-  // F(u, v) = rho2 * exp (-0.5 * rho2 )
+  // F(u, v) = rho2 * exp (-rho2 )
   // the alternating +1 and -1 is also inserted to avoid later fftSwapQudrants()
 
   _bandpassFilter.create(_fftSize);
@@ -220,7 +221,7 @@ void c_phase_correlate::generateBandpassFilter()
           const float u2 = u * u;
           const float rho2 = (u2 + v2) * lambda2;
 
-          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+          fltp[x] = sign * rho2 * std::exp(-rho2);
         }
       }
     });
@@ -352,23 +353,42 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     return -1;
   }
 
-  const bool fOK =
-      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
-          _bandpassFilter, _crossSpectrum);
+  double crossEnergy = 0;
 
-  if( !fOK ) {
-    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
-    return false;
+  if ( _whiten_specs ) {
+    const bool fOK =
+        fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
+            _bandpassFilter, _crossSpectrum);
+    if( !fOK ) {
+      CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+      return false;
+    }
+  }
+  else {
+    crossEnergy =
+        fftCrossSpectrumWeightedCCS(_currentSpectrum, _referenceSpectrum,
+            _bandpassFilter, _crossSpectrum);
+    if( crossEnergy <= 0) {
+      CF_ERROR("fftCrossSpectrumWeightedCCS() fails: Energy=%g", crossEnergy);
+      return false;
+    }
   }
 
   cv::idft(_crossSpectrum, _correlationMap,
       cv::DFT_REAL_OUTPUT);
 
   cv::Point2f peakPos;
+  cv::Point maxPos;
+  const double measuredPeakValue = findSubpixelCentroid(_correlationMap, peakPos, maxPos);
+  if ( _whiten_specs ) {
+    _peakValue = measuredPeakValue;
+  }
+  else {
+    _peakValue = measuredPeakValue / std::sqrt(crossEnergy);
+  }
 
-  _peakValue =
-      findSubpixelCentroid(_correlationMap,
-          peakPos);
+//  CF_DEBUG("\ncrossEnergy = %g measuredPeakValue = %g peakValue = %g peakPos: x=%g y=%g maxPos: x=%d y=%d\n",
+//      crossEnergy, measuredPeakValue, peakValue, peakPos.x, peakPos.y, maxPos.x, maxPos.y );
 
   // Compensate for image resolution scale
   const double scaledDx = peakPos.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
@@ -398,7 +418,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
  * @param peakPos Output refined subpixel coordinates of the correlation peak.
  * @return The absolute peak value at the integer maximum location.
  */
-double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
+double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const
 {
   // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
   // Cubic weight (val - threshold)^3
@@ -410,9 +430,11 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   int maxIdx[2] = {0, 0};
   cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
 
-  constexpr int R = 2;
+  const int R = int(_gsigma / _downscale_factor) + 1;
   const int y0 = maxIdx[0];
   const int x0 = maxIdx[1];
+  maxPos.x = x0;
+  maxPos.y = y0;
 
   if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
     peakPos = cv::Point2f(float(x0), float(y0));
@@ -420,7 +442,7 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   }
 
   const float z_center = correlationMap(y0, x0);
-  const double threshold = z_center * 0.20f;
+  const double threshold = z_center * 0.10f;
   double sumWeights = 0.0;
   double sumX = 0.0;
   double sumY = 0.0;
@@ -452,6 +474,60 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   return z_center;
 }
 
+//double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
+//{
+//  // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
+//  // Cubic weight (val - threshold)^3
+//  // Works well on flat peaks in a turbulent environment
+//
+//  const int rows = correlationMap.rows;
+//  const int cols = correlationMap.cols;
+//
+//  int maxIdx[2] = {0, 0};
+//  cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
+//
+//  constexpr int R = 2;
+//  const int y0 = maxIdx[0];
+//  const int x0 = maxIdx[1];
+//
+//  if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
+//    peakPos = cv::Point2f(float(x0), float(y0));
+//    return -1;
+//  }
+//
+//  const float z_center = correlationMap(y0, x0);
+//  const double threshold = z_center * 0.20f;
+//  double sumWeights = 0.0;
+//  double sumX = 0.0;
+//  double sumY = 0.0;
+//
+//  const uint8_t * src_base = correlationMap.ptr(y0);
+//  const size_t stride = correlationMap.step;
+//  for (int dy = -R; dy <= R; ++dy) {
+//    const float * __restrict srcp = (const float *)(src_base + dy * stride);
+//    for (int dx = -R; dx <= R; ++dx) {
+//      const double val = srcp[x0 + dx];
+//      if (val > threshold) {
+//        const double diff = val - threshold;
+//        const double w = diff * diff * diff;
+//        sumWeights += w;
+//        sumX += dx * w;
+//        sumY += dy * w;
+//      }
+//    }
+//  }
+//
+//  if( sumWeights > 1e-9 ) {
+//    peakPos.x = float(x0 + sumX / sumWeights);
+//    peakPos.y = float(y0 + sumY / sumWeights);
+//  }
+//  else {
+//    peakPos = cv::Point2f(float(x0), float(y0));
+//  }
+//
+//  return z_center;
+//}
+
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
     c_phase_correlate_options & opts)
 {
@@ -459,6 +535,7 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, gsigma);
   SERIALIZE_OPTION(section, save, opts, csigma);
   SERIALIZE_OPTION(section, save, opts, calpha);
+  SERIALIZE_OPTION(section, save, opts, whiten_specs);
   return true;
 }
 

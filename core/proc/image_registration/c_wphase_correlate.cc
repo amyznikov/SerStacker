@@ -365,7 +365,7 @@ double c_wphase_correlate::compute(cv::Vec2f & outputTranslation)
 
   cv::Point2f peakPos;
   cv::Point maxPos;
-  const double measuredPeakValue= findSubpixelCentroid(_correlationMap, peakPos, maxPos);
+  const double measuredPeakValue = findSubpixelCentroid(_correlationMap, peakPos, maxPos);
   const double peakValue = measuredPeakValue / std::sqrt(crossEnergy);
   _peakValue = peakValue;
 

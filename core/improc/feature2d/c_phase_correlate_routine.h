@@ -78,6 +78,15 @@ protected:
   {
     return opts.calpha;
   }
+  void set_whiten_specs(bool v)
+  {
+    opts.whiten_specs = v;
+    _initialized = false;
+  }
+  bool whiten_specs() const
+  {
+    return opts.whiten_specs;
+  }
 
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);
@@ -88,11 +97,9 @@ protected:
   cv::Mat1f _currentImage, _referenceImage;
   cv::Mat _currentMask, _referenceMask;
   DISPLAY _display = DISPLAY_CURRENT_IMAGE;
-  bool _fillMaskHoles = false;
   bool _updateReferenceImage = true;
   bool _printScores = false;
   bool _initialized = false;
-
   c_phase_correlate_options opts;
   c_phase_correlate pc;
 };

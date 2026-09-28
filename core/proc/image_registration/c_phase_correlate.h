@@ -20,16 +20,19 @@
 struct c_phase_correlate_options
 {
   /** @brief Image downscale factor (must be >= 1.0). Controls the processing resolution. */
-  double downscale_factor = 4;
+  double downscale_factor = 2;
 
   /** @brief Bandpass filter Gaussian sigma [px]. Defines the target texture characteristic size. */
-  double gsigma = 10;
+  double gsigma = 5;
 
   /** @brief Inverse cross-filter blur parameter for deconvolution/mask-edge compensation. */
   double csigma = 0.5;
 
   /** @brief Inverse cross-filter scaling/regularization alpha coefficient. */
   double calpha = 0.0;
+
+  /** @brief set true for pure phase correlation of whitened spectrums . */
+  bool whiten_specs = false;
 };
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
@@ -54,7 +57,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Target texture characteristic size in pixels");
   ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
   ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter strength");
-
+  ctlbind(ctls, " whiten_specs:", ctx(&S:: whiten_specs),  "Set true for pure phase correlation of whitened spectrums");
 }
 
 class c_phase_correlate
@@ -132,10 +135,17 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f & bandpassFilter() const {
     return _bandpassFilter;
   }
+  const cv::Mat1f & vlapFilter() const {
+    return _vlapFilter;
+  }
+  const cv::Mat1f & crossMask() const {
+    return _crossMask;
+  }
 
 protected: // internal helpers
   void generateBandpassFilter();
-  double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
+  //double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
+  double findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const;
 
 protected: // internal data
   cv::Size _fftSize;
@@ -146,6 +156,7 @@ protected: // internal data
   double _calpha = 0.05;
   double _peakValue = 0;
   double _correlationScore = 0;
+  bool _whiten_specs = false;
   bool _initialized = false;
 
 protected: // Cached data
@@ -153,10 +164,9 @@ protected: // Cached data
   cv::Point _currentCropOffset, _referenceCropOffset;
   cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
   cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
-  cv::Mat1f _currentSpectrum, _referenceSpectrum;
-  cv::Mat1f _crossSpectrum, _correlationMap;
-  cv::Mat1f _bandpassFilter, _vlapFilter;
-  cv::Mat1f _crossMask;
+  cv::Mat1f _currentSpectrum, _referenceSpectrum, _crossSpectrum;
+  cv::Mat1f _correlationMap;
+  cv::Mat1f _bandpassFilter, _vlapFilter, _crossMask;
 };
 
 

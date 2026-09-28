@@ -47,7 +47,6 @@ bool c_phase_correlate_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _fillMaskHoles);
     serialize_phase_correlate_options(settings, save, opts);
     return true;
   }
@@ -61,7 +60,7 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "gsigma", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
   ctlbind(ctls, "csigma", ctx,  &this_class::csigma, &this_class::set_csigma, "");
   ctlbind(ctls, "calpha", ctx,  &this_class::calpha, &this_class::set_calpha, "");
-  ctlbind(ctls, "fillMaskHoles", CTL_CONTEXT(ctx, _fillMaskHoles), "Set checked to call geo_fill_holes(currentMask)");
+  ctlbind(ctls, "whiten_specs", ctx,  &this_class::whiten_specs, &this_class::set_whiten_specs, "");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");
 

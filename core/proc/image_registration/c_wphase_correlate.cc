@@ -219,7 +219,8 @@ void c_wphase_correlate::generateBandpassFilter()
           const float u = fx * inv_cols;
           const float u2 = u * u;
           const float rho2 = (u2 + v2) * lambda2;
-          const float w = rho2 * std::exp(-0.5f * rho2);
+          //const float w = rho2 * std::exp(-0.5f * rho2);
+          const float w = rho2 * std::exp(-rho2);
           fltp[x] = sign * w;
         }
       }

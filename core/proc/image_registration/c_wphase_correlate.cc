@@ -1,10 +1,11 @@
 /*
- * c_phase_correlate.cc
+ * c_wphase_correlate.cc
  *
- *  Created on: Sep 7, 2026
+ *  Created on: Sep 27, 2026
  *      Author: amyznikov
  */
-#include "c_phase_correlate.h"
+
+#include "c_wphase_correlate.h"
 #include <opencv2/geometry.hpp>
 #include <core/proc/run-loop.h>
 #include <core/proc/fft.h>
@@ -107,7 +108,7 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
-cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
+cv::Size c_wphase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
 {
   // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
   // otherwise the bandpass filter become not symmetrical due to embedded sign alternating
@@ -116,16 +117,16 @@ cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSiz
   return cv::Size(std::max(4, downscaledW), std::max(4, downscaledH));
 }
 
-bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)
+bool c_wphase_correlate::setup(const cv::Size & expectedFrameSize, c_wphase_correlate_options & opts)
 {
   if( expectedFrameSize.empty() ) {
-    CF_ERROR("c_phase_correlate: BAD expectedFrameSize specified : %dx%d",
+    CF_ERROR("c_wphase_correlate: BAD expectedFrameSize specified : %dx%d",
         expectedFrameSize.width, expectedFrameSize.height);
     return false;
   }
 
   if( (_downscale_factor = opts.downscale_factor) < 1 ) {
-    CF_ERROR("c_phase_correlate: BAD downscale_factor specified : %g. Must be >= 1",
+    CF_ERROR("c_wphase_correlate: BAD downscale_factor specified : %g. Must be >= 1",
         opts.downscale_factor);
     return false;
   }
@@ -143,7 +144,7 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
   return true;
 }
 
-void c_phase_correlate::release()
+void c_wphase_correlate::release()
 {
   _fftSize = cv::Size(0, 0);
   _scaledCurrentImage.release();
@@ -154,7 +155,6 @@ void c_phase_correlate::release()
   _referenceSpectrum.release();
   _crossSpectrum.release();
   _correlationMap.release();
-  _vlapFilter.release();
   _initialized = false;
 }
 
@@ -172,7 +172,7 @@ void c_phase_correlate::release()
  *          deconvolution is combined with the map. The final matrix is fully normalized via the L1 norm.
  *
  */
-void c_phase_correlate::generateBandpassFilter()
+void c_wphase_correlate::generateBandpassFilter()
 {
   // fsigma = sqrt(2)/ (CV_PI * _gsigma)
   // rho2 = (u^2 + v^2) / fsigma^2;
@@ -219,8 +219,8 @@ void c_phase_correlate::generateBandpassFilter()
           const float u = fx * inv_cols;
           const float u2 = u * u;
           const float rho2 = (u2 + v2) * lambda2;
-
-          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+          const float w = rho2 * std::exp(-0.5f * rho2);
+          fltp[x] = sign * w;
         }
       }
     });
@@ -235,36 +235,34 @@ void c_phase_correlate::generateBandpassFilter()
   cv::multiply(_bandpassFilter, 1. / cv::norm(_bandpassFilter, cv::NORM_L1),
       _bandpassFilter);
 
-  if ( _vlapFilter.size() != _fftSize ) {
-    _vlapFilter = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
+  if( _vlap.size() != _fftSize ) {
+    _vlap = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
   }
-
 }
 
-bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_wphase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   if( _fftSize.empty() ) {
-    CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
+    CF_ERROR("c_wphase_correlate: was not properly initialized, _fftSize is empty");
     return false;
   }
 
   if ( referenceImage.empty() ) {
-    CF_ERROR("c_phase_correlate: referenceImage is empty");
+    CF_ERROR("c_wphase_correlate: referenceImage is empty");
     return false;
   }
 
   if ( referenceImage.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: referenceImage must be single-channel");
+    CF_ERROR("c_wphase_correlate: referenceImage must be single-channel");
     return false;
   }
 
   if (!referenceMask.empty() && referenceMask.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: referenceMask must be single-channel");
+    CF_ERROR("c_wphase_correlate: referenceMask must be single-channel");
     return false;
   }
 
   cv::Mat smallImage, smallMask;
-
   if ( std::abs(_downscale_factor - 1) < 10 * FLT_EPSILON ) {
     smallImage = referenceImage.getMat();
     smallMask = referenceMask.getMat();
@@ -282,32 +280,32 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
       _referenceValidSize,
       _referenceCropOffset);
 
-  fftPPSDecompositionCCS(_scaledReferenceImage, _vlapFilter,
+  fftPPSDecompositionCCS(_scaledReferenceImage, _vlap,
       _referenceSpectrum,
       cv::noArray());
 
   return true;
 }
 
-bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
+bool c_wphase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
   if( _fftSize.empty() ) {
-    CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
+    CF_ERROR("c_wphase_correlate: was not properly initialized, _fftSize is empty");
     return false;
   }
 
   if ( currentImage.empty() ) {
-    CF_ERROR("c_phase_correlate: currentImage is empty");
+    CF_ERROR("c_wphase_correlate: currentImage is empty");
     return false;
   }
 
   if ( currentImage.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: currentImage must be single-channel");
+    CF_ERROR("c_wphase_correlate: currentImage must be single-channel");
     return false;
   }
 
   if (!currentMask.empty() && currentMask.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: currentMask must be single-channel");
+    CF_ERROR("c_wphase_correlate: currentMask must be single-channel");
     return false;
   }
 
@@ -329,7 +327,7 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
       _currentValidSize,
       _currentCropOffset);
 
-  fftPPSDecompositionCCS(_scaledCurrentImage, _vlapFilter,
+  fftPPSDecompositionCCS(_scaledCurrentImage, _vlap,
       _currentSpectrum,
       cv::noArray());
 
@@ -337,27 +335,27 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 }
 
 /**
- * @brief Computes phase correlation map and estimates the precise 2D translation vector.
- * @details Executes cross-spectrum phase evaluation, performs an inverse DFT, interpolates
+ * @brief Computes cross correlation map and estimates the 2D translation vector.
+ * @details Executes cross-spectrum evaluation, performs an inverse DFT, interpolates
  *          the subpixel peak, and shifts the result back to original unscaled pixel units,
  *          accounting for downscaling and crop offsets.
  *
  * @param[out] outputTranslation Resulting [dx, dy] translation vector in original pixels.
  * @return Overlap-compensated correlation quality score (PSR-like metric), or -1 on failure.
  */
-double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
+double c_wphase_correlate::compute(cv::Vec2f & outputTranslation)
 {
   if (_fftSize.empty() || _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
-    CF_ERROR("c_phase_correlate: was not properly initialized with setup()");
+    CF_ERROR("c_wphase_correlate: was not properly initialized with setup()");
     return -1;
   }
 
-  const bool fOK =
-      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
+  const double crossEnergy =
+      fftCrossSpectrumWeightedCCS(_currentSpectrum, _referenceSpectrum,
           _bandpassFilter, _crossSpectrum);
 
-  if( !fOK ) {
-    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+  if( crossEnergy <= 0) {
+    CF_ERROR("fftCrossSpectrumWeightedCCS() fails: Energy=%g", crossEnergy);
     return false;
   }
 
@@ -365,10 +363,14 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
       cv::DFT_REAL_OUTPUT);
 
   cv::Point2f peakPos;
+  cv::Point maxPos;
+  const double measuredPeakValue= findSubpixelCentroid(_correlationMap, peakPos, maxPos);
+  const double peakValue = measuredPeakValue / std::sqrt(crossEnergy);
+  _peakValue = peakValue;
 
-  _peakValue =
-      findSubpixelCentroid(_correlationMap,
-          peakPos);
+  CF_DEBUG("\n"
+      "crossEnergy = %g measuredPeakValue = %g peakValue = %g peakPos: x=%g y=%g maxPos: x=%d y=%d\n",
+      crossEnergy, measuredPeakValue, peakValue, peakPos.x, peakPos.y, maxPos.x, maxPos.y );
 
   // Compensate for image resolution scale
   const double scaledDx = peakPos.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
@@ -398,7 +400,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
  * @param peakPos Output refined subpixel coordinates of the correlation peak.
  * @return The absolute peak value at the integer maximum location.
  */
-double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
+double c_wphase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const
 {
   // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
   // Cubic weight (val - threshold)^3
@@ -410,9 +412,11 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   int maxIdx[2] = {0, 0};
   cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
 
-  constexpr int R = 2;
+  const int R = int(_gsigma / _downscale_factor) + 1;
   const int y0 = maxIdx[0];
   const int x0 = maxIdx[1];
+  maxPos.x = x0;
+  maxPos.y = y0;
 
   if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
     peakPos = cv::Point2f(float(x0), float(y0));
@@ -420,7 +424,7 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   }
 
   const float z_center = correlationMap(y0, x0);
-  const double threshold = z_center * 0.20f;
+  const double threshold = z_center * 0.10f;
   double sumWeights = 0.0;
   double sumX = 0.0;
   double sumY = 0.0;
@@ -453,7 +457,7 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
 }
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
-    c_phase_correlate_options & opts)
+    c_wphase_correlate_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, downscale_factor);
   SERIALIZE_OPTION(section, save, opts, gsigma);
@@ -461,5 +465,4 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, calpha);
   return true;
 }
-
 

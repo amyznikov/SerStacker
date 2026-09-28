@@ -1,23 +1,23 @@
 /*
- * c_phase_correlate.h
+ * c_wphase_correlate.h
  *
- *  Created on: Sep 7, 2026
+ *  Created on: Sep 27, 2026
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_phase_correlate_h__
-#define __c_phase_correlate_h__
+#ifndef __c_wphase_correlate_h__
+#define __c_wphase_correlate_h__
 
 #include <opencv2/opencv.hpp>
 #include <core/ctrlbind/ctrlbind.h>
 #include <core/settings.h>
 
 /**
- * @struct c_phase_correlate_options
+ * @struct c_wphase_correlate_options
  * @brief Configuration parameters for the phase correlation pipeline.
  */
-struct c_phase_correlate_options
+struct c_wphase_correlate_options
 {
   /** @brief Image downscale factor (must be >= 1.0). Controls the processing resolution. */
   double downscale_factor = 4;
@@ -33,35 +33,35 @@ struct c_phase_correlate_options
 };
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
-    c_phase_correlate_options & opts);
+    c_wphase_correlate_options & opts);
 
-inline bool save_settings(c_config_setting section, const c_phase_correlate_options & opts)
+inline bool save_settings(c_config_setting section, const c_wphase_correlate_options & opts)
 {
   return serialize_phase_correlate_options(section, true,
-      const_cast<c_phase_correlate_options & >(opts));
+      const_cast<c_wphase_correlate_options & >(opts));
 }
 
-inline bool load_settings(c_config_setting section, c_phase_correlate_options * opts)
+inline bool load_settings(c_config_setting section, c_wphase_correlate_options * opts)
 {
   return serialize_phase_correlate_options(section, false, *opts);
 }
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_phase_correlate_options> & ctx)
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_wphase_correlate_options> & ctx)
 {
-  using S = c_phase_correlate_options;
+  using S = c_wphase_correlate_options;
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
   ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Target texture characteristic size in pixels");
   ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
   ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter strength");
-
 }
 
-class c_phase_correlate
+// TODO : Fourier-Mellin transform (Log-Polar)
+class c_wphase_correlate
 {
 public:
   // Must be called before pipeline start
-  bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts);
+  bool setup(const cv::Size & expectedFrameSize, c_wphase_correlate_options & opts);
 
   // Release internal cache buffers, may be useful for multi-pipeline re-initializators
   void release();
@@ -117,6 +117,7 @@ public: // public access for debug & visualization purposes
   const cv::Mat1b & scaledReferenceMask() const {
     return _scaledReferenceMask;
   }
+
   const cv::Mat1f & currentSpectrum() const {
     return _currentSpectrum;
   }
@@ -129,13 +130,15 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f & correlationMap() const {
     return _correlationMap;
   }
+
   const cv::Mat1f & bandpassFilter() const {
     return _bandpassFilter;
   }
 
 protected: // internal helpers
   void generateBandpassFilter();
-  double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
+  double findSubpixelCentroid(const cv::Mat1f & correlationMap,
+      cv::Point2f & peakPos, cv::Point & maxPos) const;
 
 protected: // internal data
   cv::Size _fftSize;
@@ -146,18 +149,19 @@ protected: // internal data
   double _calpha = 0.05;
   double _peakValue = 0;
   double _correlationScore = 0;
-  bool _initialized = false;
+ bool _initialized = false;
 
 protected: // Cached data
   cv::Size _currentValidSize, _referenceValidSize;
   cv::Point _currentCropOffset, _referenceCropOffset;
   cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
   cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
-  cv::Mat1f _currentSpectrum, _referenceSpectrum;
-  cv::Mat1f _crossSpectrum, _correlationMap;
-  cv::Mat1f _bandpassFilter, _vlapFilter;
+  cv::Mat1f _currentSpectrum, _referenceSpectrum, _crossSpectrum;
+  cv::Mat1f _correlationMap;
+  cv::Mat1f _bandpassFilter;
+  cv::Mat1f _vlap;
   cv::Mat1f _crossMask;
 };
 
 
-#endif /* __c_phase_correlate_h__ */
+#endif /* __c_wphase_correlate_h__ */

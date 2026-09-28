@@ -258,6 +258,20 @@ bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray ccsOutputSpectrum);
 
 /**
+ * @brief Weighted cross correlation of two spectrums packed in OpenCV CCS format.
+ *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
+ *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
+ *   may happen because the filter becomes not symmetrical.
+*/
+double fftCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
+
+/** Lets keep it here mainly for debug purposes */
+double fftCrossSpectrumWeightedCmplx(const cv::Mat2f & cmplxSpectrum1,const cv::Mat2f & cmplxSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
+
+
+/**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
  *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
  *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
@@ -289,6 +303,7 @@ bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
  */
 bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
+
 
 /**
  * @brief Computes the bandpass-filtered autocorrelation spectrum (energy map) in CCS format.

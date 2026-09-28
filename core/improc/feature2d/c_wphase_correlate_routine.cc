@@ -1,40 +1,39 @@
 /*
- * c_phase_correlate_routine.cc
+ * c_wphase_correlate_routine.cc
  *
- *  Created on: Sep 8, 2026
+ *  Created on: Sep 27, 2026
  *      Author: amyznikov
- *
  */
 
-#include "c_phase_correlate_routine.h"
+#include "c_wphase_correlate_routine.h"
 #include <core/proc/reduce_channels.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/run-loop.h>
 #include <core/proc/fft.h>
 
 template<>
-const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
+const c_enum_member * members_of<c_wphase_correlate_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
-      { c_phase_correlate_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
-      { c_phase_correlate_routine::DISPLAY_REFERENCE_IMAGE, "REFERENCE_IMAGE", "" },
-      { c_phase_correlate_routine::DISPLAY_SHIFTED_BLEND_IMAGE, "SHIFTED_BLEND_IMAGE", "" },
-      { c_phase_correlate_routine::DISPLAY_BLEND_IMAGE, "BLEND_IMAGE", "" },
-      { c_phase_correlate_routine::DISPLAY_SHIFTED_CURRENT_IMAGE, "SHIFTED_CURRENT_IMAGE", "" },
+      { c_wphase_correlate_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
+      { c_wphase_correlate_routine::DISPLAY_REFERENCE_IMAGE, "REFERENCE_IMAGE", "" },
+      { c_wphase_correlate_routine::DISPLAY_SHIFTED_BLEND_IMAGE, "SHIFTED_BLEND_IMAGE", "" },
+      { c_wphase_correlate_routine::DISPLAY_BLEND_IMAGE, "BLEND_IMAGE", "" },
+      { c_wphase_correlate_routine::DISPLAY_SHIFTED_CURRENT_IMAGE, "SHIFTED_CURRENT_IMAGE", "" },
 
-      { c_phase_correlate_routine::DISPLAY_CURRENT_SCALED_IMAGE,"CURRENT_SCALED_IMAGE"},
-      { c_phase_correlate_routine::DISPLAY_REFERENCE_SCALED_IMAGE,"REFERENCE_SCALED_IMAGE"},
-      { c_phase_correlate_routine::DISPLAY_CORRELATION_MAP, "CORRELATION_MAP", "" },
+      { c_wphase_correlate_routine::DISPLAY_CURRENT_SCALED_IMAGE,"CURRENT_SCALED_IMAGE"},
+      { c_wphase_correlate_routine::DISPLAY_REFERENCE_SCALED_IMAGE,"REFERENCE_SCALED_IMAGE"},
+      { c_wphase_correlate_routine::DISPLAY_CORRELATION_MAP, "CORRELATION_MAP", "" },
 
-      { c_phase_correlate_routine::DISPLAY_CROSS_SPECTRUM_CART, "CROSS_SPECTRUM_CART", "" },
-      { c_phase_correlate_routine::DISPLAY_CROSS_SPECTRUM_POLAR, "CROSS_SPECTRUM_POLAR", "" },
+      { c_wphase_correlate_routine::DISPLAY_CROSS_SPECTRUM_CART, "CROSS_SPECTRUM_CART", "" },
+      { c_wphase_correlate_routine::DISPLAY_CROSS_SPECTRUM_POLAR, "CROSS_SPECTRUM_POLAR", "" },
 
-      { c_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_CART, "CURRENT_SPECTRUM_CART"},
-      { c_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_POLAR, "CURRENT_SPECTRUM_POLAR"},
+      { c_wphase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_CART, "CURRENT_SPECTRUM_CART"},
+      { c_wphase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_POLAR, "CURRENT_SPECTRUM_POLAR"},
 
-      { c_phase_correlate_routine::DISPLAY_BANDPASS_FILTER, "BANDPASS_FILTER"},
+      { c_wphase_correlate_routine::DISPLAY_BANDPASS_FILTER, "BANDPASS_FILTER"},
 
-      { c_phase_correlate_routine::DISPLAY_CURRENT_IMAGE}
+      { c_wphase_correlate_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
 }
@@ -43,7 +42,7 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
 namespace {
 } // namespace
 
-bool c_phase_correlate_routine::serialize(c_config_setting settings, bool save)
+bool c_wphase_correlate_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
@@ -54,7 +53,7 @@ bool c_phase_correlate_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+void c_wphase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "downscaleFactor", ctx,  &this_class::downscaleFactor, &this_class::set_downscaleFactor, "");
@@ -64,15 +63,14 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "fillMaskHoles", CTL_CONTEXT(ctx, _fillMaskHoles), "Set checked to call geo_fill_holes(currentMask)");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");
-
 }
 
-bool c_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
+bool c_wphase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
 {
   return (_initialized = pc.setup(expectedFrameSize, opts));
 }
 
-bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
+bool c_wphase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
   if ( currentImage.empty() ) {
     CF_ERROR("currentImage is empty");
@@ -103,7 +101,7 @@ bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv:
   return pc.setCurrentImage(_currentImage, _currentMask);
 }
 
-bool c_phase_correlate_routine::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_wphase_correlate_routine::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   if ( referenceImage.empty() ) {
     CF_ERROR("referenceImage is empty");
@@ -144,7 +142,7 @@ static void shiftImage(cv::InputArray src, cv::OutputArray dst, const cv::Vec2f&
     cv::warpAffine(src, dst, M, src.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 }
 
-bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_wphase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if ( (!_initialized || _updateReferenceImage) )  {
     if ( !reinitialize(image.size())) {

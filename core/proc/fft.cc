@@ -2771,8 +2771,15 @@ static void fftPPSDecompositionCCS2(const cv::Mat & src_plane, const cv::Mat1f &
   uint8_t * const p_spec_base = P_SPEC.ptr();
   const size_t p_spec_stride = P_SPEC.step;
 
-  S_SPECTRUM.create(rows, cols, CV_32FC1);
-  cv::Mat1f S_SPEC = S_SPECTRUM.getMatRef();
+  cv::Mat1f S_SPEC;
+  if ( !S_SPECTRUM.needed() ) {
+    S_SPEC.create(rows, cols);
+  }
+  else {
+    S_SPECTRUM.create(rows, cols, CV_32FC1);
+    S_SPEC = S_SPECTRUM.getMatRef();
+  }
+
   uint8_t * const s_spec_base = S_SPEC.ptr();
   const size_t s_spec_stride = S_SPEC.step;
 
@@ -2967,8 +2974,9 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
   return true;
 }
 
+
 /**
- * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
+ * @brief Computes the weighted phase correlation of two whitened spectrums packed in OpenCV CCS format.
  *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
  *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
  *   may happen because the filter becomes not symmetrical.
@@ -3189,6 +3197,281 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 }
 
 /**
+ * @brief Weighted cross correlation of two spectrums packed in OpenCV CCS format.
+ *   Because of CCS is packed format the both vertical and horizontal sizes of spectrums
+ *   must be even if filter embeds alternating sign, otherwise incorrect complex conjugation
+ *   may happen because the filter becomes not symmetrical.
+ *
+ *  Little crazy code due to some nuances with CCS layout
+ */
+double fftCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
+{
+  if( _ccsSpectrum1.empty() || _ccsSpectrum1.type() != CV_32FC1 ) {
+    CF_ERROR("Non-empty CCS packed spectrum 1 of type CV_32FC1 is expected on input");
+    return false;
+  }
+  if( _ccsSpectrum2.empty() || _ccsSpectrum2.type() != CV_32FC1 ) {
+    CF_ERROR("Non-empty CCS packed spectrum 2 of type CV_32FC1 is expected on input");
+    return false;
+  }
+
+  if ( _ccsSpectrum1.size() != _ccsSpectrum2.size() ) {
+    CF_ERROR("Sizes of input spectrums %dx%d and %dx%d not match",
+        _ccsSpectrum1.cols(), _ccsSpectrum1.rows(),
+        _ccsSpectrum2.cols(), _ccsSpectrum2.rows() );
+    return false;
+  }
+
+  if ( filter.size() != _ccsSpectrum1.size() ) {
+    CF_ERROR("Filterr size %dx%d not match to spectrum size %dx%d",
+        filter.cols, filter.rows, _ccsSpectrum1.cols(), _ccsSpectrum1.rows() );
+    return false;
+  }
+
+  if ( _crossSpectrum.fixedType() && _crossSpectrum.type() != CV_32FC1 ) {
+    CF_ERROR("Invalid argument: CCS output spectrum of CV_32FC1 type is expected for output");
+    return false;
+  }
+
+  if( _crossSpectrum.fixedSize() && _crossSpectrum.size() != filter.size() ) {
+    CF_ERROR("Invalid argument: CCS output spectrum size %dx%d not match to filyer size %dx%d",
+        _crossSpectrum.cols(), _crossSpectrum.rows(),
+        filter.cols, filter.rows);
+    return false;
+  }
+
+  const cv::Size fftSize = filter.size();
+  const int rows = fftSize.height;
+  const int cols = fftSize.width;
+  const bool has_even_rows = (rows & 1) == 0;
+  const bool has_even_cols = (cols & 1) == 0;
+
+  const cv::Mat1f ccs1 = _ccsSpectrum1.getMat();
+  const uint8_t * ccs1_base = ccs1.ptr();
+  const size_t ccs1_stride = ccs1.step;
+
+  const cv::Mat1f ccs2 = _ccsSpectrum2.getMat();
+  const uint8_t * ccs2_base = ccs2.ptr();
+  const size_t ccs2_stride = ccs2.step;
+
+  const uint8_t * flt_base  = filter.ptr();
+  const size_t flt_stride  = filter.step;
+
+  _crossSpectrum.create(rows, cols, CV_32FC1);
+  cv::Mat1f crossSpectrum = _crossSpectrum.getMatRef();
+  uint8_t * cross_base = crossSpectrum.ptr();
+  const size_t cross_stride = crossSpectrum.step;
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<double> total_E1(0.0);
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<double> total_E2(0.0);
+
+  parallel_for(0, rows, [=, &total_E1, &total_E2](const auto & range) {
+    float local_E1 = 0.0f;
+    float local_E2 = 0.0f;
+
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      const float * ccsp1 = (const float *)(ccs1_base + y * ccs1_stride);
+      const float * ccsp2 = (const float *)(ccs2_base + y * ccs2_stride);
+      const float * fltp  = (const float *)(flt_base  + y * flt_stride);
+      float * __restrict cross = (float *)(cross_base + y * cross_stride);
+
+      // DC(X = 0) Vertical 1D CCS according to OpenCV code
+      if ( true ) {
+        float cross_value = 0.0f;
+
+        if (y == 0) {
+          // Pure real DC component (0,0). Single-component whitening.
+          const float gw = ((const float *)(flt_base + 0 * flt_stride))[0];
+          const float gw2 = std::abs(gw);
+          const float a1 = ccsp1[0];
+          const float a2 = ccsp2[0];
+          const float re = a1 * a2;
+          cross_value = gw * re;
+          local_E1 += gw2 * a1 * a1;
+          local_E2 += gw2 * a2 * a2;
+        }
+        else if (has_even_rows && y == rows - 1) {
+          // Pure real vertical Nyquist (rows/2, 0) in the last row of the CCS.
+          const float gw = ((const float *)(flt_base + (rows / 2) * flt_stride))[0];
+          const float gw2 = std::abs(gw);
+          const float a1 = ccsp1[0];
+          const float a2 = ccsp2[0];
+          const float re = a1 * a2;
+          cross_value = gw * re;
+          local_E1 += 2 * gw2 * a1 * a1;
+          local_E2 += 2 * gw2 * a2 * a2;
+        }
+        else {
+          // Intermediate complex frequencies on the X=0 axis.
+          // Cross-multiplication with conjugation (like in mulSpectrums)
+          const bool is_im_row = ((y & 1) == 0); // Even rows (2,4,6...) store Im
+          const int r_idx = is_im_row ? (y - 1) : y;
+          const int i_idx = is_im_row ? y : (y + 1);
+          const int true_freq_y = (r_idx + 1) / 2;
+          const float gw = ((const float *)(flt_base + true_freq_y * flt_stride))[0];
+          const float gw2 = std::abs(gw);
+          const float a1 = ((const float *)(ccs1_base + r_idx * ccs1_stride))[0];
+          const float b1 = ((const float *)(ccs1_base + i_idx * ccs1_stride))[0];
+          const float a2 = ((const float *)(ccs2_base + r_idx * ccs2_stride))[0];
+          const float b2 = ((const float *)(ccs2_base + i_idx * ccs2_stride))[0];
+          const float re = (a1 * a2 + b1 * b2);
+          const float im = (b1 * a2 - a1 * b2);
+          cross_value = gw * (is_im_row ? im : re);
+          local_E1 += gw2 * (a1 * a1 + b1 * b1);
+          local_E2 += gw2 * (a2 * a2 + b2 * b2);
+        }
+        cross[0] = cross_value;
+      }
+
+      // Internal complex columns (X = 1 ... half_cols - 1)
+      const int half_cols = (cols + 1) / 2;
+      for (int x = 1; x < half_cols; ++x) {
+        const float gw = fltp[x];
+        const float gw2 = std::abs(gw);
+        const float a1 = ccsp1[2 * x - 1];
+        const float b1 = ccsp1[2 * x];
+        const float a2 = ccsp2[2 * x - 1];
+        const float b2 = ccsp2[2 * x];
+        const float re = (a1 * a2 + b1 * b2);
+        const float im = (b1 * a2 - a1 * b2);
+        cross[2 * x - 1] = gw * re;
+        cross[2 * x]     = gw * im;
+        local_E1 += 2 * gw2 * (a1 * a1 + b1 * b1);
+        local_E2 += 2 * gw2 * (a2 * a2 + b2 * b2);
+      }
+
+      // Nyquist column X = N/2 If cols is even, the physical index is cols - 1.
+      if (has_even_cols) {
+        const int last_ccs_col = cols - 1;
+        const int x = cols / 2;
+        float cross_value = 0.0f;
+
+        if (y == 0) {
+          const float gw = ((const float *)(flt_base + 0 * flt_stride))[x];
+          const float gw2 = std::abs(gw);
+          const float a1 = ccsp1[last_ccs_col];
+          const float a2 = ccsp2[last_ccs_col];
+          const float re = a1 * a2;
+          cross_value = gw * re;
+          local_E1 += gw2 * a1 * a1;
+          local_E2 += gw2 * a2 * a2;
+        }
+        else if (has_even_rows && y == rows - 1) {
+          const float gw = ((const float *)(flt_base + (rows / 2) * flt_stride))[x];
+          const float gw2 = std::abs(gw);
+          const float a1 = ccsp1[last_ccs_col];
+          const float a2 = ccsp2[last_ccs_col];
+          const float re = a1 * a2;
+          cross_value = gw * re;
+          local_E1 += gw2 * a1 * a1;
+          local_E2 += gw2 * a2 * a2;
+        }
+        else {
+          const bool is_im_row = ((y & 1) == 0);
+          const int r_idx = is_im_row ? (y - 1) : y;
+          const int i_idx = is_im_row ? y : (y + 1);
+          const int true_freq_y = (r_idx + 1) / 2;
+          const float gw = ((const float *)(flt_base + true_freq_y * flt_stride))[x];
+          const float gw2 = std::abs(gw);
+          const float a1 = ((const float *)(ccs1_base + r_idx * ccs1_stride))[last_ccs_col];
+          const float b1 = ((const float *)(ccs1_base + i_idx * ccs1_stride))[last_ccs_col];
+          const float a2 = ((const float *)(ccs2_base + r_idx * ccs2_stride))[last_ccs_col];
+          const float b2 = ((const float *)(ccs2_base + i_idx * ccs2_stride))[last_ccs_col];
+          const float re = (a1 * a2 + b1 * b2);
+          const float im = (b1 * a2 - a1 * b2);
+          cross_value = gw * (is_im_row ? im : re);
+          local_E1 += gw2 * (a1 * a1 + b1 * b1);
+          local_E2 += gw2 * (a2 * a2 + b2 * b2);
+        }
+        cross[last_ccs_col] = cross_value;
+      }
+    }
+    double current1 = total_E1.load(std::memory_order_relaxed);
+    while (!total_E1.compare_exchange_weak(current1, current1 + local_E1,
+            std::memory_order_relaxed));
+
+    double current2 = total_E2.load(std::memory_order_relaxed);
+    while (!total_E2.compare_exchange_weak(current2, current2 + local_E2,
+            std::memory_order_relaxed));
+  });
+
+  const double imageNorm1 = total_E1.load();
+  const double imageNorm2 = total_E2.load();
+  const double crossImageNorm = imageNorm1 * imageNorm2;
+  return crossImageNorm;
+}
+
+/**
+* Calculation of the weighted cross-spectrum and energies for complex spectra (CV_32FC2)
+*
+* @param cmplxSpectrum1  Complex spectrum of the first signal (CV_32FC2)
+* @param cmplxSpectrum2  Complex spectrum of the second signal (CV_32FC2)
+* @param filter          Real-valued magnitude filter (CV_32FC1) containing G[k]*G[k]
+* @param _crossSpectrum  Output complex cross-spectrum (CV_32FC2)
+* @return                Product of energies (imageNorm1 * imageNorm2) for normalization
+*/
+double fftCrossSpectrumWeightedCmplx(
+    const cv::Mat2f & cmplxSpectrum1,
+    const cv::Mat2f & cmplxSpectrum2,
+    const cv::Mat1f & filter,
+    cv::OutputArray _crossSpectrum)
+{
+  if (cmplxSpectrum1.empty() && cmplxSpectrum2.empty()) {
+    _crossSpectrum.release();
+    return 0;
+  }
+
+  if (cmplxSpectrum1.size() != cmplxSpectrum2.size()) {
+    CF_ERROR("Bad arguments: Complex spectrum sizes are different");
+    return -1;
+  }
+
+  const cv::Size fftSize = cmplxSpectrum1.size();
+  if (filter.size() != fftSize) {
+    CF_ERROR("Bad arguments: Filter size does not match spectrum size");
+    return -1;
+  }
+
+  _crossSpectrum.create(fftSize, CV_32FC2);
+  cv::Mat2f crossSpectrum = _crossSpectrum.getMatRef();
+
+  double total_E1 = 0.0;
+  double total_E2 = 0.0;
+
+  for (int y = 0; y < fftSize.height; ++y) {
+    const cv::Vec2f * src1 = cmplxSpectrum1.ptr<cv::Vec2f>(y);
+    const cv::Vec2f * src2 = cmplxSpectrum2.ptr<cv::Vec2f>(y);
+    const float * flt     = filter.ptr<float>(y);
+    cv::Vec2f * dst       = crossSpectrum.ptr<cv::Vec2f>(y);
+
+    for (int x = 0; x < fftSize.width; ++x) {
+      const float gw = flt[x];
+
+      const float a1 = src1[x][0];
+      const float b1 = src1[x][1];
+
+      const float a2 = src2[x][0];
+      const float b2 = src2[x][1];
+
+      const float re = (a1 * a2 + b1 * b2) * gw;
+      const float im = (b1 * a2 - a1 * b2) * gw;
+
+      dst[x][0] = re;
+      dst[x][1] = im;
+
+      total_E1 += (a1 * a1 + b1 * b1) * gw;
+      total_E2 += (a2 * a2 + b2 * b2) * gw;
+    }
+  }
+
+  return total_E1 * total_E2;
+}
+
+/**
  * @brief Computes the bandpass-filtered autocorrelation spectrum (energy map) in CCS format.
  *
  * This function performs an in-place-like multiplication of a complex CCS spectrum by a real-valued
@@ -3356,6 +3639,7 @@ double fftAutoCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum, const cv::Ma
 /**
 * @brief Function for automatically determining the position angle from the FFT spectrum module
 * @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
+*       DC is assumed in center fftSize.width / 2, fftSize.height / 2
 * @return double Polar axis position angle in degrees [0, 180)
 */
 double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,

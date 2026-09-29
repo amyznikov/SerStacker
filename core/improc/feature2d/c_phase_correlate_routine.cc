@@ -22,8 +22,6 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
       { c_phase_correlate_routine::DISPLAY_BLEND_IMAGE, "BLEND_IMAGE", "" },
       { c_phase_correlate_routine::DISPLAY_SHIFTED_CURRENT_IMAGE, "SHIFTED_CURRENT_IMAGE", "" },
 
-      { c_phase_correlate_routine::DISPLAY_CURRENT_SCALED_IMAGE,"CURRENT_SCALED_IMAGE"},
-      { c_phase_correlate_routine::DISPLAY_REFERENCE_SCALED_IMAGE,"REFERENCE_SCALED_IMAGE"},
       { c_phase_correlate_routine::DISPLAY_CORRELATION_MAP, "CORRELATION_MAP", "" },
 
       { c_phase_correlate_routine::DISPLAY_CROSS_SPECTRUM_CART, "CROSS_SPECTRUM_CART", "" },
@@ -33,6 +31,10 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
       { c_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_POLAR, "CURRENT_SPECTRUM_POLAR"},
 
       { c_phase_correlate_routine::DISPLAY_BANDPASS_FILTER, "BANDPASS_FILTER"},
+
+      { c_phase_correlate_routine::DISPLAY_APODIZATION_WINDOW, "APODIZATION_WINDOW" },
+      { c_phase_correlate_routine::DISPLAY_SCALLED_REFERENCE_IMAGE, "SCALLED_REFERENCE_IMAGE" },
+      { c_phase_correlate_routine::DISPLAY_SCALLED_CURRENT_IMAGE, "SCALLED_CURRENT_IMAGE" },
 
       { c_phase_correlate_routine::DISPLAY_CURRENT_IMAGE}
   };
@@ -60,6 +62,7 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "gsigma", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
   ctlbind(ctls, "csigma", ctx,  &this_class::csigma, &this_class::set_csigma, "");
   ctlbind(ctls, "calpha", ctx,  &this_class::calpha, &this_class::set_calpha, "");
+  ctlbind(ctls, "apodization", ctx,  &this_class::apodization, &this_class::set_apodization, "");
   ctlbind(ctls, "whiten_specs", ctx,  &this_class::whiten_specs, &this_class::set_whiten_specs, "");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");
@@ -73,6 +76,7 @@ bool c_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
 
 bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
+  INSTRUMENT_REGION("c_phase_correlate_routine");
   if ( currentImage.empty() ) {
     CF_ERROR("currentImage is empty");
     return false;
@@ -104,6 +108,7 @@ bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv:
 
 bool c_phase_correlate_routine::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
+  INSTRUMENT_REGION("c_phase_correlate_routine");
   if ( referenceImage.empty() ) {
     CF_ERROR("referenceImage is empty");
     return false;
@@ -145,6 +150,8 @@ static void shiftImage(cv::InputArray src, cv::OutputArray dst, const cv::Vec2f&
 
 bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  INSTRUMENT_REGION("c_phase_correlate_routine");
+
   if ( (!_initialized || _updateReferenceImage) )  {
     if ( !reinitialize(image.size())) {
       CF_ERROR("reinitialize() fails");
@@ -180,103 +187,112 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
       CF_DEBUG("peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f", peakValue, score, Translation[0], Translation[1]);
     }
 
-    switch (_display)
-    {
-      case DISPLAY_CURRENT_IMAGE:
-        _currentImage.copyTo(image);
-        _currentMask.copyTo(mask);
-        break;
-      case DISPLAY_REFERENCE_IMAGE:
-        _referenceImage.copyTo(image);
-        _referenceMask.copyTo(mask);
-        break;
-      case DISPLAY_SHIFTED_CURRENT_IMAGE : {
-        shiftImage(image, image, Translation);
-        mask.release();
-        break;
-      }
-      case DISPLAY_BLEND_IMAGE: {
-        if ( !_currentImage.empty() && !_referenceImage.empty() ) {
-          cv::addWeighted(_currentImage, 0.5, _referenceImage, 0.5, 0, image);
-        }
-        else if ( !_currentImage.empty() ) {
-          _currentImage.copyTo(image);
-        }
-        else if ( !_referenceImage.empty() ) {
-          _referenceImage.copyTo(image);
-        }
-        else {
-          // do nothing, keep ioutput image as is
-        }
-        mask.release();
-        break;
-      }
-      case DISPLAY_SHIFTED_BLEND_IMAGE: {
-        if ( !_currentImage.empty() && !_referenceImage.empty() ) {
-          cv::Mat tmp;
-          shiftImage(_currentImage, tmp, Translation);
-          cv::addWeighted(tmp, 0.5, _referenceImage, 0.5, 0, image);
-        }
-        else if ( !_currentImage.empty() ) {
-          cv::Mat tmp;
-          shiftImage(_currentImage, tmp, Translation);
-          tmp.copyTo(image);
-        }
-        else if ( !_referenceImage.empty() ) {
-          _referenceImage.copyTo(image);
-        }
-        else {
-          // do nothing, keep ioutput image as is
-        }
+    if ( true ) {
+      INSTRUMENT_REGION("display");
 
-        mask.release();
-        break;
-      }
-      case DISPLAY_CURRENT_SCALED_IMAGE: {
-        pc.scaledCurrentImage().copyTo(image);
-        pc.scaledCurrentMask().copyTo(mask);
-        break;
-      }
-      case DISPLAY_REFERENCE_SCALED_IMAGE: {
-        pc.scaledReferenceImage().copyTo(image);
-        pc.scaledReferenceMask().copyTo(mask);
-        break;
-      }
-      case DISPLAY_CORRELATION_MAP: {
-        pc.correlationMap().copyTo(image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CURRENT_SPECTRUM_CART: {
-        fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
-        fftSwapQuadrants(image, image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CURRENT_SPECTRUM_POLAR: {
-        fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
-        fftSwapQuadrants(image, image);
-        fftSpectrumToPolar(image, image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CROSS_SPECTRUM_CART: {
-        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
-        fftSwapQuadrants(image, image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CROSS_SPECTRUM_POLAR: {
-        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
-        fftSwapQuadrants(image, image);
-        fftSpectrumToPolar(image, image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_BANDPASS_FILTER: {
-        fftSwapQuadrants(pc.bandpassFilter(), image);
-        mask.release();
-        break;
+      switch (_display)
+      {
+        case DISPLAY_CURRENT_IMAGE:
+          _currentImage.copyTo(image);
+          _currentMask.copyTo(mask);
+          break;
+        case DISPLAY_REFERENCE_IMAGE:
+          _referenceImage.copyTo(image);
+          _referenceMask.copyTo(mask);
+          break;
+        case DISPLAY_SHIFTED_CURRENT_IMAGE : {
+          shiftImage(image, image, Translation);
+          mask.release();
+          break;
+        }
+        case DISPLAY_BLEND_IMAGE: {
+          if ( !_currentImage.empty() && !_referenceImage.empty() ) {
+            cv::addWeighted(_currentImage, 0.5, _referenceImage, 0.5, 0, image);
+          }
+          else if ( !_currentImage.empty() ) {
+            _currentImage.copyTo(image);
+          }
+          else if ( !_referenceImage.empty() ) {
+            _referenceImage.copyTo(image);
+          }
+          else {
+            // do nothing, keep ioutput image as is
+          }
+          mask.release();
+          break;
+        }
+        case DISPLAY_SHIFTED_BLEND_IMAGE: {
+          if ( !_currentImage.empty() && !_referenceImage.empty() ) {
+            cv::Mat tmp;
+            shiftImage(_currentImage, tmp, Translation);
+            cv::addWeighted(tmp, 0.5, _referenceImage, 0.5, 0, image);
+          }
+          else if ( !_currentImage.empty() ) {
+            cv::Mat tmp;
+            shiftImage(_currentImage, tmp, Translation);
+            tmp.copyTo(image);
+          }
+          else if ( !_referenceImage.empty() ) {
+            _referenceImage.copyTo(image);
+          }
+          else {
+            // do nothing, keep ioutput image as is
+          }
+
+          mask.release();
+          break;
+        }
+        case DISPLAY_CORRELATION_MAP: {
+          pc.correlationMap().copyTo(image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_CURRENT_SPECTRUM_CART: {
+          fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
+          fftSwapQuadrants(image, image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_CURRENT_SPECTRUM_POLAR: {
+          fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
+          fftSwapQuadrants(image, image);
+          fftSpectrumToPolar(image, image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_CROSS_SPECTRUM_CART: {
+          fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+          fftSwapQuadrants(image, image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_CROSS_SPECTRUM_POLAR: {
+          fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+          fftSwapQuadrants(image, image);
+          fftSpectrumToPolar(image, image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_BANDPASS_FILTER: {
+          fftSwapQuadrants(pc.bandpassFilter(), image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_APODIZATION_WINDOW: {
+          pc.apodizationWindow().copyTo(image);
+          mask.release();
+          break;
+        }
+        case DISPLAY_SCALLED_REFERENCE_IMAGE: {
+          pc.scaledReferenceImage().copyTo(image);
+          pc.scaledReferenceMask().copyTo(mask);
+          break;
+        }
+        case DISPLAY_SCALLED_CURRENT_IMAGE: {
+          pc.scaledCurrentImage().copyTo(image);
+          pc.scaledCurrentMask().copyTo(mask);
+          break;
+        }
       }
     }
   }

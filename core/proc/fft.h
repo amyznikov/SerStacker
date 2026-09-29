@@ -136,6 +136,14 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
 cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size);
 
 /**
+ * @brief Generate 2D Tukey apodization window.
+ * @param alpha Window shape parameter in the range [0.0, 1.0].
+ * @return cv::Mat1f Matrix of type CV_32FC1 with window coefficients ranging from 0.0 to 1.0.
+**/
+void generateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& targetFrameSize, double alpha);
+
+
+/**
  * @brief Generates an inverse frequency-domain cross-shaped filter to suppress rectangular window artifacts.
  *
  * This function constructs a 2D weighting matrix in the frequency domain designed to mitigate

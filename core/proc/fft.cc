@@ -2230,6 +2230,75 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
   return mask;
 }
 
+
+/**
+ * @brief Generate 2D Tukey apodization window.
+ * @param alpha Window shape parameter in the range [0.0, 1.0].
+ * @return cv::Mat1f Matrix of type CV_32FC1 with window coefficients ranging from 0.0 to 1.0.
+**/
+void generateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& targetFrameSize, double alpha)
+{
+  const int N_x = targetFrameSize.width;
+  const int N_y = targetFrameSize.height;
+
+  _dst.create(targetFrameSize, CV_32FC1);
+  if( (alpha = std::max(0.0, std::min(1.0, alpha))) <= 0.0 ) {
+    _dst.setTo(1);
+    return;
+  }
+
+  std::vector<float> winX(N_x);
+  std::vector<float> winY(N_y);
+
+  const double max_i = double(N_x - 1);
+  const double max_j = double(N_y - 1);
+  const double x_cutoff = alpha * max_i / 2.0;
+  const double y_cutoff = alpha * max_j / 2.0;
+
+  for( int i = 0; i < N_x; ++i ) {
+    const double t = double(i);
+    if( t < x_cutoff ) {
+      winX[i] = float(0.5 * (1.0 + std::cos(M_PI * (2.0 * t / (alpha * max_i) - 1.0))));
+    }
+    else if( t > max_i - x_cutoff ) {
+      winX[i] = float(0.5 * (1.0 + std::cos(M_PI * (2.0 * (max_i - t) / (alpha * max_i) - 1.0))));
+    }
+    else {
+      winX[i] = 1.0f;
+    }
+  }
+
+  for( int j = 0; j < N_y; ++j ) {
+    const double t = double(j);
+    if( t < y_cutoff ) {
+      winY[j] = float(0.5 * (1.0 + std::cos(M_PI * (2.0 * t / (alpha * max_j) - 1.0))));
+    }
+    else if( t > max_j - y_cutoff ) {
+      winY[j] = float(0.5 * (1.0 + std::cos(M_PI * (2.0 * (max_j - t) / (alpha * max_j) - 1.0))));
+    }
+    else {
+      winY[j] = 1.0f;
+    }
+  }
+
+  cv::Mat1f dst = _dst.getMatRef();
+  uint8_t * dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+  const float * wxp = winX.data();
+  const float * wyp = winY.data();
+
+  parallel_for(0, targetFrameSize.height,
+      [=](const auto & range) {
+        for( int y = rbegin(range); y < rend(range); ++y ) {
+          float * __restrict dstp = (float * )(dst_base + y * dst_stride);
+          const float wy = wyp[y];
+          for( int x = 0; x < targetFrameSize.width; ++x ) {
+            dstp[x] = wy * wxp[x];
+          }
+        }
+      });
+}
+
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output
  * */
@@ -2890,7 +2959,7 @@ static void fftPPSDecompositionCCS2(const cv::Mat & src_plane, const cv::Mat1f &
 
 
 /**
-* @brief DFT with Virginie Moizan decomposition into periodic and smooth components (Periodic + Smooth) in OpenCV CCS format.
+* @brief DFT with Virginie Moizan Periodic + Smooth decomposition in OpenCV CCS format.
 * Combines V-spectrum generation, Laplacian filtering (S), and subtraction (P) into a single pass.
 * The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
 *   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
@@ -3008,6 +3077,7 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
 bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
 {
+  INSTRUMENT_REGION("");
   if( _ccsSpectrum1.empty() || _ccsSpectrum1.type() != CV_32FC1 ) {
     CF_ERROR("Non-empty CCS packed spectrum 1 of type CV_32FC1 is expected on input");
     return false;
@@ -3207,6 +3277,7 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 double fftCrossSpectrumWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
 {
+  INSTRUMENT_REGION("");
   if( _ccsSpectrum1.empty() || _ccsSpectrum1.type() != CV_32FC1 ) {
     CF_ERROR("Non-empty CCS packed spectrum 1 of type CV_32FC1 is expected on input");
     return false;

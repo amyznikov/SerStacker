@@ -27,14 +27,15 @@ public:
     DISPLAY_BLEND_IMAGE,
     DISPLAY_SHIFTED_CURRENT_IMAGE,
     DISPLAY_SHIFTED_BLEND_IMAGE,
-    DISPLAY_CURRENT_SCALED_IMAGE,
-    DISPLAY_REFERENCE_SCALED_IMAGE,
     DISPLAY_CORRELATION_MAP,
     DISPLAY_CROSS_SPECTRUM_CART,
     DISPLAY_CROSS_SPECTRUM_POLAR,
     DISPLAY_CURRENT_SPECTRUM_CART,
     DISPLAY_CURRENT_SPECTRUM_POLAR,
     DISPLAY_BANDPASS_FILTER,
+    DISPLAY_APODIZATION_WINDOW,
+    DISPLAY_SCALLED_REFERENCE_IMAGE,
+    DISPLAY_SCALLED_CURRENT_IMAGE,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -78,6 +79,16 @@ protected:
   {
     return opts.calpha;
   }
+  void set_apodization(double v)
+  {
+    opts.apodization = v;
+    _initialized = false;
+  }
+  double apodization() const
+  {
+    return opts.apodization;
+  }
+
   void set_whiten_specs(bool v)
   {
     opts.whiten_specs = v;
@@ -87,6 +98,8 @@ protected:
   {
     return opts.whiten_specs;
   }
+
+
 
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);

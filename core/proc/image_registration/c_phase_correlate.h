@@ -22,11 +22,14 @@ struct c_phase_correlate_options
   /** @brief Image downscale factor (must be >= 1.0). Controls the processing resolution. */
   double downscale_factor = 2;
 
-  /** @brief Bandpass filter Gaussian sigma [px]. Defines the target texture characteristic size. */
+  /** @brief Bandpass filter radius in space domain [px]. Defines the target texture characteristic size. */
   double gsigma = 5;
 
   /** @brief Inverse cross-filter blur parameter for deconvolution/mask-edge compensation. */
   double csigma = 0.5;
+
+  /** @brief Optional Apodization window parameter [0..1]. */
+  double apodization = 0;
 
   /** @brief Inverse cross-filter scaling/regularization alpha coefficient. */
   double calpha = 0.0;
@@ -54,9 +57,10 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_phase_correlate_options;
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
-  ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Target texture characteristic size in pixels");
+  ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Bandpass filter radius in space domain [px]. Defines the target texture characteristic size");
   ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
   ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter strength");
+  ctlbind(ctls, "apodization:", ctx(&S::apodization),  "Optional Apodization window parameter [0..1]");
   ctlbind(ctls, " whiten_specs:", ctx(&S:: whiten_specs),  "Set true for pure phase correlation of whitened spectrums");
 }
 
@@ -141,10 +145,12 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f & crossMask() const {
     return _crossMask;
   }
+  const cv::Mat1f & apodizationWindow() const {
+    return _apodizationWindow;
+  }
 
 protected: // internal helpers
-  void generateBandpassFilter();
-  //double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
+  void generateFilters();
   double findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const;
 
 protected: // internal data
@@ -154,6 +160,7 @@ protected: // internal data
   double _gsigma = 0.1;
   double _csigma = 0.5;
   double _calpha = 0.05;
+  double _aalpha = 0;
   double _peakValue = 0;
   double _correlationScore = 0;
   bool _whiten_specs = false;
@@ -166,7 +173,7 @@ protected: // Cached data
   cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
   cv::Mat1f _currentSpectrum, _referenceSpectrum, _crossSpectrum;
   cv::Mat1f _correlationMap;
-  cv::Mat1f _bandpassFilter, _vlapFilter, _crossMask;
+  cv::Mat1f _bandpassFilter, _vlapFilter, _crossMask, _apodizationWindow;
 };
 
 

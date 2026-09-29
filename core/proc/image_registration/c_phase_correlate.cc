@@ -137,8 +137,13 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
   _calpha = opts.calpha;
   _whiten_specs = opts.whiten_specs;
 
+  if ( _aalpha != opts.apodization ) {
+    _aalpha = opts.apodization;
+    _apodizationWindow.release();
+  }
+
   // pre-generate bandpass filter for expected frame size
-  generateBandpassFilter();
+  generateFilters();
 
   _initialized = true;
   return true;
@@ -156,6 +161,7 @@ void c_phase_correlate::release()
   _crossSpectrum.release();
   _correlationMap.release();
   _vlapFilter.release();
+  _apodizationWindow.release();
   _initialized = false;
 }
 
@@ -173,12 +179,13 @@ void c_phase_correlate::release()
  *          deconvolution is combined with the map. The final matrix is fully normalized via the L1 norm.
  *
  */
-void c_phase_correlate::generateBandpassFilter()
+void c_phase_correlate::generateFilters()
 {
+  INSTRUMENT_REGION("pc");
   // fsigma = sqrt(2)/ (CV_PI * _gsigma)
   // rho2 = (u^2 + v^2) / fsigma^2;
   // F(u, v) = rho2 * exp (-rho2 )
-  // the alternating +1 and -1 is also inserted to avoid later fftSwapQudrants()
+  // the alternating +1 and -1 is also embedded into filter to avoid later fftSwapQudrants()
 
   _bandpassFilter.create(_fftSize);
 
@@ -200,27 +207,29 @@ void c_phase_correlate::generateBandpassFilter()
     });
   }
   else {
+    // gsigma = 0.283 / lambda
+    // 1 / lambda = gsigma/0.283
+    const double ilambda = (_gsigma / 0.283);
+    const float ilambda2 = float (ilambda * ilambda);
 
-    const float inv_cols = float (1.0 / cols);
-    const float inv_rows = float (1.0 / rows);
-    const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
+    const float icols = float (1.0 / cols);
+    const float irows = float (1.0 / rows);
 
     parallel_for(0, rows, [=](const auto & range) {
       for( int y = rbegin(range); y < rend(range); ++y ) {
         float * __restrict fltp = (float * )(filter_base + y * filter_stride);
 
         const int fy = (y > rows / 2) ? (rows - y) : y;
-        const float v = fy * inv_rows;
+        const float v = fy * irows;
         const float v2 = v * v;
 
         for( int x = 0; x < cols; ++x ) {
           const int fx = (x > cols / 2) ? (cols - x) : x;
           const int sign = ((x + y) & 1) ? -1 : 1;
 
-          const float u = fx * inv_cols;
+          const float u = fx * icols;
           const float u2 = u * u;
-          const float rho2 = (u2 + v2) * lambda2;
-
+          const float rho2 = (u2 + v2) * ilambda2;
           fltp[x] = sign * rho2 * std::exp(-rho2);
         }
       }
@@ -240,10 +249,14 @@ void c_phase_correlate::generateBandpassFilter()
     _vlapFilter = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
   }
 
+  if ( _aalpha > 0 &&  _apodizationWindow.size() != _fftSize ) {
+    generateTukeyApodizationWindow(_apodizationWindow, _fftSize, _aalpha);
+  }
 }
 
 bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
+  INSTRUMENT_REGION("pc");
   if( _fftSize.empty() ) {
     CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
     return false;
@@ -283,6 +296,10 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
       _referenceValidSize,
       _referenceCropOffset);
 
+  if ( _apodizationWindow.size() == _fftSize ) {
+    cv::multiply(_apodizationWindow, _scaledReferenceImage, _scaledReferenceImage);
+  }
+
   fftPPSDecompositionCCS(_scaledReferenceImage, _vlapFilter,
       _referenceSpectrum,
       cv::noArray());
@@ -292,6 +309,7 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
 
 bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
+  INSTRUMENT_REGION("pc");
   if( _fftSize.empty() ) {
     CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
     return false;
@@ -330,6 +348,10 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
       _currentValidSize,
       _currentCropOffset);
 
+  if ( _apodizationWindow.size() == _fftSize ) {
+    cv::multiply(_apodizationWindow, _scaledCurrentImage, _scaledCurrentImage);
+  }
+
   fftPPSDecompositionCCS(_scaledCurrentImage, _vlapFilter,
       _currentSpectrum,
       cv::noArray());
@@ -348,6 +370,8 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
  */
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 {
+  INSTRUMENT_REGION("pc");
+
   if (_fftSize.empty() || _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
     CF_ERROR("c_phase_correlate: was not properly initialized with setup()");
     return -1;
@@ -374,8 +398,11 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     }
   }
 
-  cv::idft(_crossSpectrum, _correlationMap,
-      cv::DFT_REAL_OUTPUT);
+  if ( true ) {
+    INSTRUMENT_REGION("idft");
+    cv::idft(_crossSpectrum, _correlationMap,
+        cv::DFT_REAL_OUTPUT);
+  }
 
   cv::Point2f peakPos;
   cv::Point maxPos;
@@ -420,6 +447,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
  */
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const
 {
+  INSTRUMENT_REGION("idft");
   // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
   // Cubic weight (val - threshold)^3
   // Works well on flat peaks in a turbulent environment
@@ -430,7 +458,7 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   int maxIdx[2] = {0, 0};
   cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
 
-  const int R = int(_gsigma / _downscale_factor) + 1;
+  const int R = _gsigma >= 0 ? int( _whiten_specs ?  _gsigma :  2 * _gsigma) + 1 : 2;
   const int y0 = maxIdx[0];
   const int x0 = maxIdx[1];
   maxPos.x = x0;
@@ -535,6 +563,7 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, gsigma);
   SERIALIZE_OPTION(section, save, opts, csigma);
   SERIALIZE_OPTION(section, save, opts, calpha);
+  SERIALIZE_OPTION(section, save, opts, apodization);
   SERIALIZE_OPTION(section, save, opts, whiten_specs);
   return true;
 }

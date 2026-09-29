@@ -36,6 +36,11 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
       { c_phase_correlate_routine::DISPLAY_SCALLED_REFERENCE_IMAGE, "SCALLED_REFERENCE_IMAGE" },
       { c_phase_correlate_routine::DISPLAY_SCALLED_CURRENT_IMAGE, "SCALLED_CURRENT_IMAGE" },
 
+//      { c_phase_correlate_routine::DISPLAY_CMAP0,"CMAP0"},
+//      { c_phase_correlate_routine::DISPLAY_CMAP1,"CMAP1"},
+//      { c_phase_correlate_routine::DISPLAY_CMAP2,"CMAP2"},
+//      { c_phase_correlate_routine::DISPLAY_CMAP3,"CMAP3"},
+
       { c_phase_correlate_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
@@ -64,9 +69,9 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "calpha", ctx,  &this_class::calpha, &this_class::set_calpha, "");
   ctlbind(ctls, "apodization", ctx,  &this_class::apodization, &this_class::set_apodization, "");
   ctlbind(ctls, "whiten_specs", ctx,  &this_class::whiten_specs, &this_class::set_whiten_specs, "");
+  ctlbind(ctls, "multi_roi", ctx,  &this_class::multi_roi, &this_class::set_multi_roi, "");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");
-
 }
 
 bool c_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
@@ -173,18 +178,17 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
   }
 
   if ( !_referenceImage.empty() ) {
+
     if ( !setCurrentImage(image, mask) ) {
       CF_ERROR("setCurrentImage() fails");
       return false;
     }
 
-    pc.setCurrentImage(_currentImage, _currentMask);
-
     cv::Vec2f Translation;
     const double score = pc.compute(Translation);
     if ( _printScores ) {
       const double peakValue = pc.peakValue();
-      CF_DEBUG("peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f", peakValue, score, Translation[0], Translation[1]);
+      CF_DEBUG("Peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f", peakValue, score, Translation[0], Translation[1]);
     }
 
     if ( true ) {
@@ -293,6 +297,19 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
           pc.scaledCurrentMask().copyTo(mask);
           break;
         }
+
+//        case DISPLAY_CMAP0:
+//        case DISPLAY_CMAP1:
+//        case DISPLAY_CMAP2:
+//        case DISPLAY_CMAP3: {
+//          const std::vector<cv::Mat1f> & cmaps = pc.correlationMaps();
+//          const int index = _display - DISPLAY_CMAP0;
+//          if ( index >=0 && index < cmaps.size() ) {
+//            cmaps[index].copyTo(image);
+//          }
+//          mask.release();
+//          break;
+//        }
       }
     }
   }

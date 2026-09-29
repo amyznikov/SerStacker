@@ -36,7 +36,12 @@ public:
     DISPLAY_APODIZATION_WINDOW,
     DISPLAY_SCALLED_REFERENCE_IMAGE,
     DISPLAY_SCALLED_CURRENT_IMAGE,
-  };
+
+//    DISPLAY_CMAP0,
+//    DISPLAY_CMAP1,
+//    DISPLAY_CMAP2,
+//    DISPLAY_CMAP3,
+ };
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -99,7 +104,15 @@ protected:
     return opts.whiten_specs;
   }
 
-
+  void set_multi_roi(bool v)
+  {
+    opts.multi_roi = v;
+    _initialized = false;
+  }
+  bool multi_roi() const
+  {
+    return opts.multi_roi;
+  }
 
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);

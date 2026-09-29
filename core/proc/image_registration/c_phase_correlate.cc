@@ -107,17 +107,117 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
-cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
+static int getOptimalFFTSizeDownDiv4(int size)
+{
+  size = size - (size % 4);
+  int sopt = cv::getOptimalDFTSize(size);
+
+  while (sopt > 0 && ((sopt > size) || (sopt % 4 != 0) || (cv::getOptimalDFTSize(sopt / 2) != sopt / 2))) {
+    size -= 4;
+    sopt = cv::getOptimalDFTSize(size);
+  }
+
+  return sopt;
+}
+
+// Return crossEnergy scale
+static double computeCrossSpectrum(cv::InputArray currentSpectrum, cv::InputArray referenceSpectrum,
+    const cv::Mat1f & bandpassFilter, cv::OutputArray crossSpectrum, bool whiten_specs)
+{
+  INSTRUMENT_REGION("");
+  if( whiten_specs ) {
+
+    const bool fOK =
+        fftCrossSpectrumPhaseCorrelateWeightedCCS(currentSpectrum, referenceSpectrum,
+            bandpassFilter, crossSpectrum);
+    if( fOK ) {
+      return 1;
+    }
+
+    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+  }
+  else {
+    const double crossEnergy =
+        fftCrossSpectrumWeightedCCS(currentSpectrum, referenceSpectrum,
+            bandpassFilter, crossSpectrum);
+
+    if( crossEnergy > 0 ) {
+      return 1.0 / std::sqrt(crossEnergy);
+    }
+
+    CF_ERROR("fftCrossSpectrumWeightedCCS() fails: Energy=%g", crossEnergy);
+  }
+
+  return -1;
+}
+
+static void updateMultiROICorrelationMap(bool initialize, cv::InputArray _currentRoiMap,
+    cv::InputOutputArray _cumulativeMap, double _scale)
+{
+  INSTRUMENT_REGION("");
+  const cv::Mat roiMap = _currentRoiMap.getMat();
+  const uint8_t * roimap_base = roiMap.ptr();
+  const size_t roimap_stride = roiMap.step;
+
+  const int rows = roiMap.rows;
+  const int cols = roiMap.cols;
+  const float scale = float(_scale);
+
+  if ( _cumulativeMap.size() != roiMap.size() ) {
+    initialize = true; // force initialize
+  }
+
+  if ( initialize ) {
+    _cumulativeMap.create(rows, cols, CV_32FC1);
+
+    cv::Mat & cMap = _cumulativeMap.getMatRef();
+    const uint8_t * cmap_base = cMap.ptr();
+    const size_t cmap_stride = cMap.step;
+
+    parallel_for(0, rows, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const float * rmap = (const float *)(roimap_base + y * roimap_stride);
+        float * __restrict cmap = (float *)(cmap_base + y * cmap_stride);
+        for ( int x = 0; x < cols; ++x ) {
+          cmap[x] = std::max(0.f, scale * rmap[x]);
+        }
+      }
+    });
+  }
+  else {
+    cv::Mat & cMap = _cumulativeMap.getMatRef();
+    const uint8_t * cmap_base = cMap.ptr();
+    const size_t cmap_stride = cMap.step;
+
+    parallel_for(0, rows, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const float * rmap = (const float *)(roimap_base + y * roimap_stride);
+        float * __restrict cmap = (float *)(cmap_base + y * cmap_stride);
+        for ( int x = 0; x < cols; ++x ) {
+          const float v = cmap[x];
+          cmap[x] = v * std::max(0.f, scale * rmap[x]);
+        }
+      }
+    });
+  }
+}
+
+
+cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor, bool multi_roi)
 {
   // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
   // otherwise the bandpass filter become not symmetrical due to embedded sign alternating
-  const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
-  const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
+  const int W = cvRound(expectedFrameSize.width / downscaleFactor);
+  const int H = cvRound(expectedFrameSize.height / downscaleFactor);
+  const int downscaledW = multi_roi ? getOptimalFFTSizeDownDiv4(W) : getOptimalFFTSizeDown(W);
+  const int downscaledH = multi_roi ? getOptimalFFTSizeDownDiv4(H) : getOptimalFFTSizeDown(H);
   return cv::Size(std::max(4, downscaledW), std::max(4, downscaledH));
 }
 
 bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)
 {
+  INSTRUMENT_REGION("");
+
   if( expectedFrameSize.empty() ) {
     CF_ERROR("c_phase_correlate: BAD expectedFrameSize specified : %dx%d",
         expectedFrameSize.width, expectedFrameSize.height);
@@ -130,12 +230,21 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
     return false;
   }
 
-  _fftSize = computeFFTPackSize(expectedFrameSize, _downscale_factor);
+  const cv::Size totalPackSize = computeFFTPackSize(expectedFrameSize, _downscale_factor, opts.multi_roi);
+  if ( !opts.multi_roi ) {
+    _fftSize = totalPackSize;
+  }
+  else {
+    _fftSize.width = totalPackSize.width / 2;
+    _fftSize.height = totalPackSize.height / 2;
+  }
+
   _expectedFrameSize = expectedFrameSize;
   _gsigma = opts.gsigma;
   _csigma = opts.csigma;
   _calpha = opts.calpha;
   _whiten_specs = opts.whiten_specs;
+  _multi_roi = opts.multi_roi;
 
   if ( _aalpha != opts.apodization ) {
     _aalpha = opts.apodization;
@@ -181,7 +290,7 @@ void c_phase_correlate::release()
  */
 void c_phase_correlate::generateFilters()
 {
-  INSTRUMENT_REGION("pc");
+  INSTRUMENT_REGION("");
   // fsigma = sqrt(2)/ (CV_PI * _gsigma)
   // rho2 = (u^2 + v^2) / fsigma^2;
   // F(u, v) = rho2 * exp (-rho2 )
@@ -254,109 +363,93 @@ void c_phase_correlate::generateFilters()
   }
 }
 
-bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_phase_correlate::setupInputImage(cv::InputArray srcImage, cv::InputArray srcMask,
+    cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
+    cv::Size & outValidSize, cv::Point & outCropOffset,
+    cv::Mat1f & outSingleSpectrum,
+    std::vector<cv::Mat1f> & outMultiSpectrums)
 {
-  INSTRUMENT_REGION("pc");
-  if( _fftSize.empty() ) {
+  INSTRUMENT_REGION("");
+
+  if ( _fftSize.empty() ) {
     CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
     return false;
   }
 
-  if ( referenceImage.empty() ) {
-    CF_ERROR("c_phase_correlate: referenceImage is empty");
+  if ( srcImage.empty() ) {
+    CF_ERROR("c_phase_correlate: input image is empty");
     return false;
   }
 
-  if ( referenceImage.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: referenceImage must be single-channel");
-    return false;
-  }
-
-  if (!referenceMask.empty() && referenceMask.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: referenceMask must be single-channel");
+  if ( srcImage.channels() != 1 || (!srcMask.empty() && srcMask.channels() != 1) ) {
+    CF_ERROR("c_phase_correlate: input image and mask must be single-channel");
     return false;
   }
 
   cv::Mat smallImage, smallMask;
-
   if ( std::abs(_downscale_factor - 1) < 10 * FLT_EPSILON ) {
-    smallImage = referenceImage.getMat();
-    smallMask = referenceMask.getMat();
+    smallImage = srcImage.getMat();
+    smallMask = srcMask.getMat();
   }
   else {
     const double scale = 1.0 / _downscale_factor;
-    cv::resize(referenceImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
-    if (!referenceMask.empty()) {
-      cv::resize(referenceMask, smallMask, cv::Size(0, 0), scale, scale, cv::INTER_NEAREST);
+    cv::resize(srcImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+    if (!srcMask.empty()) {
+      cv::resize(srcMask, smallMask, cv::Size(0, 0), scale, scale, cv::INTER_NEAREST);
     }
   }
 
+  const cv::Size packSize = _multi_roi ?
+      cv::Size(_fftSize.width * 2, _fftSize.height * 2) :
+      _fftSize;
+
   packScaledImageForPhaseCorreation(smallImage, smallMask,
-      _scaledReferenceImage, _scaledReferenceMask, _fftSize,
-      _referenceValidSize,
-      _referenceCropOffset);
+      outScaledImage, outScaledMask, packSize,
+      outValidSize,
+      outCropOffset);
 
-  if ( _apodizationWindow.size() == _fftSize ) {
-    cv::multiply(_apodizationWindow, _scaledReferenceImage, _scaledReferenceImage);
+  if ( !_multi_roi ) {
+    if ( _apodizationWindow.size() == _fftSize ) {
+      cv::multiply(_apodizationWindow, outScaledImage, outScaledImage);
+    }
+    fftPPSDecompositionCCS(outScaledImage, _vlapFilter, outSingleSpectrum, cv::noArray());
   }
+  else {
+    cv::Mat1f subImage;
 
-  fftPPSDecompositionCCS(_scaledReferenceImage, _vlapFilter,
-      _referenceSpectrum,
-      cv::noArray());
+    outMultiSpectrums.resize(4);
+
+    for ( int y = 0; y < 2; ++y ) {
+      for ( int x = 0; x < 2; ++x ) {
+        const cv::Rect ROI(x * _fftSize.width, y * _fftSize.height, _fftSize.width, _fftSize.height);
+        if ( _apodizationWindow.empty() ) {
+          fftPPSDecompositionCCS(outScaledImage(ROI), _vlapFilter, outMultiSpectrums[2 * y + x], cv::noArray());
+        }
+        else {
+          cv::multiply(_apodizationWindow, outScaledImage(ROI), subImage);
+          fftPPSDecompositionCCS(subImage, _vlapFilter, outMultiSpectrums[2 * y + x], cv::noArray());
+        }
+      }
+    }
+  }
 
   return true;
 }
 
+bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
+{
+  return setupInputImage(referenceImage, referenceMask,
+      _scaledReferenceImage, _scaledReferenceMask,
+      _referenceValidSize, _referenceCropOffset,
+      _referenceSpectrum, _referenceSpectrums);
+}
+
 bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
-  INSTRUMENT_REGION("pc");
-  if( _fftSize.empty() ) {
-    CF_ERROR("c_phase_correlate: was not properly initialized, _fftSize is empty");
-    return false;
-  }
-
-  if ( currentImage.empty() ) {
-    CF_ERROR("c_phase_correlate: currentImage is empty");
-    return false;
-  }
-
-  if ( currentImage.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: currentImage must be single-channel");
-    return false;
-  }
-
-  if (!currentMask.empty() && currentMask.channels() != 1 ) {
-    CF_ERROR("c_phase_correlate: currentMask must be single-channel");
-    return false;
-  }
-
-  cv::Mat smallImage, smallMask;
-  if ( std::abs(_downscale_factor - 1) < 10 * FLT_EPSILON ) {
-    smallImage = currentImage.getMat();
-    smallMask = currentMask.getMat();
-  }
-  else {
-    const double scale = 1.0 / _downscale_factor;
-    cv::resize(currentImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
-    if (!currentMask.empty()) {
-      cv::resize(currentMask, smallMask, cv::Size(0, 0), scale, scale, cv::INTER_NEAREST);
-    }
-  }
-
-  packScaledImageForPhaseCorreation(smallImage, smallMask,
-      _scaledCurrentImage, _scaledCurrentMask, _fftSize,
-      _currentValidSize,
-      _currentCropOffset);
-
-  if ( _apodizationWindow.size() == _fftSize ) {
-    cv::multiply(_apodizationWindow, _scaledCurrentImage, _scaledCurrentImage);
-  }
-
-  fftPPSDecompositionCCS(_scaledCurrentImage, _vlapFilter,
-      _currentSpectrum,
-      cv::noArray());
-
-  return true;
+  return setupInputImage(currentImage, currentMask,
+      _scaledCurrentImage, _scaledCurrentMask,
+      _currentValidSize, _currentCropOffset,
+      _currentSpectrum, _currentSpectrums);
 }
 
 /**
@@ -370,66 +463,77 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
  */
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 {
-  INSTRUMENT_REGION("pc");
+  INSTRUMENT_REGION("");
 
-  if (_fftSize.empty() || _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
+  if ( _fftSize.empty() ) {
     CF_ERROR("c_phase_correlate: was not properly initialized with setup()");
     return -1;
   }
 
-  double crossEnergy = 0;
-
-  if ( _whiten_specs ) {
-    const bool fOK =
-        fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
-            _bandpassFilter, _crossSpectrum);
-    if( !fOK ) {
-      CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
-      return false;
+  if ( !_multi_roi ) {
+    if ( _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
+      CF_ERROR("c_phase_correlate: single-ROI spectrum size mismatch");
+      return -1;
     }
   }
   else {
-    crossEnergy =
-        fftCrossSpectrumWeightedCCS(_currentSpectrum, _referenceSpectrum,
-            _bandpassFilter, _crossSpectrum);
-    if( crossEnergy <= 0) {
-      CF_ERROR("fftCrossSpectrumWeightedCCS() fails: Energy=%g", crossEnergy);
-      return false;
+    if ( _currentSpectrums.size() != 4 || _referenceSpectrums.size() != 4 ) {
+      CF_ERROR("c_phase_correlate: multi-ROI spectrums not initialized");
+      return -1;
     }
   }
 
-  if ( true ) {
-    INSTRUMENT_REGION("idft");
-    cv::idft(_crossSpectrum, _correlationMap,
-        cv::DFT_REAL_OUTPUT);
+  double crossEnergyScale = 1;
+
+  if( !_multi_roi ) {
+
+    crossEnergyScale =
+        computeCrossSpectrum(_currentSpectrum, _referenceSpectrum,
+            _bandpassFilter, _crossSpectrum, _whiten_specs);
+
+    cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT);
+
+  }
+  else {
+    cv::Mat1f cSpec, cMap;
+
+
+    for( size_t i = 0; i < 4; ++i ) {
+
+      crossEnergyScale =
+          computeCrossSpectrum(_currentSpectrums[i], _referenceSpectrums[i],
+              _bandpassFilter, cSpec, _whiten_specs);
+
+      cv::idft(cSpec, cMap, cv::DFT_REAL_OUTPUT);
+
+      updateMultiROICorrelationMap(i == 0, cMap, _correlationMap,
+          crossEnergyScale);
+    }
+
   }
 
   cv::Point2f peakPos;
   cv::Point maxPos;
   const double measuredPeakValue = findSubpixelCentroid(_correlationMap, peakPos, maxPos);
-  if ( _whiten_specs ) {
-    _peakValue = measuredPeakValue;
+  if ( !_multi_roi ) {
+    _peakValue = measuredPeakValue * crossEnergyScale;
   }
   else {
-    _peakValue = measuredPeakValue / std::sqrt(crossEnergy);
+    _peakValue = std::sqrt(std::sqrt(measuredPeakValue));
   }
 
-//  CF_DEBUG("\ncrossEnergy = %g measuredPeakValue = %g peakValue = %g peakPos: x=%g y=%g maxPos: x=%d y=%d\n",
-//      crossEnergy, measuredPeakValue, peakValue, peakPos.x, peakPos.y, maxPos.x, maxPos.y );
-
-  // Compensate for image resolution scale
-  const double scaledDx = peakPos.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
-  const double scaledDy = peakPos.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
+  const double scaledDx = peakPos.x - _fftSize.width / 2.0 + _referenceCropOffset.x - _currentCropOffset.x;
+  const double scaledDy = peakPos.y - _fftSize.height / 2.0 + _referenceCropOffset.y - _currentCropOffset.y;
   outputTranslation[0] = float(-scaledDx * _downscale_factor);
   outputTranslation[1] = float(-scaledDy * _downscale_factor);
 
-  // Compensate correlation score for shifted frame overlap
+
+
   const double kx = 1.0 - std::abs(outputTranslation[0]) / (_fftSize.width * _downscale_factor);
   const double ky = 1.0 - std::abs(outputTranslation[1]) / (_fftSize.height * _downscale_factor);
   const double area_rel = kx * ky;
   const double k_min_axis = std::min(kx, ky);
   const double dynamic_eps = std::exp(-70.0 * (k_min_axis - 0.3));
-
   return (_correlationScore = _peakValue / (area_rel + dynamic_eps));
 }
 
@@ -447,7 +551,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
  */
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const
 {
-  INSTRUMENT_REGION("idft");
+  INSTRUMENT_REGION("");
   // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
   // Cubic weight (val - threshold)^3
   // Works well on flat peaks in a turbulent environment
@@ -470,23 +574,41 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   }
 
   const float z_center = correlationMap(y0, x0);
-  const double threshold = z_center * 0.10f;
   double sumWeights = 0.0;
   double sumX = 0.0;
   double sumY = 0.0;
 
   const uint8_t * src_base = correlationMap.ptr(y0);
   const size_t stride = correlationMap.step;
-  for (int dy = -R; dy <= R; ++dy) {
-    const float * __restrict srcp = (const float *)(src_base + dy * stride);
-    for (int dx = -R; dx <= R; ++dx) {
-      const double val = srcp[x0 + dx];
-      if (val > threshold) {
-        const double diff = val - threshold;
-        const double w = diff * diff * diff;
-        sumWeights += w;
-        sumX += dx * w;
-        sumY += dy * w;
+
+  if ( !_multi_roi ) {
+    const double threshold = z_center * 0.10f;
+    for (int dy = -R; dy <= R; ++dy) {
+      const float * __restrict srcp = (const float *)(src_base + dy * stride);
+      for (int dx = -R; dx <= R; ++dx) {
+        const double val = srcp[x0 + dx];
+        if (val > threshold) {
+          const double diff = val - threshold;
+          const double w = diff * diff * diff;
+          sumWeights += w;
+          sumX += dx * w;
+          sumY += dy * w;
+        }
+      }
+    }
+  }
+  else {
+    const double threshold = z_center * 0.05f;
+    for (int dy = -R; dy <= R; ++dy) {
+      const float * __restrict srcp = (const float *)(src_base + dy * stride);
+      for (int dx = -R; dx <= R; ++dx) {
+        const double val = srcp[x0 + dx];
+        if (val > threshold) {
+          const double w = val - threshold;
+          sumWeights += w;
+          sumX += dx * w;
+          sumY += dy * w;
+        }
       }
     }
   }
@@ -502,60 +624,6 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   return z_center;
 }
 
-//double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
-//{
-//  // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
-//  // Cubic weight (val - threshold)^3
-//  // Works well on flat peaks in a turbulent environment
-//
-//  const int rows = correlationMap.rows;
-//  const int cols = correlationMap.cols;
-//
-//  int maxIdx[2] = {0, 0};
-//  cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
-//
-//  constexpr int R = 2;
-//  const int y0 = maxIdx[0];
-//  const int x0 = maxIdx[1];
-//
-//  if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
-//    peakPos = cv::Point2f(float(x0), float(y0));
-//    return -1;
-//  }
-//
-//  const float z_center = correlationMap(y0, x0);
-//  const double threshold = z_center * 0.20f;
-//  double sumWeights = 0.0;
-//  double sumX = 0.0;
-//  double sumY = 0.0;
-//
-//  const uint8_t * src_base = correlationMap.ptr(y0);
-//  const size_t stride = correlationMap.step;
-//  for (int dy = -R; dy <= R; ++dy) {
-//    const float * __restrict srcp = (const float *)(src_base + dy * stride);
-//    for (int dx = -R; dx <= R; ++dx) {
-//      const double val = srcp[x0 + dx];
-//      if (val > threshold) {
-//        const double diff = val - threshold;
-//        const double w = diff * diff * diff;
-//        sumWeights += w;
-//        sumX += dx * w;
-//        sumY += dy * w;
-//      }
-//    }
-//  }
-//
-//  if( sumWeights > 1e-9 ) {
-//    peakPos.x = float(x0 + sumX / sumWeights);
-//    peakPos.y = float(y0 + sumY / sumWeights);
-//  }
-//  else {
-//    peakPos = cv::Point2f(float(x0), float(y0));
-//  }
-//
-//  return z_center;
-//}
-
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
     c_phase_correlate_options & opts)
 {
@@ -565,6 +633,7 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, calpha);
   SERIALIZE_OPTION(section, save, opts, apodization);
   SERIALIZE_OPTION(section, save, opts, whiten_specs);
+  SERIALIZE_OPTION(section, save, opts, multi_roi);
   return true;
 }
 

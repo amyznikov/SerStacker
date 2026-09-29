@@ -34,8 +34,11 @@ struct c_phase_correlate_options
   /** @brief Inverse cross-filter scaling/regularization alpha coefficient. */
   double calpha = 0.0;
 
-  /** @brief set true for pure phase correlation of whitened spectrums . */
+  /** @brief Set to true for pure phase correlation of whitened spectrums . */
   bool whiten_specs = false;
+
+  /** @brief Set to true for Multi-ROI mode */
+  bool multi_roi = false;
 };
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
@@ -61,7 +64,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
   ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter strength");
   ctlbind(ctls, "apodization:", ctx(&S::apodization),  "Optional Apodization window parameter [0..1]");
-  ctlbind(ctls, " whiten_specs:", ctx(&S:: whiten_specs),  "Set true for pure phase correlation of whitened spectrums");
+  ctlbind(ctls, "whiten_specs:", ctx(&S:: whiten_specs),  "Set true for pure phase correlation of whitened spectrums");
+  ctlbind(ctls, "multi_roi:", ctx(&S:: multi_roi),  "Set to true for Multi-ROI operation mode");
 }
 
 class c_phase_correlate
@@ -91,7 +95,7 @@ public:
   }
 
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize,
-      double downscaleFactor);
+      double downscaleFactor, bool multi_roi);
 
 public: // public access for debug & visualization purposes
   bool initialized() const {
@@ -136,6 +140,9 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f & correlationMap() const {
     return _correlationMap;
   }
+//  const std::vector<cv::Mat1f> & correlationMaps() const {
+//    return _correlationMaps;
+//  }
   const cv::Mat1f & bandpassFilter() const {
     return _bandpassFilter;
   }
@@ -152,6 +159,11 @@ public: // public access for debug & visualization purposes
 protected: // internal helpers
   void generateFilters();
   double findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const;
+  bool setupInputImage(cv::InputArray srcImage, cv::InputArray srcMask,
+      cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
+      cv::Size & outValidSize, cv::Point & outCropOffset,
+      cv::Mat1f & outSingleSpectrum,
+      std::vector<cv::Mat1f> & outMultiSpectrums);
 
 protected: // internal data
   cv::Size _fftSize;
@@ -164,6 +176,7 @@ protected: // internal data
   double _peakValue = 0;
   double _correlationScore = 0;
   bool _whiten_specs = false;
+  bool _multi_roi = false;
   bool _initialized = false;
 
 protected: // Cached data
@@ -174,6 +187,8 @@ protected: // Cached data
   cv::Mat1f _currentSpectrum, _referenceSpectrum, _crossSpectrum;
   cv::Mat1f _correlationMap;
   cv::Mat1f _bandpassFilter, _vlapFilter, _crossMask, _apodizationWindow;
+  // for multi roi
+  std::vector<cv::Mat1f> _currentSpectrums, _referenceSpectrums;
 };
 
 

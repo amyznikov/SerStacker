@@ -408,6 +408,8 @@ bool c_phase_correlate::setupInputImage(cv::InputArray srcImage, cv::InputArray 
       outValidSize,
       outCropOffset);
 
+  // Call DFT with Virginie Moizan Periodic + Smooth decomposition in OpenCV CCS format
+
   if ( !_multi_roi ) {
     if ( _apodizationWindow.size() == _fftSize ) {
       cv::multiply(_apodizationWindow, outScaledImage, outScaledImage);
@@ -551,9 +553,6 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const
 {
   INSTRUMENT_REGION("");
-  // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
-  // Cubic weight (val - threshold)^3
-  // Works well on flat peaks in a turbulent environment
 
   const int rows = correlationMap.rows;
   const int cols = correlationMap.cols;

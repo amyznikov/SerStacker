@@ -9,6 +9,8 @@
 #ifndef __run_loop_h__
 #define __run_loop_h__
 
+#include <atomic>
+
 #if HAVE_TBB
 #include <tbb/tbb.h>
 

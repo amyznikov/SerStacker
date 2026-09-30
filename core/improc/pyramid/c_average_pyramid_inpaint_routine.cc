@@ -24,9 +24,7 @@ bool c_average_pyramid_inpaint_routine::serialize(c_config_setting settings, boo
 bool c_average_pyramid_inpaint_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if ( max_levels > 0 ) {
-    cv::Mat outMask;
-    average_pyramid_inpaint(image.getMat(), mask, image, outMask, max_levels);
-    mask.move(outMask);
+    average_pyramid_inpaint(image, mask, image, mask, max_levels);
   }
   return true;
 }

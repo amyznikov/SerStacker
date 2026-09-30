@@ -34,6 +34,8 @@ const c_enum_member* members_of<DOWNSTRIKE_MODE>()
 template<class _Tp>
 static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsize)
 {
+  INSTRUMENT_REGION("");
+
   const int src_cols = _src.cols();
   const int src_rows = _src.rows();
   const int channels = _src.channels();
@@ -49,8 +51,7 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
     return false;
   }
 
-  cv::Mat tmp(dsize, _src.type());
-  cv::Mat_<_Tp> dst = tmp;
+  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
 
   const int ymax = dsize.height;
   const int xmax = dsize.width;
@@ -70,7 +71,7 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
     }
   });
 
-  _dst.move(tmp);
+  assignOutOfPlace(_dst, dst);
   return true;
 }
 
@@ -129,8 +130,10 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
     return false;
   }
 
-  cv::Mat tmp(dsize, _src.type());
-  cv::Mat_<_Tp> dst = tmp;
+  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+
+  //  cv::Mat tmp(dsize, _src.type());
+//  cv::Mat_<_Tp> dst = tmp;
 
   const int ymax = dsize.height;
   const int xmax = dsize.width;
@@ -151,7 +154,8 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
   });
 
 
-  _dst.move(tmp);
+  assignOutOfPlace(_dst, dst);
+//  _dst.move(tmp);
 
   return true;
 }
@@ -177,84 +181,11 @@ bool downstrike_uneven(cv::InputArray src, cv::OutputArray dst, cv::Size size)
   return false;
 }
 
-/*
- * 2x upsampling step by injecting EVEN ZERO-VALUED rows and columns ...
- * If _zmask output is requested, it will contain single-channel image of
- * requested zdepth type (CV_8U by default) with non-zero values for pixels copied from src
- * and zeros for empty (injected) pixels
- * */
-//template<class _Tp>
-//static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst,
-//    cv::Size dsize, cv::OutputArray _zmask, int zdepth)
-//{
-//  const int src_cols = _src.cols();
-//  const int src_rows = _src.rows();
-//  const int src_channels = _src.channels();
-//
-//  if (_src.empty()) {
-//    return false;
-//  }
-//
-//  const cv::Mat_<_Tp> src = _src.getMat();
-//
-//  if (dsize.empty()) {
-//    dsize = cv::Size(src.cols * 2, src.rows * 2);
-//  }
-//  else if (std::abs(dsize.width - src_cols * 2) > 2 ||  std::abs(dsize.height - src_rows * 2) > 2) {
-//    CF_ERROR("Invalid dsize %dx%d for src %dx%d", dsize.width, dsize.height, src_cols, src_rows);
-//    return false;
-//  }
-//
-//  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
-//  cv::Mat_<_Tp> dst = tmp;
-//
-//  const bool zmask_requested = _zmask.needed();
-//  cv::Mat1b zmask = zmask_requested ? cv::Mat1b::zeros(dsize) : cv::Mat1b();
-//
-//  const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
-//  const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
-//
-//  parallel_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
-//
-//    const _Tp* srcp = src[y];
-//    _Tp* dstp = dst[2 * y + 1];
-//
-//    uint8_t * zmp = zmask_requested ? zmask[2 * y + 1] : nullptr;
-//
-//    for (int x = 0; x < xmax; ++x) {
-//      for (int c = 0; c < src_channels; ++c) {
-//        dstp[(2 * x + 1) * src_channels + c] = srcp[x * src_channels + c];
-//      }
-//      if ( zmask_requested ) {
-//        zmp[2 * x + 1] = uint8_t(255);
-//      }
-//    }
-//  });
-//
-//  _dst.move(tmp);
-//
-//  if (zmask_requested) {
-//
-//    if (zdepth < 0) {
-//      zdepth = _zmask.fixedType()  ? _zmask.depth() : CV_8U;
-//    }
-//
-//    if (zdepth == zmask.depth()) {
-//      _zmask.move(zmask);
-//    }
-//    else {
-//      double scale = 1, offset = 0;
-//      getScaleOffset(zmask.depth(), zdepth, &scale, &offset);
-//      zmask.convertTo(_zmask, zdepth, scale, offset);
-//    }
-//  }
-//
-//  return true;
-//}
-
 template<class _Tp>
 static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsize, cv::Mat1f * _zmask)
 {
+  INSTRUMENT_REGION("");
+
   if (_src.empty()) {
     return false;
   }
@@ -272,99 +203,145 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
     return false;
   }
 
-  cv::Mat tmp(dsize, _src.type());
-  cv::Mat_<_Tp> dst = tmp;
-
-  const bool zmask_requested = _zmask != nullptr;
-  cv::Mat1f zmask = zmask_requested ? cv::Mat1f(dsize) : cv::Mat1f();
-
+  // Sequentially form a block of two rows of dsize: (2*y) and (2*y + 1).
   const int ymax = src_rows;
   const int xmax = src_cols;
 
-  // Sequentially form a block of two rows of dsize: (2*y) and (2*y + 1).
-  parallel_loop(0, ymax, [&, xmax, src_channels, zmask_requested, dsize](int y) {
+  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
 
-    const int dst_y_even = 2 * y;
-    const int dst_y_odd = 2 * y + 1;
-    if (dst_y_even >= dsize.height) {
-      return;
-    }
+  if ( !_zmask ) {
 
-    // Even row 2*y is completely zero, erase it from memory in one fell swoop.
-    _Tp* __restrict dst_row_even = dst[dst_y_even];
-    std::memset(dst_row_even, 0, dsize.width * src_channels * sizeof(_Tp));
-    if (zmask_requested) {
-      std::memset(zmask[dst_y_even], 0, dsize.width *  sizeof(*zmask[dst_y_even]));
-    }
+    parallel_loop(0, ymax, [&, xmax, src_channels, dsize](int y) {
 
-    if (dst_y_odd >= dsize.height) {
-      return;
-    }
-
-    // Odd row 2*y + 1  - contains alternation: Zero, Value, Zero, Value...
-    const _Tp* srcp = src[y];
-    _Tp* __restrict dst_row_odd = dst[dst_y_odd];
-    float * __restrict zmp = zmask_requested ? zmask[dst_y_odd] : nullptr;
-
-    // Sequential writing in pairs (Zero + Pixel).
-    const int safe_xmax = std::min(xmax, (dsize.width - 1) / 2);
-    for (int x = 0; x < safe_xmax; ++x) {
-      const int dst_x_even = 2 * x;
-      const int dst_x_odd  = 2 * x + 1;
-
-      // Write the pair of pixels: first even (zero), then odd (signal from src)
-      for (int c = 0; c < src_channels; ++c) {
-        dst_row_odd[dst_x_even * src_channels + c] = 0;
-        dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
+      const int dst_y_even = 2 * y;
+      const int dst_y_odd = 2 * y + 1;
+      if (dst_y_even >= dsize.height) {
+        return;
       }
 
-      if (zmask_requested) {
-        zmp[dst_x_even] = 0;
-        zmp[dst_x_odd]  = 1;
+      // Even row 2*y is completely zero, erase it from memory in one fell swoop.
+      _Tp* __restrict dst_row_even = dst[dst_y_even];
+      std::memset(dst_row_even, 0, dsize.width * src_channels * sizeof(_Tp));
+      if (dst_y_odd >= dsize.height) {
+        return;
       }
-    }
 
-    if (safe_xmax < xmax) {
-      const int x = safe_xmax;
-      const int dst_x_even = 2 * x;
-      const int dst_x_odd = 2 * x + 1;
+      // Odd row 2*y + 1  - contains alternation: Zero, Value, Zero, Value...
+      const _Tp* srcp = src[y];
+      _Tp* __restrict dst_row_odd = dst[dst_y_odd];
 
-      // Even zero if it fits into the frame width
-      if (dst_x_even < dsize.width) {
+      // Sequential writing in pairs (Zero + Pixel).
+      const int safe_xmax = std::min(xmax, (dsize.width - 1) / 2);
+      for (int x = 0; x < safe_xmax; ++x) {
+        const int dst_x_even = 2 * x;
+        const int dst_x_odd = 2 * x + 1;
+
+        // Write the pair of pixels: first even (zero), then odd (signal from src)
         for (int c = 0; c < src_channels; ++c) {
           dst_row_odd[dst_x_even * src_channels + c] = 0;
+          dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
         }
-        if (zmask_requested) {
-          zmp[dst_x_even] = 0;
-        }
+      }
 
-        // Odd pixel from src, only if it ALSO fits
-        if (dst_x_odd < dsize.width) {
+      if (safe_xmax < xmax) {
+        const int x = safe_xmax;
+        const int dst_x_even = 2 * x;
+        const int dst_x_odd = 2 * x + 1;
+
+        // Even zero if it fits into the frame width
+        if (dst_x_even < dsize.width) {
           for (int c = 0; c < src_channels; ++c) {
-            dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
+            dst_row_odd[dst_x_even * src_channels + c] = 0;
           }
-          if (zmask_requested) {
-            zmp[dst_x_odd] = 1;
+          // Odd pixel from src, only if it ALSO fits
+          if (dst_x_odd < dsize.width) {
+            for (int c = 0; c < src_channels; ++c) {
+              dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
+            }
           }
         }
       }
-    }
 
-    // If dsize.width is wider than 2 * xmax, zero out the remaining tail of the string
-    const int filled_width = 2 * xmax;
-    if (filled_width < dsize.width) {
-      std::memset(dst_row_odd + filled_width * src_channels, 0, (dsize.width - filled_width) * src_channels * sizeof(_Tp));
-      if (zmask_requested) {
+      // If dsize.width is wider than 2 * xmax, zero out the remaining tail of the string
+      const int filled_width = 2 * xmax;
+      if (filled_width < dsize.width) {
+        std::memset(dst_row_odd + filled_width * src_channels, 0, (dsize.width - filled_width) * src_channels * sizeof(_Tp));
+      }
+    });
+  }
+  else {
+
+    _zmask->create(dsize);
+
+    parallel_loop(0, ymax, [&, xmax, src_channels, dsize](int y) {
+
+      const int dst_y_even = 2 * y;
+      const int dst_y_odd = 2 * y + 1;
+      if (dst_y_even >= dsize.height) {
+        return;
+      }
+
+      // Even row 2*y is completely zero, erase it from memory in one fell swoop.
+      _Tp* __restrict dst_row_even = dst[dst_y_even];
+      std::memset(dst_row_even, 0, dsize.width * src_channels * sizeof(_Tp));
+      std::memset((*_zmask)[dst_y_even], 0, dsize.width *  sizeof(*(*_zmask)[dst_y_even]));
+
+      if (dst_y_odd >= dsize.height) {
+        return;
+      }
+
+      // Odd row 2*y + 1  - contains alternation: Zero, Value, Zero, Value...
+      const _Tp* srcp = src[y];
+      _Tp* __restrict dst_row_odd = dst[dst_y_odd];
+      float * __restrict zmp = (*_zmask)[dst_y_odd];
+
+      // Sequential writing in pairs (Zero + Pixel).
+      const int safe_xmax = std::min(xmax, (dsize.width - 1) / 2);
+      for (int x = 0; x < safe_xmax; ++x) {
+        const int dst_x_even = 2 * x;
+        const int dst_x_odd  = 2 * x + 1;
+        zmp[dst_x_even] = 0;
+        zmp[dst_x_odd]  = 1;
+
+        // Write the pair of pixels: first even (zero), then odd (signal from src)
+        for (int c = 0; c < src_channels; ++c) {
+          dst_row_odd[dst_x_even * src_channels + c] = 0;
+          dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
+        }
+      }
+
+      if (safe_xmax < xmax) {
+        const int x = safe_xmax;
+        const int dst_x_even = 2 * x;
+        const int dst_x_odd = 2 * x + 1;
+
+        // Even zero if it fits into the frame width
+        if (dst_x_even < dsize.width) {
+          zmp[dst_x_even] = 0;
+          for (int c = 0; c < src_channels; ++c) {
+            dst_row_odd[dst_x_even * src_channels + c] = 0;
+          }
+
+          // Odd pixel from src, only if it ALSO fits
+          if (dst_x_odd < dsize.width) {
+            zmp[dst_x_odd] = 1;
+            for (int c = 0; c < src_channels; ++c) {
+              dst_row_odd[dst_x_odd * src_channels + c] = srcp[x * src_channels + c];
+            }
+          }
+        }
+      }
+
+      // If dsize.width is wider than 2 * xmax, zero out the remaining tail of the string
+      const int filled_width = 2 * xmax;
+      if (filled_width < dsize.width) {
+        std::memset(dst_row_odd + filled_width * src_channels, 0, (dsize.width - filled_width) * src_channels * sizeof(_Tp));
         std::memset(zmp + filled_width, 0, (dsize.width - filled_width) * sizeof(*zmp));
       }
-    }
-  });
-
-  _dst.move(tmp);
-
-  if (zmask_requested) {
-    *_zmask = std::move(zmask);
+    });
   }
+
+  assignOutOfPlace(_dst, dst);
 
   return true;
 }
@@ -412,8 +389,10 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
     return false;
   }
 
-  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
-  cv::Mat_<_Tp> dst = tmp;
+  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+  dst.setTo(cv::Scalar::all(0));
+//  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
+//  cv::Mat_<_Tp> dst = tmp;
 
   const bool zmask_requested = _zmask.needed();
   cv::Mat1b zmask = zmask_requested ? cv::Mat1b::zeros(dsize) : cv::Mat1b();
@@ -438,7 +417,8 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
     }
   });
 
-  _dst.move(tmp);
+  assignOutOfPlace(_dst, dst);
+  // _dst.move(tmp);
 
   if (zmask_requested) {
     if (zdepth < 0) {

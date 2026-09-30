@@ -67,18 +67,21 @@ The class estimates the precise 2D translation vector (dx, dy) between a Referen
 
 ---
 
-### 2. Frequency-Domain Alignment (`compute`)
+### 2. Cross-Spectrum and Cross-Correlation Map computation (`compute`)
 
 Depending on the `whiten_specs` configuration flag, the cross-spectrum is processed through one of two execution paths:
 
 * **Pure Phase Correlation (whiten_specs = true):**
 Spectrum amplitudes are entirely whitened (normalized to 1.0), extracting only the phase difference between the current (S1) and reference (S2) fields:
-`DST = filter * (S1 * S2*) / |S1 * S2*|`
+`crossDST = filter * (S1 * S2*) / |S1 * S2*|`
 
 
 * **Weighted Cross-Correlation (whiten_specs = false):**
 The mutual spectrum preserves the cross-energy distribution of the amplitudes and scales the resulting map by the inverse square root of total cross-energy:
-`DST = filter * (S1 * S2*) * (1.0 / sqrt(E_cross))`
+`crossDST = filter * (S1 * S2*) / sqrt(E_cross)`
+
+Final correlation map is derived via regular `cv::idft(cv::DFT_REAL_OUTPUT)` call with resulting crorr-correlation spot 
+located in the center of the cross-correlation map thanks to  alternating signs embedded directly into bandp[ass filter.
 
 ---
 

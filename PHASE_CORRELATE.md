@@ -2,90 +2,135 @@
 
 `#include <core/proc/image_registration/c_phase_correlate.h>`
 
-The `c_phase_correlate` is a high-performance C++ class designed for fast sub-pixel translation alignment of shifted video frames under strict execution budgets. It is tailored specifically for **Lucky Imaging Stacking** pipeline, where thousands of short-exposure frames must be evaluated, aligned, and filtered at **maximum FPS**.
+# c_phase_correlate
 
-The pipeline implements an end-to-end optimized frequency-domain phase correlation algorithm that operates directly on packed real-valued spectra, bypassing conventional overheads to maximize frame throughput.
+The **c_phase_correlate** class implements a subpixel image alignment pipeline using cross-correlation and
+ phase-correlation methods in the frequency domain. The algorithm is heavily optimized to minimize runtime 
+ memory allocations, leverage multi-threaded execution (via `cv::parallel_for`), and mitigate boundary artifacts
+ caused by ROI edges.
 
 ![PHASE_CORRELATE](./debug/PHASE_CORRELATE.png)
 
-## 🚀 Key Optimization Features for High-FPS Stacking
+---
 
-To handle high-frame-rate inputs without becoming a pipeline bottleneck, the class merges several mathematical operations into low-level execution passes:
+## Key Features & Core Functionality
 
-* **Zero-Cost Frequency Centering (`dftShift` Avoidance):** The spatial frequency sign-alternation factor \((-1)^{x+y}\) is pre-baked directly into the bandpass filter coefficients. This eliminates the CPU/cache overhead of traditional quadrant-swapping loops entirely.
-* **Direct Real-DFT Packed CCS Arithmetic:** All complex conjugation, phase whitening, and bandpass weightings are processed in place using OpenCV's native **Compact Complex Store (CCS)** format. This minimizes memory bandwidth footprints and allows the utilization of highly efficient real-output Inverse DFTs (`cv::DFT_REAL_OUTPUT`).
-* **Adaptive Feature Scale Tuning:** Uses an integrated Rayleigh-like Gaussian bandpass filter controlled by `gsigma`. This acts as the primary "tuning knob" to give higher priority to specific structural texture scales of the target (e.g., planetary details, lunar craters, or stellar cores) while instantly discarding low-frequency atmospheric gradient shifts and high-frequency sensor noise.
-* **Downscaled Even-Grid Topology:** Enforces downscaled, strictly even-dimensioned workspace dimensions (`_fftSize`). This maintains perfect frequency-domain mirror symmetry for the baked filter while shrinking the FFT computational canvas to match the required processing resolution.
-* **Arbitrary Visibility Masking:** Supports pixel-level current and reference masks with built-in inverse cross-filter deconvolution (`csigma`, `calpha`) to seamlessly mitigate spectral leakage and edge artifacts caused by irregular ROI boundaries.
+The class estimates the precise 2D translation vector (dx, dy) between a Reference and a Current frame.
+
+* **Packed Spectrum Optimization (CCS):** All frequency-domain operations are performed directly on OpenCV's packed CCS
+ (Complex Conjugate Symmetrical) format for real-valued `CV_32FC1` matrices. This eliminates the memory and performance
+ overhead of handling full complex `CV_32FC2` allocations.
+ 
+ 
+* **Boundary Artifact Mitigation (Periodic + Smooth Decomposition):** The forward Discrete Fourier Transform (DFT) is computed via Moizan's PPS Decomposition (`fftPPSDecompositionCCS`). The input image is decomposed into periodic (P) and smooth (S) components. This suppresses cross-shaped boundary tearing artifacts without blurring or altering the informative high-frequency texture within the frame.
 
 
-## 📐 Grid Topology & FFT Size Constraints
+* **Optional Spectral Leakage Regularization (Inverse Cross-Filter):** To compensate for the "ray" artifacts induced by the rectangular boundaries of the input ROI, an inverse frequency-domain cross-filter matrix embedded with Tikhonov regularization is evaluated (`fftGenerateInverseCrossFilter`).
 
-A critical architectural feature of the pipeline is its strict enforcement of **even-dimensioned frequency grids** during the initial setup phase. The `setup` method configures the pipeline layout and computes the optimal workspace processing size `_fftSize` via custom constraint logic.
 
-### 🧩 Downscaled FFT Size Optimization Logic
-
-Standard hardware acceleration for Discrete Fourier Transforms relies on specific matrix padding up to the next optimal composite number (using `cv::getOptimalDFTSize`). However, to maintain boundary safety under downscaling constraints, this pipeline employs a downward-search strategy (`getOptimalFFTSizeDown`):
-
-1. **Downscaling Boundary Protection:** Instead of padding the image *upward* (which could introduce artificial border artifacts or exceed expected limits), the system rounds down to the nearest optimal transform size that remains smaller than or equal to the downscaled frame size.
-2. **Strict Parity Enforcement (Even Dimensions):** The optimization loop guarantees that both the width and height of the computed `_fftSize` are **strictly even numbers** (`sopt & 0x1 == 0`), establishing a minimum fallback size of \(4 \times 4\) pixels.
-
-### ⚖️ The Mathematical Necessity of Even Discretization
-
-Enforcing even spatial dimensions is mathematically mandatory due to the optimization tricks utilized in the pipeline core:
-
-* **Symmetry of the Baked Sign-Alternation:** Because the quadrant-shifting factor \((-1)^{x+y}\) is embedded directly into the `_bandpassFilter`, the coordinate system requires perfect mirror symmetry across the Nyquist boundaries. An odd dimension would shift the phase center by a fractional pixel relative to the array grid, rendering the bandpass filter non-symmetrical.
-* **CCS Boundary Safety:** The packed Real-DFT **Compact Complex Store** (CCS) format expects exact Nyquist frequencies to fall squarely onto the last row and column boundaries when the dimensions are even. Even grid sizing prevents frequency misalignment and phase artifacts when performing arithmetic cross-multiplication directly inside the packed memory space.
-
-## 🎯 Frequency Bandpass Filter Generation & Feature Tuning
-
-The `generateBandpassFilter` method pre-calculates the frequency-domain weighting matrix (`_bandpassFilter`). This component acts as the **primary tuning knob** of the alignment pipeline, allowing the system to isolate and prioritize specific spatial feature scales (textures, patterns, or boundaries) while suppressing unwanted noise and illumination artifacts.
-
-### 📐 Mathematical Formulation & Feature Isolation
-
-When a valid feature scale is specified (`_gsigma > 0`), the function populates a 2D grid mapped to the `_fftSize` canvas using a Rayleigh-like frequency distribution curve:
-
-\[H(u, v) = (-1)^{x+y} \cdot \rho^2 \cdot e^{-0.5 \cdot \rho^2}\]
-
-Where the normalized radial frequency metric \(\rho^2\) is derived from the spatial coordinate frequencies \((u, v)\) scaled by the target texture characteristic size:
-
-\[\rho^2 = (u^2 + v^2) \cdot \left( \frac{\pi^2 \cdot \sigma_{\text{target}}^2}{2} \right)\]
-
-* **Bandpass Behavior:** The \(\rho^2 \cdot e^{-0.5 \cdot \rho^2}\) profile effectively shapes a zero-DC bandpass filter. It inherently cuts off the constant global illumination component (DC at \(\rho=0\)) and acts as a smooth low-pass roll-off to eliminate high-frequency pixel jitter and sensor noise.
-* **Feature Scale Selection:** Adjusting `gsigma` shifts the peak frequency response. This allows the pipeline to selectively lock onto structural textures of a specific pixel size while ignoring large-scale gradient drifts or sub-pixel micro-noise.
+* **Multi-ROI Operation Mode:** Supports partitioning the frame into 4 independent spatial quadrants (patches). The pipeline extracts separate spectra for each patch and performs non-linear accumulation into a single cumulative correlation map (`updateMultiROICorrelationMap`).
 
 ---
 
-### ⚡ Integrated Optimization Vectors
+## Pipeline & Filtering Methods
 
-To ensure maximum frames-per-second (FPS), three heavy processing steps are combined into a single, cache-localized data-generation pass:
+### 1. Data Packaging & Filter Generation (`generateFilters`, `setupInputImage`)
 
-1. **Zero-Cost Spectrum Centering:** The spatial frequency sign alternation factor `((x + y) & 1) ? -1 : 1` is multiplied directly into the filter coefficients. This mathematical transformation pre-shifts the coordinate origin, completely bypassing the performance overhead of an explicit `cv::dftShift` quadrant swap loop after the inverse transform.
-2. **Mask-Edge Deconvolution:** If mask compensation parameters are active (`_csigma > 0` and `_calpha > 0`), the pipeline embeds an inverse cross-filter matrix directly into the weights via pixel-wise multiplication (`cv::multiply`). This neutralizes spectral leakage caused by sharp geometric boundaries of arbitrary visibility masks without requiring spatial-domain apodization windows.
-3. **L1 Normalization:** The final matrix is fully normalized using the L1 norm (`cv::NORM_L1`), ensuring that energy distribution remains consistent across varying frame dimensions and scaling adjustments.
+* **Downscaling & Layout Alignment:**
+	Input frames and optional masks are downscaled by `downscale_factor`. The target FFT grid dimension is forced to be even and rounded down to the optimal DFT size via `getOptimalFFTSizeDown()` (or `getOptimalFFTSizeDownDiv4()` for Multi-ROI) to maintain perfect symmetry for the packed CCS layout.
 
 
-## 🎯 Subpixel Peak Localization & Overlap-Compensated Scoring
+* **Frequency Bandpass Filter:**
+	When `_gsigma > 0`, the class evaluates a 2D Rayleigh-like distribution curve in the frequency domain 
+	to isolate target textures. For each frequency coordinate (u, v) The transfer function of the filter is modeled as:
+	`F(u, v) = rho2 * exp(-rho2)`. The square of the frequency radius is computed as `rho2 = (u^2 + v^2) * (ilambda^2)`.
+	The characteristic frequency scale is defined as `ilambda = _gsigma / 0.283`.
 
-Once the `cv::idft` yields the real-valued `_correlationMap`, the pipeline extracts the final displacement vector and computes a normalized quality score. This stage handles atmospheric degradation effects and translation scaling.
+ 
+* **Bandpass Behavior:**
+ 	The bandpass filter profile effectively shapes a zero-DC bandpass filter. 
+	It inherently cuts off the constant global illumination component (DC at rho=0) and acts as a smooth low-pass 
+	roll-off to eliminate high-frequency pixel jitter and sensor noise. Adjusting `gsigma` shifts the peak frequency response. 
+	This allows the pipeline to selectively lock onto structural textures of a specific pixel size while ignoring 
+	large-scale gradient drifts or sub-pixel micro-noise.
 
-### 🔬 Non-Linear 5x5 Centroid Matrix with Pixel-Locking Prevention
 
-The `findSubpixelCentroid` method localizes the translation vector with high subpixel accuracy. Atmospheric turbulence often warps the correlation peak, splitting or flattening its energy distribution. Standard quadratic or parabolic fittings fail in these conditions. The pipeline uses an advanced center-of-mass approach inside a \(5 \times 5\) spatial window (\(R=2\)):
+* **Embedded FFT-Shift:**
+	The Rayleigh-like bandpass filter (controlled by `_gsigma`) is generated directly in the frequency domain with an embedded spatial chessboard sign-alternation: `sign(x, y) = ((x + y) & 1) ? -1.0 : 1.0`. This mathematical trick inherently shifts the zero-frequency (DC) component to the center of the spectrum, completely bypassing the runtime overhead of an explicit `fftShift` loop over the image matrices.
 
-1. **Adaptive Sidelobe Thresholding:** A dynamic floor is set at 20% of the discrete global maximum (\(z_{\text{center}}\)):
-   \[\text{threshold} = 0.20 \cdot z_{\text{center}}\]
-   This removes the ripple artifacts and secondary sidelobes generated by the bandpass filter, isolating the core peak structure.
-2. **Cubic Weighting Scheme:** For all points within the neighborhood where the correlation intensity exceeds the threshold, a non-linear weight factor \(w\) is evaluated:
-   \[w = (\text{val} - \text{threshold})^3\]
-   This cubic profile penalizes low-amplitude noise while heavily prioritizing the apex geometry. It eliminates **pixel-locking effects** (the systematic error where computed subpixel coordinates drift towards integer grids) and ensures stability when handling split peaks caused by seeing conditions.
-3. **Scale and Offset Restoration:** The computed subpixel displacement is centered back relative to the frequency origin (`_fftSize / 2`), adjusted for region-of-interest crop offsets (`_referenceCropOffset`, `_currentCropOffset`), and scale-multiplied by `_downscale_factor` to return the absolute physical translation vector in unscaled pixel units.
+
+* **Cross-like artifacts suppression L1-Norm Normalization:**
+	If `_csigma > 0` and `_calpha > 0`, a 2D cross-shaped frequency weight matrix with Tikhonov regularization 
+	is evaluated via `fftGenerateInverseCrossFilter()` and multiplied with the bandpass filter to suppress rectangular
+	ROI edge-leakage artifacts. The final filter matrix is normalized using the L1-norm (sum of absolute values equals 1.0).
+	As a result, the autocorrelation peak value for a perfect match evaluated on an unscaled `cv::idft` equals exactly 1.0.
 
 ---
 
-### 🛡️ Dynamic Overlap Compensation Metric
+### 2. Frequency-Domain Alignment (`compute`)
 
-A major flaw of raw phase correlation is that the peak height (`_peakValue`) naturally drops as the translation vector increases, simply because the overlapping area between the two frames shrinks. To evaluate frame alignment quality fairly during *Lucky Imaging* filtering, the final `_correlationScore` applies an explicit geometric compensation:
+Depending on the `whiten_specs` configuration flag, the cross-spectrum is processed through one of two execution paths:
+
+* **Pure Phase Correlation (whiten_specs = true):**
+Spectrum amplitudes are entirely whitened (normalized to 1.0), extracting only the phase difference between the current (S1) and reference (S2) fields:
+`DST = filter * (S1 * S2*) / |S1 * S2*|`
+
+
+* **Weighted Cross-Correlation (whiten_specs = false):**
+The mutual spectrum preserves the cross-energy distribution of the amplitudes and scales the resulting map by the inverse square root of total cross-energy:
+`DST = filter * (S1 * S2*) * (1.0 / sqrt(E_cross))`
+
+---
+
+### 3. Subpixel Centroid Analysis (`findSubpixelCentroid`)
+
+* **Discrete Peak Search:**
+The global integer-level maximum (x0, y0) is located on the real-valued cross-correlation map produced by the inverse DFT.
+
+
+* **Cross-correlatiopn spot window sizing:**
+The neighborhood radius R used to analyze the peak's center of mass is adapted based on `_gsigma` parameter 
+and the correlation mode:
+- If `whiten_specs == true`: `R = int(_gsigma) + 1`
+- If `whiten_specs == false`: `R = int(2 * _gsigma) + 1`
+- If `_gsigma <= 0`: `R = 2` (fallback minimal radius)
+
+
+* **Anti-Pixel-Locking Weighting:**
+To eliminate pixel-locking bias (systematic errors towards integer coordinates) and filter out residual bandpass sidelobes,
+an adaptive intensity threshold is applied (10% of peak intensity for Single-ROI, 2% for Multi-ROI) combined with a 
+non-linear weighting scheme:
+- For Single-ROI: `W(x,y) = (I(x,y) - threshold)^3` (if I > threshold, else 0)
+- For Multi-ROI: `W(x,y) = (I(x,y) - threshold)` (if I > threshold, else 0)
+
+The refined subpixel peak position is then calculated as:
+`Refined_X = x0 + sum(dx * W) / sum(W)`
+`Refined_Y = y0 + sum(dy * W) / sum(W)`
+
+---
+
+## Key API Reference
+
+### Configuration & Lifetime
+* `bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)`  
+  Calculates the optimal FFT grid dimensions taking into account the downscale factor and Multi-ROI settings. Allocates and pre-generates frequency-domain filtering matrices.
+  
+### Input Data Ingestion
+* `bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)`  
+  Ingests, resizes, and packs the reference frame and its optional mask. Applies a Tukey apodization window (if configured) and extracts the single CCS spectrum (or 4 sub-spectra in Multi-ROI mode).
+  
+* `bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)`  
+  Performs identical processing steps on the current/moving target frame to extract its corresponding frequency spectra.
+
+### Execution & Metrics
+* `double compute(cv::Vec2f & outputTranslation)`  
+  Executes the cross-spectrum evaluation, computes the IDFT, runs the subpixel peak interpolation, and projects the translation vector back into the pixel coordinate system of the original unscaled frame (accounting for crop offsets and downsampling). Returns an overlap-compensated alignment quality score (PSR-like metric).
+  
+* `double correlationScore() const`  
+  Returns the quality score of the match, normalized against the estimated window overlap area.
+  
+* `double peakValue() const`  
+  Returns the absolute intensity value of the primary correlation peak.
 
 ### 🛡️ Dynamic Overlap Compensation Metric
 
@@ -115,8 +160,9 @@ The `c_phase_correlate` architecture exposes internal cache matrices to simplify
 
 ### ⚙️ Configuration Parameters (`c_phase_correlate_options`)
 
-* `downscale_factor` (Default: `4.0`): Controls workspace canvas size reduction. Higher values exponentially boost execution speed but limit structural texture definition.
-* `gsigma` (Default: `10.0` [px]): Sets the target feature spatial wavelength. Tunes the internal bandpass filter to lock onto specific details (e.g., craters, star cores) while discarding high-frequency sensor noise.
+* `downscale_factor` (Default: `4.0`): Controls workspace canvas size reduction. Higher values boost execution speed 
+and suppress high-frequency pixel noise, but limit structural texture definition.
+* `gsigma` (Default: `5.0` [px]): Controls the radius of cross-correlation spot in cross-correlation map.
 * `csigma` (Default: `0.5`): Specifies the blur size for inverse cross-filter mask boundary deconvolution.
 * `calpha` (Default: `0.0`): Defines regularization stiffness. Prevents division-by-zero explosions on sharp visibility mask edges.
 
@@ -146,9 +192,6 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
   }
   if (!setCurrentImage(image, mask)) return false;
 
-  // 3. Fire the Core High-FPS Pipeline
-  pc.setCurrentImage(_currentImage, _currentMask);
-  
   cv::Vec2f Translation;
   const double score = pc.compute(Translation);
   

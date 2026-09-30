@@ -497,7 +497,6 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   else {
     cv::Mat1f cSpec, cMap;
 
-
     for( size_t i = 0; i < 4; ++i ) {
 
       crossEnergyScale =
@@ -598,7 +597,7 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
     }
   }
   else {
-    const double threshold = z_center * 0.05f;
+    const double threshold = z_center * 0.02f;
     for (int dy = -R; dy <= R; ++dy) {
       const float * __restrict srcp = (const float *)(src_base + dy * stride);
       for (int dx = -R; dx <= R; ++dx) {

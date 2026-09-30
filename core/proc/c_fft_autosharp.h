@@ -13,12 +13,6 @@
 #include <core/ctrlbind/ctrlbind.h>
 #include <core/settings.h>
 
-enum FFT_AUTOSHARP_INPAINT_METHOD {
-  FFT_AUTOSHARP_INPAINT_DISABLED = 0,
-  FFT_AUTOSHARP_LINEAR_INTERPOLATION_INPAINT,
-  FFT_AUTOSHARP_AVERAGE_PYRAMID_INPAINT
-};
-
 enum FFT_AUTOSHARP_OUTPUT_DISPLAY {
   FFT_AUTOSHARP_DISPLAY_SRC_IMAGE = 0,
   FFT_AUTOSHARP_DISPLAY_RESTORED_IMAGE,
@@ -36,8 +30,8 @@ struct c_fft_autosharp_options
 {
   double S1_target = -1.2;
   double macroStructSizePx = 150;
-  enum FFT_AUTOSHARP_INPAINT_METHOD mask_inpaint_method = FFT_AUTOSHARP_INPAINT_DISABLED;
   bool autoS1_target = true;
+  bool inpaint_mask = false;
 };
 
 struct c_fft_autosharp_debug_options
@@ -66,7 +60,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls,
     const c_ctlbind_context<RootObjectType, c_fft_autosharp_options> & ctx)
 {
   using S = c_fft_autosharp_options;
-  ctlbind(ctls, "mask_inpaint_method", ctx(&S::mask_inpaint_method), "Mask inpaint method");
+  ctlbind(ctls, "inpaint mask", ctx(&S::inpaint_mask), "Set checked to inpaint missing pixels");
   ctlbind(ctls, "autoS1_target", ctx(&S::autoS1_target), "Try top auto estimate S1 target slope based on Macro structure size");
   ctlbind(ctls, "S1_target", ctx(&S::S1_target), "Target Slope of Restored Spectrum ");
   ctlbind(ctls, "macroStructSizePx", ctx(&S::macroStructSizePx), "Macro structure size in pixels");

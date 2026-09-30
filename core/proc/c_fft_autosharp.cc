@@ -60,25 +60,11 @@
 #include <core/proc/run-loop.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
-#include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/proc/c_line_estimate.h>
 #include <core/io/c_stdio_file.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <core/debug.h>
-
-
-template<>
-const c_enum_member * members_of<FFT_AUTOSHARP_INPAINT_METHOD>()
-{
-  static const c_enum_member members[] = {
-      { FFT_AUTOSHARP_AVERAGE_PYRAMID_INPAINT, "AVERAGE_PYRAMID_INPAINT", "" },
-      { FFT_AUTOSHARP_LINEAR_INTERPOLATION_INPAINT, "LINEAR_INTERPOLATION", "" },
-      { FFT_AUTOSHARP_INPAINT_DISABLED, "DISABLE", "" },
-      { FFT_AUTOSHARP_INPAINT_DISABLED}
-  };
-  return members;
-}
 
 template<>
 const c_enum_member * members_of<FFT_AUTOSHARP_OUTPUT_DISPLAY>()
@@ -848,7 +834,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
   }
 
   if( cn == 1 ) { // Grayscale input
-    if( _srcMask.empty() || opts.mask_inpaint_method == FFT_AUTOSHARP_INPAINT_DISABLED ) {
+    if( _srcMask.empty() || !opts.inpaint_mask) {
       if( srcSize == fftSize ) {
         _src_planes[0] = srcImage;
       }
@@ -866,23 +852,15 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
       _src_mask.create(fftSize, CV_8UC1), _src_mask.setTo(0);
       srcMask.copyTo(_src_mask(rc));
 
-      _src_planes[0].create(fftSize, srcImage.depth()), _src_planes[0].setTo(0);
-      srcImage.copyTo(_src_planes[0](rc), srcMask);
-
-      switch (opts.mask_inpaint_method) {
-        case FFT_AUTOSHARP_AVERAGE_PYRAMID_INPAINT:
-          average_pyramid_inpaint(_src_planes[0], _src_mask, _src_planes[0], cv::noArray(), 9);
-          break;
-        case FFT_AUTOSHARP_LINEAR_INTERPOLATION_INPAINT:
-          linear_interpolation_inpaint(_src_planes[0], _src_mask);
-          break;
-      }
+      _src_planes[0].create(fftSize, srcImage.depth());
+      srcImage.copyTo(_src_planes[0](rc));
+      average_pyramid_inpaint(_src_planes[0], _src_mask, _src_planes[0], cv::noArray(), 9);
     }
 
     fftPPSDecompositionCCS(_src_planes[0], _vlap_filter, _src_p[0], _src_s[0]);
   }
   else if( cn == 3 ) { // BGR input
-    if( _srcMask.empty() || opts.mask_inpaint_method == FFT_AUTOSHARP_INPAINT_DISABLED ) {
+    if( _srcMask.empty() || !opts.inpaint_mask ) {
       cv::Mat src;
       if( srcSize == fftSize ) {
         src = srcImage;
@@ -905,15 +883,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
 
       _src_mask.create(fftSize, CV_8UC1), _src_mask.setTo(0);
       srcMask.copyTo(_src_mask(rc));
-
-      switch (opts.mask_inpaint_method) {
-        case FFT_AUTOSHARP_AVERAGE_PYRAMID_INPAINT:
-          average_pyramid_inpaint(_src_planes[0], _src_mask, _src_planes[0], cv::noArray(), 9);
-          break;
-        case FFT_AUTOSHARP_LINEAR_INTERPOLATION_INPAINT:
-          linear_interpolation_inpaint(_src_planes[0], _src_mask);
-          break;
-      }
+      average_pyramid_inpaint(_src_planes[0], _src_mask, _src_planes[0], cv::noArray(), 9);
     }
 
     if( !fftPPSDecompositionCCSPlanes(_src_planes, _vlap_filter, _src_p, _src_s) ) {
@@ -1003,6 +973,6 @@ bool serialize_fft_autosharp_options(c_config_setting settings, bool save,
   SERIALIZE_OPTION(settings, save, opts, S1_target);
   SERIALIZE_OPTION(settings, save, opts, autoS1_target);
   SERIALIZE_OPTION(settings, save, opts, macroStructSizePx);
-  SERIALIZE_OPTION(settings, save, opts, mask_inpaint_method);
+  SERIALIZE_OPTION(settings, save, opts, inpaint_mask);
   return true;
 }

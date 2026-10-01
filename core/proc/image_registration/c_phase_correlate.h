@@ -175,6 +175,7 @@ protected: // internal data
   double _aalpha = 0;
   double _peakValue = 0;
   double _correlationScore = 0;
+  double _crossEnergyScale = 0;
   bool _whiten_specs = false;
   bool _multi_roi = false;
   bool _initialized = false;

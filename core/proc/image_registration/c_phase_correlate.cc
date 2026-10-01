@@ -291,8 +291,8 @@ void c_phase_correlate::release()
 void c_phase_correlate::generateFilters()
 {
   INSTRUMENT_REGION("");
-  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
-  // rho2 = (u^2 + v^2) / fsigma^2;
+  // ilambda = _gsigma / 0.283
+  // rho2 = (u^2 + v^2) * ilambda^2;
   // F(u, v) = rho2 * exp (-rho2 )
   // the alternating +1 and -1 is also embedded into filter to avoid later fftSwapQudrants()
 
@@ -485,11 +485,11 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     }
   }
 
-  double crossEnergyScale = 1;
+  _crossEnergyScale = 1;
 
   if( !_multi_roi ) {
 
-    crossEnergyScale =
+    _crossEnergyScale =
         computeCrossSpectrum(_currentSpectrum, _referenceSpectrum,
             _bandpassFilter, _crossSpectrum, _whiten_specs);
 
@@ -501,14 +501,14 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 
     for( size_t i = 0; i < 4; ++i ) {
 
-      crossEnergyScale =
+      _crossEnergyScale =
           computeCrossSpectrum(_currentSpectrums[i], _referenceSpectrums[i],
               _bandpassFilter, cSpec, _whiten_specs);
 
       cv::idft(cSpec, cMap, cv::DFT_REAL_OUTPUT);
 
       updateMultiROICorrelationMap(i == 0, cMap, _correlationMap,
-          crossEnergyScale);
+          _crossEnergyScale);
     }
 
   }
@@ -517,7 +517,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   cv::Point maxPos;
   const double measuredPeakValue = findSubpixelCentroid(_correlationMap, peakPos, maxPos);
   if ( !_multi_roi ) {
-    _peakValue = measuredPeakValue * crossEnergyScale;
+    _peakValue = measuredPeakValue * _crossEnergyScale;
   }
   else {
     _peakValue = std::sqrt(std::sqrt(measuredPeakValue));
@@ -576,17 +576,17 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
   double sumX = 0.0;
   double sumY = 0.0;
 
-  const uint8_t * src_base = correlationMap.ptr(y0);
-  const size_t stride = correlationMap.step;
-
   if ( !_multi_roi ) {
-    const double threshold = z_center * 0.10f;
+    const uint8_t * cmap_base = correlationMap.ptr(y0);
+    const size_t cmap_stride = correlationMap.step;
+
+    const double T = z_center * 0.10f;
     for (int dy = -R; dy <= R; ++dy) {
-      const float * __restrict srcp = (const float *)(src_base + dy * stride);
+      const float * __restrict srcp = (const float *)(cmap_base + dy * cmap_stride);
       for (int dx = -R; dx <= R; ++dx) {
         const double val = srcp[x0 + dx];
-        if (val > threshold) {
-          const double diff = val - threshold;
+        if (val > T) {
+          const double diff = val - T;
           const double w = diff * diff * diff;
           sumWeights += w;
           sumX += dx * w;
@@ -596,13 +596,16 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
     }
   }
   else {
-    const double threshold = z_center * 0.02f;
+    const uint8_t * cmap_base = correlationMap.ptr(y0);
+    const size_t cmap_stride = correlationMap.step;
+
+    const double T = z_center * 0.02f;
     for (int dy = -R; dy <= R; ++dy) {
-      const float * __restrict srcp = (const float *)(src_base + dy * stride);
+      const float * __restrict srcp = (const float *)(cmap_base + dy * cmap_stride);
       for (int dx = -R; dx <= R; ++dx) {
         const double val = srcp[x0 + dx];
-        if (val > threshold) {
-          const double w = val - threshold;
+        if (val > T) {
+          const double w = val - T;
           sumWeights += w;
           sumX += dx * w;
           sumY += dy * w;
@@ -611,12 +614,128 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
     }
   }
 
-  if( sumWeights > 1e-9 ) {
+  if( sumWeights > 0 ) {
     peakPos.x = float(x0 + sumX / sumWeights);
     peakPos.y = float(y0 + sumY / sumWeights);
   }
   else {
     peakPos = cv::Point2f(float(x0), float(y0));
+  }
+
+  if( _whiten_specs ) {
+    // TEMPORARY EXPERIMENTAL CODE
+    const double _min_alignment_quality = 0.2;
+    const double E = std::sqrt(_crossEnergyScale / _fftSize.area());
+    const double T = E; // z_center * 0.02f;
+    const int X0 = (int) (peakPos.x);
+    const int Y0 = (int) (peakPos.y);
+    const int R3 = 2 * R;
+
+    const uint8_t * cmap_base = correlationMap.ptr(Y0);
+    const size_t cmap_stride = correlationMap.step;
+
+    double sw = 0;
+    double sx = 0, sy = 0;
+    double sx2 = 0, sy2 = 0, sxy = 0;
+    double sx3 = 0, sy3 = 0, sx2y = 0, sxy2 = 0;
+
+    for( int dy = -R3; dy <= R3; ++dy ) {
+      const float * __restrict srcp = (const float*) (cmap_base + dy * cmap_stride);
+      for( int dx = -R3; dx <= R3; ++dx ) {
+        const double v = srcp[X0 + dx];
+        if( v > T ) {
+          const double dx2 = (double) dx * dx;
+          const double dy2 = (double) dy * dy;
+          const double w = (v - T) * std::exp(-0.5 * (dx2 + dy2) / (_gsigma * _gsigma));
+
+          sw += w;
+          sx += w * dx;
+          sy += w * dy;
+          sx2 += w * dx2;
+          sy2 += w * dy2;
+          sxy += w * dx * dy;
+          sx3 += w * dx2 * dx;
+          sy3 += w * dy2 * dy;
+          sx2y += w * dx2 * dy;
+          sxy2 += w * dx * dy2;
+        }
+      }
+    }
+
+    if (sw > 1e-12) {
+      const double cx = sx / sw;
+      const double cy = sy / sw;
+
+      const double mu20 = (sx2 / sw) - (cx * cx);
+      const double mu02 = (sy2 / sw) - (cy * cy);
+      const double mu11 = (sxy / sw) - (cx * cy);
+
+      const double cx2 = cx * cx;
+      const double cy2 = cy * cy;
+      const double mu30 = (sx3 / sw) - 3.0 * (sx2 / sw) * cx + 2.0 * cx2 * cx;
+      const double mu03 = (sy3 / sw) - 3.0 * (sy2 / sw) * cy + 2.0 * cy2 * cy;
+      const double mu21 = (sx2y / sw) - 2.0 * (sxy / sw) * cx - (sx2 / sw) * cy + 2.0 * cx2 * cy;
+      const double mu12 = (sxy2 / sw) - 2.0 * (sxy / sw) * cy - (sy2 / sw) * cx + 2.0 * cx * cy2;
+
+      const double diff = mu20 - mu02;
+      const double term = std::sqrt(diff * diff + 4.0 * mu11 * mu11);
+
+      const double lambda_max = 0.5 * (mu20 + mu02 + term);
+      const double lambda_min = 0.5 * (mu20 + mu02 - term);
+
+      const double eccentricity = (lambda_max > 1e-12) ? std::sqrt(1.0 - (lambda_min / lambda_max)) : 0.0;
+      const double angle = 0.5 * std::atan2(2.0 * mu11, diff);
+
+      const double cos_a = std::cos(angle);
+      const double sin_a = std::sin(angle);
+      const double cos_a2 = cos_a * cos_a;
+      const double sin_a2 = sin_a * sin_a;
+      const double cos_a3 = cos_a2 * cos_a;
+      const double sin_a3 = sin_a2 * sin_a;
+
+      const double mu30_rot = mu30 * cos_a3
+          + 3.0 * mu21 * cos_a2 * sin_a
+          + 3.0 * mu12 * cos_a * sin_a2
+          + mu03 * sin_a3;
+
+      const double mu03_rot = -mu30 * sin_a3
+          + 3.0 * mu21 * sin_a2 * cos_a
+          - 3.0 * mu12 * sin_a * cos_a2
+          + mu03 * cos_a3;
+
+      const double lambda_ref = 0.1716 * (double)_gsigma * (double)_gsigma;
+      const double gsigma3 = std::pow((double)_gsigma, 3.0);
+
+      const double skew_major_stable = (gsigma3 > 1e-12) ? (mu30_rot / gsigma3) : 0.0;
+      const double skew_minor_stable = (gsigma3 > 1e-12) ? (mu03_rot / gsigma3) : 0.0;
+
+      const double def_scale = std::max(0.0, (lambda_max / lambda_ref) - 1.0);
+      const double def_skew  = std::sqrt(skew_major_stable * skew_major_stable + skew_minor_stable * skew_minor_stable);
+
+      const double q_scale = 1.0 / (1.0 + 0.4 * def_scale);
+      const double q_shape = 1.0 - eccentricity;
+      const double q_skew  = std::max(0.0, 1.0 - 2.0 * def_skew);
+
+      const double alignment_quality =  q_scale * q_shape * q_skew;
+      bool is_bad_align = (alignment_quality < _min_alignment_quality);
+
+      CF_DEBUG("\n"
+          "BOX: {%d, %d, %dx%d}\n"
+          "_crossEnergyScale = %g E = %g T = %g\n"
+          "cx = %g cy = %g\n"
+          "gsigma=%g lambda_ref=%g lambda_min = %g lambda_max = %g eccentricity = %g angle = %g\n"
+          "skew_minor = %g skew_major = %g\n"
+          "DIAGNOSTICS: q_scale = %g, q_shape = %g, q_skew = %g\n"
+          "alignment_quality = %g is_bad_align = %d\n",
+          X0 - R3, Y0 - R3, 2 * R3 + 1, 2 * R3 + 1,
+          _crossEnergyScale, E, T,
+          cx, cy,
+          _gsigma, lambda_ref, lambda_min, lambda_max, eccentricity, angle * 180 / CV_PI,
+          skew_minor_stable, skew_major_stable,
+          q_scale, q_shape, q_skew,
+          alignment_quality, is_bad_align
+          );
+    }
   }
 
   return z_center;

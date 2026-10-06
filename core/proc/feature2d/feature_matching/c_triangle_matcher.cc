@@ -92,11 +92,8 @@ static bool _build_triangles(const std::vector<PointType> & keypoints,
           continue;
         }
 
-//        cv::Vec3w triangle;
-//        cv::Vec2f descripror;
         c_triangle_descriptor descriptor;
         float a, b, c;
-
 
         if ( (d12 >= d23) && (d12 >= d13) ) { /* longest side connects stars 1 and 2 */
           a = d12;

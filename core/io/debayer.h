@@ -151,7 +151,8 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image,
     double median_hat_threshold);
 
 /**
- *
+ * image: Must be single-channel bayer pattern image,
+ *        or 4-channel bayer planes image
  */
 bool bayer_denoise(cv::Mat & image, double variation_threshold,
     COLORID color_id, bool returnBayerPlanes = false);

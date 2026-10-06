@@ -122,8 +122,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
             1. / ((1 << input_sequence->bpp())));
       }
 
-      CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
-          _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
+      //  CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
+      //    _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
 
       cv::subtract(output_image, _darkbayer,
           output_image);
@@ -157,7 +157,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if( input_options.detect_bad_asi_frames ) {
-    INSTRUMENT_REGION("detect_bad_asi_frames");
     if ( is_corrupted_asi_frame(output_image) ) {
       CF_ERROR("CORRUPTED ASI FRAME DETECTED");
       output_image.release();
@@ -166,8 +165,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if ( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
-    INSTRUMENT_REGION("filter_bad_pixels");
-
     if ( is_bayer_pattern(colorid) ) {
       bayer_denoise(output_image,
           input_options.bad_pixels_variation_threshold,
@@ -182,8 +179,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if ( is_bayer_pattern(colorid) ) {
-    INSTRUMENT_REGION("debayer");
-
     if ( save_raw_bayer ) {
       _raw_bayer_colorid = colorid;
       if( output_image.depth() == CV_32F ) {
@@ -233,10 +228,9 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     }
   }
 
-
   if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
-    INSTRUMENT_REGION("inpaint_missing_pixels");
-    linear_interpolation_inpaint(output_image, output_mask);
+    average_pyramid_inpaint(output_image, output_mask, output_image, output_mask, 32);
+    //  linear_interpolation_inpaint(output_image, output_mask);
   }
 
   if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
@@ -245,7 +239,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if( output_image.depth() != CV_32F ) {
-    INSTRUMENT_REGION("convertTo_32F");
     output_image.convertTo(output_image, CV_32F,
         1. / ((1 << input_sequence->bpp())));
   }

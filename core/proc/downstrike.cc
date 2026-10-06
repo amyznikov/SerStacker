@@ -10,10 +10,6 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-#if HAVE_TBB
-# include <tbb/tbb.h>
-#endif
-
 template<>
 const c_enum_member* members_of<DOWNSTRIKE_MODE>()
 {
@@ -132,9 +128,6 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
 
   cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
 
-  //  cv::Mat tmp(dsize, _src.type());
-//  cv::Mat_<_Tp> dst = tmp;
-
   const int ymax = dsize.height;
   const int xmax = dsize.width;
 
@@ -153,9 +146,7 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
     }
   });
 
-
   assignOutOfPlace(_dst, dst);
-//  _dst.move(tmp);
 
   return true;
 }
@@ -391,8 +382,6 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
 
   cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
   dst.setTo(cv::Scalar::all(0));
-//  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
-//  cv::Mat_<_Tp> dst = tmp;
 
   const bool zmask_requested = _zmask.needed();
   cv::Mat1b zmask = zmask_requested ? cv::Mat1b::zeros(dsize) : cv::Mat1b();
@@ -418,7 +407,6 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
   });
 
   assignOutOfPlace(_dst, dst);
-  // _dst.move(tmp);
 
   if (zmask_requested) {
     if (zdepth < 0) {

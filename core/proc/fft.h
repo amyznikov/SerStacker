@@ -309,7 +309,7 @@ double fftCrossSpectrumWeightedCmplx(const cv::Mat2f & cmplxSpectrum1,const cv::
  *
  * @return Returns false in case of a size mismatch error.
  */
-bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
+bool fftPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
 

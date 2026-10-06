@@ -42,6 +42,7 @@ const c_enum_member* members_of<c_polar_warp_routine::INTERPOLATION_MODE>()
 
 void c_polar_warp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
+  ctlbind(ctls, "imageCenter", ctx, &this_class::imageCenter, &this_class::set_imageCenter, "");
   ctlbind(ctls, "center", ctx, &this_class::center, &this_class::set_center, "");
   ctlbind(ctls, "interpolation", ctx, &this_class::interpolation_mode, &this_class::set_interpolation_mode, "");
 }
@@ -50,6 +51,7 @@ void c_polar_warp_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
 bool c_polar_warp_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, imageCenter);
     SERIALIZE_PROPERTY(settings, save, *this, center);
     SERIALIZE_PROPERTY(settings, save, *this, interpolation_mode);
     return true;
@@ -70,7 +72,8 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 
     if( _rmap.empty() || _old_src_size != src_size ) {
       _old_src_size = src_size;
-      create_epipolar_remap(src_size, _center, _rmap);
+      const cv::Point2f center = _imageCenter ? cv::Point2f(src_size.width/2, src_size.height/2) : _center;
+      create_epipolar_remap(src_size, center, _rmap);
     }
 
     if( !image.empty() ) {

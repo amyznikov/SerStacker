@@ -71,6 +71,16 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 class c_phase_correlate
 {
 public:
+  // Measured statistical metric of cross-correlation spot
+  struct PeakMetrics {
+    cv::Rect bbox;
+    cv::Point maxPos;
+    cv::Point2d peakPos;
+    cv::Size2d semiaxes; // major,minor
+    double measuredPeakValue;
+    double correctedPeakValue;
+  };
+
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts);
 
@@ -80,6 +90,7 @@ public:
   // Compute phase correlation and return correlation core and translation vector
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
+  double computeCorrelationMap();
   double compute(cv::Vec2f & outputTranslation);
 
   // valid after compute()
@@ -91,7 +102,12 @@ public:
   // valid after compute()
   double peakValue() const
   {
-    return _peakValue;
+    return _peakMetrics.measuredPeakValue;
+  }
+
+  const PeakMetrics & peakMetrics() const
+  {
+    return _peakMetrics;
   }
 
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize,
@@ -140,9 +156,6 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f & correlationMap() const {
     return _correlationMap;
   }
-//  const std::vector<cv::Mat1f> & correlationMaps() const {
-//    return _correlationMaps;
-//  }
   const cv::Mat1f & bandpassFilter() const {
     return _bandpassFilter;
   }
@@ -158,7 +171,7 @@ public: // public access for debug & visualization purposes
 
 protected: // internal helpers
   void generateFilters();
-  double findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos, cv::Point & maxPos) const;
+
   bool setupInputImage(cv::InputArray srcImage, cv::InputArray srcMask,
       cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
       cv::Size & outValidSize, cv::Point & outCropOffset,
@@ -168,14 +181,13 @@ protected: // internal helpers
 protected: // internal data
   cv::Size _fftSize;
   cv::Size _expectedFrameSize;
+  PeakMetrics _peakMetrics;
   double _downscale_factor = 4;
   double _gsigma = 0.1;
   double _csigma = 0.5;
   double _calpha = 0.05;
   double _aalpha = 0;
-  double _peakValue = 0;
   double _correlationScore = 0;
-  double _crossEnergyScale = 0;
   bool _whiten_specs = false;
   bool _multi_roi = false;
   bool _initialized = false;

@@ -3074,7 +3074,7 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
  *
  * @return Returns false in case of a size mismatch error.
  */
-bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
+bool fftPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
 {
   INSTRUMENT_REGION("");
@@ -3183,8 +3183,9 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
           const float b2 = ((const float *)(ccs2_base + i_idx * ccs2_stride))[0];
           const float re = (a1 * a2 + b1 * b2);
           const float im = (b1 * a2 - a1 * b2);
-          const float mag = std::sqrt(re * re + im * im);
-          if (mag > safe_min) {
+          const float mag2 = (re * re + im * im);
+          if (mag2 > safe_min) {
+            const float mag = std::sqrt(mag2);
             const float gw = ((const float *)(flt_base + true_freq_y * flt_stride))[0];
             cross_value = (is_im_row ? im : re) * gw / mag;
           }
@@ -3252,8 +3253,9 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
           const float b2 = ((const float *)(ccs2_base + i_idx * ccs2_stride))[last_ccs_col];
           const float re = (a1 * a2 + b1 * b2);
           const float im = (b1 * a2 - a1 * b2);
-          const float mag = std::sqrt(re * re + im * im);
-          if (mag > safe_min) {
+          const float mag2 = (re * re + im * im);
+          if (mag2 > safe_min) {
+            const float mag = std::sqrt(mag2);
             const float gw = ((const float *)(flt_base + true_freq_y * flt_stride))[x];
             cross_value = (is_im_row ? im : re) * gw / mag;
           }

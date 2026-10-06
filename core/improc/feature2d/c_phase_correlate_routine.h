@@ -125,6 +125,7 @@ protected:
   DISPLAY _display = DISPLAY_CURRENT_IMAGE;
   bool _updateReferenceImage = true;
   bool _printScores = false;
+  bool _printDiagnostics = false;
   bool _initialized = false;
   c_phase_correlate_options opts;
   c_phase_correlate pc;

@@ -42,6 +42,17 @@ public:
     return _center;
   }
 
+  void set_imageCenter(bool v)
+  {
+    _imageCenter = v;
+    _rmap.release();
+  }
+
+  bool imageCenter() const
+  {
+    return _imageCenter;
+  }
+
   void set_interpolation_mode(INTERPOLATION_MODE v)
   {
     _interpolation = v;
@@ -62,6 +73,7 @@ protected:
   cv::Mat2f _rmap;
   cv::Size _old_src_size;
   cv::Point2f _center;
+  bool _imageCenter = true;
   INTERPOLATION_MODE _interpolation = INTER_LINEAR;
 };
 

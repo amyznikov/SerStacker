@@ -72,6 +72,8 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "multi_roi", ctx,  &this_class::multi_roi, &this_class::set_multi_roi, "");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");
+  ctlbind(ctls, "printDiagnostics", CTL_CONTEXT(ctx, _printDiagnostics), "Set checked to dump advanced debug info");
+
 }
 
 bool c_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
@@ -186,7 +188,39 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
 
     cv::Vec2f Translation;
     const double score = pc.compute(Translation);
-    if ( _printScores ) {
+
+    if ( _printDiagnostics ) {
+      const auto & pm = pc.peakMetrics();
+      CF_DEBUG("\n"
+          "BBOX = { %d,%d,%dx%d }\n"
+          "Score: %g MeasuredPeak: %7.4f correcttedPeak: %g Tx = %+9.3f Ty = %+9.3f\n"
+          "\n",
+          score, pm.measuredPeakValue, pm.correctedPeakValue, Translation[0], Translation[1],
+          pm.bbox.x, pm.bbox.y, pm.bbox.width, pm.bbox.height);
+
+//      const double _min_alignment_quality = 0.2;
+//      const bool is_bad_align = (stats.alignment_quality < _min_alignment_quality);
+
+//      CF_DEBUG("\n"
+//          "Peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f\n"
+//          "BBOX = { %d,%d,%dx%d }\n"
+//          "cx = %g cy = %g measuredPeakValue = %g\n"
+//          "gsigma=%g lambda_ref=%g lambda_min = %g lambda_max = %g eccentricity = %g angle = %g\n"
+//          "compactness1 = %g compactness2 = %g elongation=%g\n"
+//          "skew_minor = %g skew_major = %g\n"
+//          "q_scale = %g, q_shape = %g, q_skew = %g\n"
+//          "alignment_quality = %g is_bad_align = %d\n",
+//          peakValue, score, Translation[0], Translation[1],
+//          stats.bbox.x, stats.bbox.y, stats.bbox.width, stats.bbox.height,
+//          stats.cx, stats.cy,   stats.peakValue,
+//          opts.gsigma, stats.lambda_ref, stats.lambda_min, stats.lambda_max, stats.eccentricity, stats.angle * 180 / CV_PI,
+//          stats.compactness1, stats.compactness2, stats.elongation,
+//          stats.skew_minor, stats.skew_major,
+//          stats.q_scale, stats.q_shape, stats.q_skew,
+//          stats.alignment_quality, is_bad_align
+//          );
+    }
+    else if ( _printScores ) {
       const double peakValue = pc.peakValue();
       CF_DEBUG("Peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f", peakValue, score, Translation[0], Translation[1]);
     }

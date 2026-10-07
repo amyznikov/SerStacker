@@ -948,121 +948,63 @@ bool estimate_image_transform(c_image_transform * transform,
   return transformEstimated;
 }
 
-bool save_settings(c_config_setting settings, const c_estimate_image_transform_options& opts)
+bool serialize_image_transform_estimation_options(c_config_setting settings, bool save,
+    c_estimate_image_transform_options & opts)
 {
-  c_config_setting subsection;
-
-  if( (subsection = settings.add_group("translation")) ) {
-    SAVE_OPTION(subsection, opts.translation, rmse_factor);
-    SAVE_OPTION(subsection, opts.translation, max_iterations);
+  if( auto group = SERIALIZE_GROUP(settings, save, "translation") ) {
+    SERIALIZE_OPTION(group, save, opts.translation, rmse_factor);
+    SERIALIZE_OPTION(group, save, opts.translation, max_iterations);
   }
 
-  if( (subsection = settings.add_group("euclidean")) ) {
-    SAVE_OPTION(subsection, opts.euclidean, rmse_threshold);
-    SAVE_OPTION(subsection, opts.euclidean, max_iterations);
+  if( auto group = SERIALIZE_GROUP(settings, save, "euclidean") ) {
+    SERIALIZE_OPTION(group, save, opts.euclidean, rmse_threshold);
+    SERIALIZE_OPTION(group, save, opts.euclidean, max_iterations);
   }
 
-  if( (subsection = settings.add_group("scaled_euclidean")) ) {
-    SAVE_OPTION(subsection, opts.scaled_euclidean, ransacReprojThreshold);
-    SAVE_OPTION(subsection, opts.scaled_euclidean, confidence);
-    SAVE_OPTION(subsection, opts.scaled_euclidean, method);
-    SAVE_OPTION(subsection, opts.scaled_euclidean, maxIters);
-    SAVE_OPTION(subsection, opts.scaled_euclidean, refineIters);
+  if( auto group = SERIALIZE_GROUP(settings, save, "scaled_euclidean") ) {
+    SERIALIZE_OPTION(group, save, opts.scaled_euclidean, ransacReprojThreshold);
+    SERIALIZE_OPTION(group, save, opts.scaled_euclidean, confidence);
+    SERIALIZE_OPTION(group, save, opts.scaled_euclidean, method);
+    SERIALIZE_OPTION(group, save, opts.scaled_euclidean, maxIters);
+    SERIALIZE_OPTION(group, save, opts.scaled_euclidean, refineIters);
   }
 
-  if( (subsection = settings.add_group("affine")) ) {
-    SAVE_OPTION(subsection, opts.affine, method);
-    SAVE_OPTION(subsection, opts.affine, ransacReprojThreshold);
-    SAVE_OPTION(subsection, opts.affine, maxIters);
-    SAVE_OPTION(subsection, opts.affine, confidence);
-    SAVE_OPTION(subsection, opts.affine, refineIters);
+  if( auto group = SERIALIZE_GROUP(settings, save, "affine") ) {
+    SERIALIZE_OPTION(group, save, opts.affine, method);
+    SERIALIZE_OPTION(group, save, opts.affine, ransacReprojThreshold);
+    SERIALIZE_OPTION(group, save, opts.affine, maxIters);
+    SERIALIZE_OPTION(group, save, opts.affine, confidence);
+    SERIALIZE_OPTION(group, save, opts.affine, refineIters);
   }
 
-  if( (subsection = settings.add_group("homography")) ) {
-    SAVE_OPTION(subsection, opts.homography, method);
-    SAVE_OPTION(subsection, opts.homography, ransacReprojThreshold);
-    SAVE_OPTION(subsection, opts.homography, maxIters);
-    SAVE_OPTION(subsection, opts.homography, confidence);
+  if( auto group = SERIALIZE_GROUP(settings, save, "homography") ) {
+    SERIALIZE_OPTION(group, save, opts.homography, method);
+    SERIALIZE_OPTION(group, save, opts.homography, ransacReprojThreshold);
+    SERIALIZE_OPTION(group, save, opts.homography, maxIters);
+    SERIALIZE_OPTION(group, save, opts.homography, confidence);
   }
 
-  if( (subsection = settings.add_group("semi_quadratic")) ) {
-    SAVE_OPTION(subsection, opts.semi_quadratic, rmse_factor);
+  if( auto group = SERIALIZE_GROUP(settings, save, "semi_quadratic") ) {
+    SERIALIZE_OPTION(group, save, opts.semi_quadratic, rmse_factor);
   }
 
-  if( (subsection = settings.add_group("quadratic")) ) {
-    SAVE_OPTION(subsection, opts.quadratic, rmse_factor);
+  if( auto group = SERIALIZE_GROUP(settings, save, "quadratic") ) {
+    SERIALIZE_OPTION(group, save, opts.quadratic, rmse_factor);
   }
 
-  if( (subsection = settings.add_group("epipolar_derotation")) ) {
-    //SAVE_OPTION(subsection, opts.epipolar_derotation, camera_intrinsics);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, robust_threshold);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsf);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsx);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_iterations);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_levmar_iterations);
-    SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, direction);
-    SAVE_OPTION(subsection, opts.epipolar_derotation, initial_translation);
-    SAVE_OPTION(subsection, opts.epipolar_derotation, initial_rotation);
+  if( auto group = SERIALIZE_GROUP(settings, save, "epipolar_derotation") ) {
+    //SERIALIZE_OPTION(group, save, opts.epipolar_derotation, camera_intrinsics);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, robust_threshold);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, epsf);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, epsx);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, max_iterations);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, max_levmar_iterations);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation.camera_pose, direction);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation, initial_translation);
+    SERIALIZE_OPTION(group, save, opts.epipolar_derotation, initial_rotation);
   }
 
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_estimate_image_transform_options * opts)
-{
-  c_config_setting subsection;
-
-  if( (subsection = settings["translation"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->translation, rmse_factor);
-    LOAD_OPTION(subsection, opts->translation, max_iterations);
-  }
-
-  if( (subsection = settings["euclidean"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->euclidean, rmse_threshold);
-    LOAD_OPTION(subsection, opts->euclidean, max_iterations);
-  }
-
-  if( (subsection = settings["scaled_euclidean"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->scaled_euclidean, ransacReprojThreshold);
-    LOAD_OPTION(subsection, opts->scaled_euclidean, confidence);
-    LOAD_OPTION(subsection, opts->scaled_euclidean, method);
-    LOAD_OPTION(subsection, opts->scaled_euclidean, maxIters);
-    LOAD_OPTION(subsection, opts->scaled_euclidean, refineIters);
-  }
-
-  if( (subsection = settings["affine"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->affine, method);
-    LOAD_OPTION(subsection, opts->affine, ransacReprojThreshold);
-    LOAD_OPTION(subsection, opts->affine, maxIters);
-    LOAD_OPTION(subsection, opts->affine, confidence);
-    LOAD_OPTION(subsection, opts->affine, refineIters);
-  }
-
-  if( (subsection = settings["homography"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->homography, method);
-    LOAD_OPTION(subsection, opts->homography, ransacReprojThreshold);
-    LOAD_OPTION(subsection, opts->homography, maxIters);
-    LOAD_OPTION(subsection, opts->homography, confidence);
-  }
-
-  if( (subsection = settings["semi_quadratic"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->semi_quadratic, rmse_factor);
-  }
-
-  if( (subsection = settings["quadratic"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->quadratic, rmse_factor);
-  }
-
-  if( (subsection = settings["epipolar_derotation"]).isGroup() ) {
-    //LOAD_OPTION(subsection, opts->epipolar_derotation, camera_intrinsics);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, robust_threshold);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsf);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsx);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, max_iterations);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, max_levmar_iterations);
-    LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, direction);
-  }
-
-  return true;
-}
 

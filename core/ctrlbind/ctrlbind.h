@@ -278,6 +278,26 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
 }
 
 
+template<class RootObjectType, class StructType>
+void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & gname,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.cname = gname;
+  c.ctype = BindType::CtlType::BeginExpandableGroup;
+  ctls.emplace_back(c);
+
+  // bindMembers();
+  ctlbind(ctls, ctx);
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
+}
+
+
 /**
  * For use like this:
  *

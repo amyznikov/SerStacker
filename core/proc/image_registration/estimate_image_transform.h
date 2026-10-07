@@ -13,6 +13,7 @@
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/settings/opencv_settings.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 enum ROBUST_METHOD
 {
@@ -147,7 +148,77 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts);
 
-bool save_settings(c_config_setting, const c_estimate_image_transform_options& opts);
-bool load_settings(c_config_setting, c_estimate_image_transform_options * opts);
+bool serialize_image_transform_estimation_options(c_config_setting section, bool save,
+    c_estimate_image_transform_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_estimate_image_transform_options & opts)
+{
+  return serialize_image_transform_estimation_options(section, true,
+      const_cast<c_estimate_image_transform_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_estimate_image_transform_options * opts)
+{
+  return serialize_image_transform_estimation_options(section, false, *opts);
+}
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_estimate_image_transform_options> & ctx)
+{
+  using S = c_estimate_image_transform_options;
+  ctlbind_expandable_group(ctls, "Translation", [&, ctx = CTL_CONTEXT(ctx, translation)]() {
+    ctlbind(ctls, "max_iterations", CTL_CONTEXT(ctx, max_iterations), "");
+    ctlbind(ctls, "rmse_factor", CTL_CONTEXT(ctx, rmse_factor), "");
+  });
+
+  // translation + rotation
+  ctlbind_expandable_group(ctls, "Euclidean", [&, ctx = CTL_CONTEXT(ctx, euclidean)]() {
+    ctlbind(ctls, "max_iterations", CTL_CONTEXT(ctx, max_iterations), "");
+    ctlbind(ctls, "rmse_threshold", CTL_CONTEXT(ctx, rmse_threshold ), "");
+  });
+
+  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, scaled_euclidean)]() {
+    ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
+    ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
+    ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
+    ctlbind(ctls, "confidence", CTL_CONTEXT(ctx, confidence), "");
+    ctlbind(ctls, "refineIters", CTL_CONTEXT(ctx, refineIters), "");
+  });
+
+  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, affine)]() {
+    ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
+    ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
+    ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
+    ctlbind(ctls, "confidence", CTL_CONTEXT(ctx, confidence), "");
+    ctlbind(ctls, "refineIters", CTL_CONTEXT(ctx, refineIters), "");
+  });
+
+  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, homography)]() {
+    ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
+    ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
+    ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
+    ctlbind(ctls, "confidence", CTL_CONTEXT(ctx, confidence), "");
+  });
+
+  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, semi_quadratic)]() {
+    ctlbind(ctls, "rmse_factor", CTL_CONTEXT(ctx, rmse_factor), "");
+  });
+
+  ctlbind_expandable_group(ctls, "Quadratic", [&, ctx = CTL_CONTEXT(ctx, quadratic)]() {
+    ctlbind(ctls, "rmse_factor", CTL_CONTEXT(ctx, rmse_factor), "");
+  });
+
+
+  ctlbind_expandable_group(ctls, "Epipolar derotation", [&, ctx = CTL_CONTEXT(ctx, epipolar_derotation)]() {
+    ctlbind(ctls, "initial_translation", CTL_CONTEXT(ctx, initial_translation), "");
+    ctlbind(ctls, "initial_rotation", CTL_CONTEXT(ctx, initial_rotation), "");
+    ctlbind_expandable_group(ctls, "Camera", CTL_CONTEXT(ctx, camera_intrinsics), "");
+    ctlbind_expandable_group(ctls, "Pose estimation", CTL_CONTEXT(ctx, camera_pose), "");
+    //    c_camera_intrinsics camera_intrinsics;
+    //    c_lm_camera_pose_options camera_pose;
+  });
+
+
+}
 
 #endif /* __estimate_image_transform_h__ */

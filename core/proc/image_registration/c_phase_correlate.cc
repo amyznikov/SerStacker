@@ -82,7 +82,7 @@ static bool estimateSpotMetrics(const cv::Mat1f & correlationMap, double gsigma,
   outMetrics->peakPos.x = x0 + cx;
   outMetrics->peakPos.y = y0 + cy;
   outMetrics->semiaxes.width = std::sqrt(std::max(0., 0.5 * (mu20 + mu02 + term))); // major;
-  outMetrics->semiaxes.height = std::sqrt(std::max(0.,0.5 * (mu20 + mu02 - term))); //  minor
+  outMetrics->semiaxes.height = std::sqrt(std::max(0.,0.5 * (mu20 + mu02 - term))); // minor
   outMetrics->measuredPeakValue = measuredPeakValue * crossEnergyScale;
 
   return true;
@@ -598,13 +598,13 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
       _multi_roi ? 1. / std::sqrt(std::sqrt(crossEnergy)) :
           1. / std::sqrt(crossEnergy);
 
-  const double theshold =
+  const double threshold =
       _multi_roi ? 0 : std::sqrt(1.0 / _fftSize.area());
 
   const double r0 =
       _multi_roi ? 0.5 * _gsigma : _gsigma;
 
-  if( !estimateSpotMetrics(_correlationMap, r0, crossEnergyScale, theshold, &_peakMetrics) ) {
+  if( !estimateSpotMetrics(_correlationMap, r0, crossEnergyScale, threshold, &_peakMetrics) ) {
     CF_ERROR("estimateSpotFirstAndSecondOrderMetrics() fails");
     return -1;
   }

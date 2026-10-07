@@ -569,9 +569,7 @@ void QGraphicsRectShape::setFixOnSceneCenter(bool v)
 
     _fixOnSceneCenter = v;
 
-    QGraphicsScene *scene =
-        this->scene();
-
+    QGraphicsScene *scene = this->scene();
     if( scene ) {
 
       if( !_fixOnSceneCenter ) {
@@ -619,86 +617,6 @@ void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
     setCenter(mapFromScene(rect.center()));
   }
 }
-
-//bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
-//{
-//  QAction * action;
-//  QMenu * subMenu;
-//  QString copyText;
-//
-//
-////  if ( !showSettingsAction_ ) {
-////
-////    showSettingsAction_ = new QAction("Options...", this);
-////
-////    connect(showSettingsAction_, &QAction::triggered,
-////        this, &ThisClass::showShapeSettings);
-////  }
-//
-//
-//  menu.addSeparator();
-//
-//  menu.addAction(action = new QAction("Options..."));
-//  connect(action, &QAction::triggered,
-//      this, &ThisClass::showShapeSettings);
-//
-//  menu.addSeparator();
-//
-//  menu.addAction(action = new QAction("Center on scene"));
-//  action->setCheckable(true);
-//  action->setChecked(fixOnSceneCenter_);
-//  connect(action, &QAction::triggered,
-//      [this](bool checked) {
-//        setFixOnSceneCenter(checked);
-//      });
-//
-//  menu.addAction(action = new QAction("Fix Size"));
-//  action->setCheckable(true);
-//  action->setChecked(!resizable());
-//  connect(action, &QAction::triggered,
-//      [this](bool checked) {
-//        setResizable(!checked);
-//      });
-//
-//  menu.addSeparator();
-//
-//  subMenu =
-//      menu.addMenu("Copy");
-//
-//  copyText = qsprintf("%gx%g", rect_.width(), rect_.height());
-//  subMenu->addAction(copyText,
-//      [copyText]() {
-//        QApplication::clipboard()->setText(copyText);
-//      });
-//
-//  copyText = qsprintf("%d;%d;%dx%d", (int) rect_.x(), (int) rect_.y(), (int) rect_.width(), (int) rect_.height());
-//  subMenu->addAction(copyText,
-//      [copyText]() {
-//        QApplication::clipboard()->setText(copyText);
-//      });
-//
-//  if( rect_.width() != (int) rect_.width() || rect_.height() != (int) rect_.height() ||
-//      rect_.x() != (int) rect_.x() || rect_.y() != (int) rect_.y() ) {
-//
-//    copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
-//    subMenu->addAction(copyText,
-//        [copyText]() {
-//          QApplication::clipboard()->setText(copyText);
-//        });
-//  }
-//
-//  copyText = qsprintf("%g;%g;%g;%g", rect_.left(), rect_.top(), rect_.right(), rect_.bottom());
-//  subMenu->addAction(copyText,
-//      [copyText]() {
-//        QApplication::clipboard()->setText(copyText);
-//      });
-//
-//  menu.addSeparator();
-//  Base::popuateContextMenu(e, menu);
-//
-//  return true;
-//
-//}
 
 void QGraphicsRectShape::showShapeSettings()
 {
@@ -772,4 +690,36 @@ void QGraphicsRectShape::populateContextMenu(QMenu & menu, const QPoint & viewpo
 
   menu.addSeparator();
   Base::populateContextMenu(menu, viewpos);
+}
+
+void QGraphicsRectShape::onload(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsRectShapeSettings" : prefix;
+  Base::onload(settings, prefix);
+
+  prepareGeometryChange();
+  this->setRect(settings.value(QString("%1/rect").arg(PREFIX), this->rect()).toRectF());
+  this->setPen(settings.value(QString("%1/pen").arg(PREFIX), this->pen()).value<QPen>());
+  this->setBrush(settings.value(QString("%1/brush").arg(PREFIX), this->brush()).value<QBrush>());
+  this->setResizable(settings.value(QString("%1/resizable").arg(PREFIX), this->resizable()).toBool());
+  this->setFixOnSceneCenter(settings.value(QString("%1/fixOnSceneCenter").arg(PREFIX), this->fixOnSceneCenter()).toBool());
+  this->setFlags((QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(PREFIX), (int) this->flags()).value<int>());
+  this->setPos(settings.value(QString("%1/pos").arg(PREFIX), this->pos()).toPointF());
+  updateGeometry();
+  update();
+}
+
+void QGraphicsRectShape::onsave(QSettings & settings, const QString & prefix) const
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsRectShapeSettings" : prefix;
+  Base::onsave(settings, PREFIX);
+
+  settings.setValue(QString("%1/type").arg(PREFIX), QString("rect"));
+  settings.setValue(QString("%1/rect").arg(PREFIX), this->rect());
+  settings.setValue(QString("%1/pen").arg(PREFIX), this->pen());
+  settings.setValue(QString("%1/brush").arg(PREFIX), this->brush());
+  settings.setValue(QString("%1/resizable").arg(PREFIX), this->resizable());
+  settings.setValue(QString("%1/fixOnSceneCenter").arg(PREFIX), this->fixOnSceneCenter());
+  settings.setValue(QString("%1/flags").arg(PREFIX), (int) this->flags());
+  settings.setValue(QString("%1/pos").arg(PREFIX), this->pos());
 }

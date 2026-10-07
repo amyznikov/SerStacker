@@ -369,3 +369,39 @@ void QGraphicsTargetShape::showShapeSettings()
   dialogBox.exec();
 }
 
+
+void QGraphicsTargetShape::onload(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsTargetShapeSettings" : prefix;
+  Base::onload(settings, prefix);
+
+  prepareGeometryChange();
+  this->setCenter(settings.value(QString("%1/center").arg(PREFIX), this->center()).toPointF());
+  this->setBaseRadius(settings.value(QString("%1/baseRadius").arg(PREFIX), this->baseRadius()).toDouble());
+  this->setNumRings(settings.value(QString("%1/numRings").arg(PREFIX), this->numRings()).toInt());
+  this->setShowDiagonalRays(settings.value(QString("%1/showDiagonalRays").arg(PREFIX), this->showDiagonalRays()).toBool());
+  this->setFixOnSceneCenter(settings.value(QString("%1/fixOnSceneCenter").arg(PREFIX), this->fixOnSceneCenter()).toBool());
+  this->setLockPosition(settings.value(QString("%1/lockPosition").arg(PREFIX), this->lockPosition()).toBool());
+  this->setPen(settings.value(QString("%1/pen").arg(PREFIX), this->pen()).value<QPen>());
+  this->setFlags((QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(PREFIX), (int) this->flags()).value<int>());
+  this->setPos(settings.value(QString("%1/pos").arg(PREFIX), this->pos()).toPointF());
+  updateGeometry();
+  update();
+}
+
+void QGraphicsTargetShape::onsave(QSettings & settings, const QString & prefix) const
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsTargetShapeSettings" : prefix;
+  Base::onsave(settings, PREFIX);
+
+  settings.setValue(QString("%1/center").arg(PREFIX), this->center());
+  settings.setValue(QString("%1/baseRadius").arg(PREFIX), this->baseRadius());
+  settings.setValue(QString("%1/numRings").arg(PREFIX), this->numRings());
+  settings.setValue(QString("%1/showDiagonalRays").arg(PREFIX), this->showDiagonalRays());
+  settings.setValue(QString("%1/fixOnSceneCenter").arg(PREFIX), this->fixOnSceneCenter());
+  settings.setValue(QString("%1/lockPosition").arg(PREFIX), this->lockPosition());
+  settings.setValue(QString("%1/pen").arg(PREFIX), this->pen());
+  settings.setValue(QString("%1/flags").arg(PREFIX), (int) this->flags());
+  settings.setValue(QString("%1/pos").arg(PREFIX), this->pos());
+}
+

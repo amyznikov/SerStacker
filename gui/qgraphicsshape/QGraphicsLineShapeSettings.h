@@ -23,10 +23,6 @@ public:
   QGraphicsLineShapeSettings(QWidget * parent = nullptr);
 
 protected:
-  void onload(const QSettings & settings, const QString & prefix = "") override;
-  void onsave(QSettings & settings, const QString & prefix = "") override;
-
-protected:
   QCheckBox * lockP1_ctl = nullptr;
   QCheckBox * lockP2_ctl = nullptr;
   QCheckBox * snapToPixelGrid_ctl = nullptr;

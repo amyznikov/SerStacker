@@ -39,7 +39,13 @@ QGraphicsLineShape::QGraphicsLineShape(const QPointF & p1, const QPointF & p2, Q
 
 void QGraphicsLineShape::setLine(const QLineF &line)
 {
+  prepareGeometryChange();
   _line = line;
+  updateGeometry();
+  update();
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 void QGraphicsLineShape::setLine(qreal x1, qreal y1, qreal x2, qreal y2)
@@ -754,4 +760,36 @@ void QGraphicsLineShape::showShapeSettings()
   QGraphicsLineShapeSettingsDialogBox dialogBox("Line Options",
       this, QApplication::activeWindow());
   dialogBox.exec();
+}
+
+void QGraphicsLineShape::onload(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsLineShapeSettings" : prefix;
+
+  Base::onload(settings, prefix);
+
+  prepareGeometryChange();
+  this->setLine(settings.value(QString("%1/line").arg(PREFIX), this->line()).toLineF());
+  this->setArrowSize(settings.value(QString("%1/arrowSize").arg(PREFIX), this->arrowSize()).toDouble());
+  this->setLockP1(settings.value(QString("%1/lockP1").arg(PREFIX), this->lockP1()).toBool());
+  this->setLockP2(settings.value(QString("%1/lockP2").arg(PREFIX), this->lockP2()).toBool());
+  this->setPen(settings.value(QString("%1/pen").arg(PREFIX), this->pen()).value<QPen>());
+  this->setFlags((QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(PREFIX), (int) this->flags()).value<int>());
+  this->setPos(settings.value(QString("%1/pos").arg(PREFIX), this->pos()).toPointF());
+  updateGeometry();
+  update();
+}
+
+void QGraphicsLineShape::onsave(QSettings & settings, const QString & prefix) const
+{
+  const QString PREFIX = prefix.isEmpty() ? "QGraphicsLineShapeSettings" : prefix;
+  Base::onsave(settings, PREFIX);
+  settings.setValue(QString("%1/type").arg(PREFIX), QString("line"));
+  settings.setValue(QString("%1/line").arg(PREFIX), this->line());
+  settings.setValue(QString("%1/arrowSize").arg(PREFIX), this->arrowSize());
+  settings.setValue(QString("%1/lockP1").arg(PREFIX), this->lockP1());
+  settings.setValue(QString("%1/lockP2").arg(PREFIX), this->lockP2());
+  settings.setValue(QString("%1/pen").arg(PREFIX), this->pen());
+  settings.setValue(QString("%1/flags").arg(PREFIX), (int) this->flags());
+  settings.setValue(QString("%1/pos").arg(PREFIX), this->pos());
 }

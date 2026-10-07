@@ -67,6 +67,8 @@ protected:
   void onSceneHasChanged() override;
   void onSceneRectChanged(const QRectF &rect);
   void updateGeometry() override;
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") const override;
 
 protected:
   QPointF _center;

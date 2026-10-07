@@ -44,6 +44,11 @@ public:
   void setUpdatingPos(bool v);
   bool inUpdatingPos() const;
 
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "") const;
+  void saveSettings(QSettings & settings, const QString & prefix = "") const;
+
   static void load(QGraphicsShape * shape, const QSettings & settings,
       const QString & sectionName);
 
@@ -73,6 +78,8 @@ protected:
   virtual void updateGeometry();
   virtual void onSceneChange();
   virtual void onSceneHasChanged();
+  virtual void onload(const QSettings & settings, const QString & prefix = "");
+  virtual void onsave(QSettings & settings, const QString & prefix = "") const;
 
 protected:
   QString _name;

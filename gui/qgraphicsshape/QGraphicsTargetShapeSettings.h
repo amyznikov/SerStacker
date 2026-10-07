@@ -23,10 +23,6 @@ public:
   QGraphicsTargetShapeSettings(QWidget * parent = nullptr);
 
 protected:
-  void onload(const QSettings & settings, const QString & prefix = "") override;
-  void onsave(QSettings & settings, const QString & prefix = "") override;
-
-protected:
   QCheckBox * lockPosition_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
   QSpinBox * numRings_ctl = nullptr;

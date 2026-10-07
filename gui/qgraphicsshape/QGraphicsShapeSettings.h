@@ -34,6 +34,22 @@ public:
   {
     return ThisClass::opts();
   }
+
+protected:
+  void onload(const QSettings & settings, const QString & prefix = "") override
+  {
+    if ( shape() ) {
+      shape()->loadSettings(settings, prefix);
+    }
+  }
+
+  void onsave(QSettings & settings, const QString & prefix = "") override
+  {
+    if ( shape() ) {
+      shape()->saveSettings(settings, prefix);
+    }
+  }
+
 };
 
 

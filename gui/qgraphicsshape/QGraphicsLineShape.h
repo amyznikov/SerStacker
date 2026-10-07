@@ -91,6 +91,8 @@ protected:
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
   void updateGeometry() override;
   void showShapeSettings();
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") const override;
 
 protected:
   QLineF _line;

@@ -83,17 +83,21 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     }
 
     if( mask.needed() ) {
-      if( !mask.empty() ) {
+      if( mask.empty() ) {
+        cv::remap(cv::Mat1b(src_size, 255), mask, _rmap, cv::noArray(),
+            cv::INTER_NEAREST,
+            cv::BORDER_CONSTANT);
+      }
+      else if ( mask.depth() == CV_8U ) {
+        cv::remap(mask, mask, _rmap, cv::noArray(),
+            cv::INTER_NEAREST,
+            cv::BORDER_CONSTANT);
+      }
+      else {
         cv::remap(mask, mask, _rmap, cv::noArray(),
             _interpolation,
             cv::BORDER_CONSTANT);
       }
-      else {
-        cv::remap(cv::Mat1b(src_size, 255), mask, _rmap, cv::noArray(),
-            _interpolation,
-            cv::BORDER_CONSTANT);
-      }
-      cv::compare(mask, 254, mask, cv::CMP_LT);
     }
   }
 

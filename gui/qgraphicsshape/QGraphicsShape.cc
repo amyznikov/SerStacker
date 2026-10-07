@@ -158,17 +158,40 @@ void QGraphicsShape::updateGeometry()
 
 }
 
+void QGraphicsShape::onload(const QSettings & settings, const QString & prefix /*= ""*/)
+{
+
+}
+
+void QGraphicsShape::onsave(QSettings & settings, const QString & prefix /*= ""*/) const
+{
+}
+
+void QGraphicsShape::loadSettings(const QString & prefix /*= ""*/)
+{
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QGraphicsShape::loadSettings(const QSettings & settings, const QString & prefix /*= ""*/)
+{
+  onload(settings, prefix);
+}
+
+void QGraphicsShape::saveSettings(const QString & prefix /*= ""*/) const
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QGraphicsShape::saveSettings(QSettings & settings, const QString & prefix /*= ""*/) const
+{
+  onsave(settings, prefix);
+}
+
 QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & value)
 {
-//    CF_DEBUG("%s: '%s' : change=%s inUpdatingPos_=%d",
-//        this->metaObject()->className(),
-//        this->name_.toUtf8().constData(),
-//        toString(change),
-//        inUpdatingPos_);
-
-  QVariant v =
-      Base::itemChange(change, value);
-
+  QVariant v = Base::itemChange(change, value);
   switch (change) {
     case ItemFlagsChange:
       // ItemSendsGeometryChanges |
@@ -200,16 +223,11 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
         _ignoreTransformation = nullptr;
       }
 
-      QGraphicsScene *newScene =
-          Base::scene();
-
+      QGraphicsScene *newScene = Base::scene();
       if( newScene ) {
 
         if( flags() & QGraphicsItem::ItemIgnoresTransformations ) {
-
-          QGraphicsItem *myParentItem =
-              this->parentItem();
-
+          QGraphicsItem *myParentItem = this->parentItem();
           newScene->addItem(_ignoreTransformation = new QIgnoreTransformationStub());
           setParentItem(_ignoreTransformation);
           _ignoreTransformation->setParentItem(myParentItem);

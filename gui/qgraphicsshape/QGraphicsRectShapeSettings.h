@@ -23,10 +23,6 @@ public:
   QGraphicsRectShapeSettings(QWidget * parent = nullptr);
 
 protected:
-  void onload(const QSettings & settings, const QString & prefix = "") override;
-  void onsave(QSettings & settings, const QString & prefix = "") override;
-
-protected:
   QCheckBox * snapToPixelGrid_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
   QColorPickerButton * penColor_ctl = nullptr;

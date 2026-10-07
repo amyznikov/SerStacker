@@ -87,7 +87,7 @@ public:
   // Release internal cache buffers, may be useful for multi-pipeline re-initializators
   void release();
 
-  // Compute phase correlation and return correlation core and translation vector
+  // Compute phase correlation and return correlation score and translation vector
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   double computeCorrelationMap();

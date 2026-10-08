@@ -177,7 +177,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, "rmse_threshold", CTL_CONTEXT(ctx, rmse_threshold ), "");
   });
 
-  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, scaled_euclidean)]() {
+  ctlbind_expandable_group(ctls, "ScaledEuclidean", [&, ctx = CTL_CONTEXT(ctx, scaled_euclidean)]() {
     ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
     ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
     ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
@@ -185,7 +185,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, "refineIters", CTL_CONTEXT(ctx, refineIters), "");
   });
 
-  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, affine)]() {
+  ctlbind_expandable_group(ctls, "Affine", [&, ctx = CTL_CONTEXT(ctx, affine)]() {
     ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
     ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
     ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
@@ -193,14 +193,14 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, "refineIters", CTL_CONTEXT(ctx, refineIters), "");
   });
 
-  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, homography)]() {
+  ctlbind_expandable_group(ctls, "Homography", [&, ctx = CTL_CONTEXT(ctx, homography)]() {
     ctlbind(ctls, "method", CTL_CONTEXT(ctx, method), "");
     ctlbind(ctls, "maxIters", CTL_CONTEXT(ctx, maxIters), "");
     ctlbind(ctls, "ransacReprojThreshold", CTL_CONTEXT(ctx, ransacReprojThreshold), "");
     ctlbind(ctls, "confidence", CTL_CONTEXT(ctx, confidence), "");
   });
 
-  ctlbind_expandable_group(ctls, "", [&, ctx = CTL_CONTEXT(ctx, semi_quadratic)]() {
+  ctlbind_expandable_group(ctls, "SemiQuadratic", [&, ctx = CTL_CONTEXT(ctx, semi_quadratic)]() {
     ctlbind(ctls, "rmse_factor", CTL_CONTEXT(ctx, rmse_factor), "");
   });
 
@@ -208,14 +208,11 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, "rmse_factor", CTL_CONTEXT(ctx, rmse_factor), "");
   });
 
-
   ctlbind_expandable_group(ctls, "Epipolar derotation", [&, ctx = CTL_CONTEXT(ctx, epipolar_derotation)]() {
     ctlbind(ctls, "initial_translation", CTL_CONTEXT(ctx, initial_translation), "");
     ctlbind(ctls, "initial_rotation", CTL_CONTEXT(ctx, initial_rotation), "");
-    ctlbind_expandable_group(ctls, "Camera", CTL_CONTEXT(ctx, camera_intrinsics), "");
-    ctlbind_expandable_group(ctls, "Pose estimation", CTL_CONTEXT(ctx, camera_pose), "");
-    //    c_camera_intrinsics camera_intrinsics;
-    //    c_lm_camera_pose_options camera_pose;
+    ctlbind_expandable_group(ctls, "Camera", CTL_CONTEXT(ctx, camera_intrinsics));
+    ctlbind_expandable_group(ctls, "Pose estimation", CTL_CONTEXT(ctx, camera_pose));
   });
 
 

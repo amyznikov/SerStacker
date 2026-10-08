@@ -26,7 +26,21 @@ public:
   QEnumComboBoxBase(QWidget * parent = nullptr);
   QEnumComboBoxBase(const c_enum_member * membs, QWidget * parent = nullptr);
 
-  void setupItems(const c_enum_member * membs);
+  void setupItems(const c_enum_member * membs)
+  {
+    if( membs ) {
+      while (!membs->name.empty()) {
+        Base::addItem(membs->name.c_str(), (int) (membs->value));
+        if( !membs->comment.empty() ) {
+          Base::setItemData(count() - 1, QString(membs->comment.c_str()),
+              Qt::WhatsThisRole);
+        }
+        ++membs;
+      }
+
+      Base::updateGeometry();
+    }
+  }
 
 Q_SIGNALS:
   void currentItemChanged(int index);
@@ -36,7 +50,7 @@ protected:
   QSize sizeHint() const override;
 
 protected:
-  QCompleter * completer_ = nullptr;
+  QCompleter * _completer = nullptr;
 };
 
 
@@ -58,7 +72,8 @@ public:
 
   void setCurrentItem(E value)
   {
-    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
+    QComboBox::setCurrentIndex(QComboBox::findData((int) (value),
+        Qt::WhatsThisRole));
   }
 
   E currentItem(void)
@@ -70,7 +85,8 @@ public:
 
   void setValue(E value)
   {
-    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
+    QComboBox::setCurrentIndex(QComboBox::findData((int) (value),
+        Qt::WhatsThisRole));
   }
 
 };

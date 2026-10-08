@@ -936,8 +936,6 @@ public:
     int nOctaves = 4;
     int nOctaveLayers = 4;
     KAZEDiffusivityType diffusivity = KAZEDiffusivityType::DIFF_PM_G2;
-//    decltype (cv::KAZE::DIFF_PM_G2) diffusivity =
-//        cv::KAZE::DIFF_PM_G2;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1553,7 +1551,7 @@ public:
   typedef c_feature2d_base base;
 
   struct options : public base::options,
-  public c_morph_features_extractor::Options
+    public c_morph_features_extractor::Options
   {
     using feature2d_class = this_class;
   };
@@ -1928,5 +1926,326 @@ inline bool is_descriptor_supported_depth(SPARSE_FEATURE_DESCRIPTOR_TYPE descrip
   return is_depth_supported(descriptor_supported_depths(descriptor_type), depth);
 }
 
+
+template<class RootObjectType>
+void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_sparse_feature_detector_options> & ctx)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_sparse_feature_detector_options;
+
+  ctlbind_stacked_group(ctls, "Detector:", CTL_CONTEXT(ctx, type),  [&]() {
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+      ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
+      ctlbind(ctls, "scaleFactor", CTL_CONTEXT(ctx, scaleFactor), "");
+      ctlbind(ctls, "nlevels", CTL_CONTEXT(ctx, nlevels), "");
+      ctlbind(ctls, "edgeThreshold", CTL_CONTEXT(ctx, edgeThreshold), "");
+      ctlbind(ctls, "firstLevel", CTL_CONTEXT(ctx, firstLevel), "");
+      ctlbind(ctls, "WTA_K", CTL_CONTEXT(ctx, WTA_K), "");
+      ctlbind(ctls, "scoreType", CTL_CONTEXT(ctx, scoreType), "");
+      ctlbind(ctls, "patchSize", CTL_CONTEXT(ctx, patchSize), "");
+      ctlbind(ctls, "fastThreshold", CTL_CONTEXT(ctx, fastThreshold), "");
+    });
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_GFTT, [&, ctx = CTL_CONTEXT(ctx, gftt)] () {
+      ctlbind(ctls, "maxCorners", CTL_CONTEXT(ctx, maxCorners), "");
+      ctlbind(ctls, "qualityLevel", CTL_CONTEXT(ctx, qualityLevel), "");
+      ctlbind(ctls, "minDistance", CTL_CONTEXT(ctx, minDistance), "");
+      ctlbind(ctls, "blockSize", CTL_CONTEXT(ctx, blockSize), "");
+      ctlbind(ctls, "gradiantSize", CTL_CONTEXT(ctx, gradiantSize), "");
+      ctlbind(ctls, "useHarrisDetector", CTL_CONTEXT(ctx, useHarrisDetector), "");
+      ctlbind(ctls, "k", CTL_CONTEXT(ctx, k), "");
+    });
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_BLOB, [&, ctx = CTL_CONTEXT(ctx, blob)] () {
+      ctlbind(ctls, "thresholdStep", CTL_CONTEXT(ctx, thresholdStep), "");
+      ctlbind(ctls, "minThreshold", CTL_CONTEXT(ctx, minThreshold), "");
+      ctlbind(ctls, "maxThreshold", CTL_CONTEXT(ctx, maxThreshold), "");
+      ctlbind(ctls, "minRepeatability", CTL_CONTEXT(ctx, minRepeatability), "");
+      ctlbind(ctls, "minDistBetweenBlobs", CTL_CONTEXT(ctx, minDistBetweenBlobs), "");
+      ctlbind(ctls, "filterByColor", CTL_CONTEXT(ctx, filterByColor), "");
+      ctlbind(ctls, "blobColor", CTL_CONTEXT(ctx, blobColor), "");
+      ctlbind(ctls, "filterByArea", CTL_CONTEXT(ctx, filterByArea), "");
+      ctlbind(ctls, "minArea", CTL_CONTEXT(ctx, minArea), "");
+      ctlbind(ctls, "maxArea", CTL_CONTEXT(ctx, maxArea), "");
+      ctlbind(ctls, "filterByCircularity", CTL_CONTEXT(ctx, filterByCircularity), "");
+      ctlbind(ctls, "minCircularity", CTL_CONTEXT(ctx, minCircularity), "");
+      ctlbind(ctls, "maxCircularity", CTL_CONTEXT(ctx, maxCircularity), "");
+      ctlbind(ctls, "filterByInertia", CTL_CONTEXT(ctx, filterByInertia), "");
+      ctlbind(ctls, "minInertiaRatio", CTL_CONTEXT(ctx, minInertiaRatio), "");
+      ctlbind(ctls, "maxInertiaRatio", CTL_CONTEXT(ctx, maxInertiaRatio), "");
+      ctlbind(ctls, "filterByConvexity", CTL_CONTEXT(ctx, filterByConvexity), "");
+      ctlbind(ctls, "minConvexity", CTL_CONTEXT(ctx, minConvexity), "");
+      ctlbind(ctls, "maxConvexity", CTL_CONTEXT(ctx, maxConvexity), "");
+      ctlbind(ctls, "collectContours", CTL_CONTEXT(ctx, collectContours), "");
+    });
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MSER, [&, ctx = CTL_CONTEXT(ctx, mser)] () {
+      ctlbind(ctls, "delta", CTL_CONTEXT(ctx, delta), "");
+      ctlbind(ctls, "min_area", CTL_CONTEXT(ctx, min_area), "");
+      ctlbind(ctls, "max_area", CTL_CONTEXT(ctx, max_area), "");
+      ctlbind(ctls, "max_variation", CTL_CONTEXT(ctx, max_variation), "");
+      ctlbind(ctls, "min_diversity", CTL_CONTEXT(ctx, min_diversity), "");
+      ctlbind(ctls, "max_evolution", CTL_CONTEXT(ctx, max_evolution), "");
+      ctlbind(ctls, "area_threshold", CTL_CONTEXT(ctx, area_threshold), "");
+      ctlbind(ctls, "min_margin", CTL_CONTEXT(ctx, min_margin), "");
+      ctlbind(ctls, "edge_blur_size", CTL_CONTEXT(ctx, edge_blur_size), "");
+    });
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_FAST, [&, ctx = CTL_CONTEXT(ctx, fast)] () {
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nonmaxSuppression", CTL_CONTEXT(ctx, nonmaxSuppression), "");
+      ctlbind(ctls, "type", CTL_CONTEXT(ctx, type), "");
+    });
+
+#if HAVE_FEATURE2D_BRISK
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
+      ctlbind(ctls, "thresh", CTL_CONTEXT(ctx, thresh), "");
+      ctlbind(ctls, "octaves", CTL_CONTEXT(ctx, octaves), "");
+      ctlbind(ctls, "patternScale", CTL_CONTEXT(ctx, patternScale), "");
+    });
+#endif
+#if HAVE_FEATURE2D_AKAZE
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
+      ctlbind(ctls, "descriptor_type", CTL_CONTEXT(ctx, descriptor_type), "");
+      ctlbind(ctls, "descriptor_size", CTL_CONTEXT(ctx, descriptor_size), "");
+      ctlbind(ctls, "descriptor_channels", CTL_CONTEXT(ctx, descriptor_channels), "");
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "diffusivity", CTL_CONTEXT(ctx, diffusivity), "");
+    });
+#endif
+#if HAVE_FEATURE2D_KAZE
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
+      ctlbind(ctls, "extended", CTL_CONTEXT(ctx, extended), "");
+      ctlbind(ctls, "upright", CTL_CONTEXT(ctx, upright), "");
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "diffusivity", CTL_CONTEXT(ctx, diffusivity), "");
+    });
+#endif
+#if HAVE_FEATURE2D_SIFT
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
+      ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "contrastThreshold", CTL_CONTEXT(ctx, contrastThreshold), "");
+      ctlbind(ctls, "edgeThreshold", CTL_CONTEXT(ctx, edgeThreshold), "");
+      ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
+    });
+#endif
+#if HAVE_FEATURE2D_SURF
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
+      ctlbind(ctls, "hessianThreshold", CTL_CONTEXT(ctx, hessianThreshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "extended", CTL_CONTEXT(ctx, extended), "");
+      ctlbind(ctls, "upright", CTL_CONTEXT(ctx, upright), "");
+    });
+#endif
+#if HAVE_FEATURE2D_AGAST
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_AGAST, [&, ctx = CTL_CONTEXT(ctx, agast)] () {
+      ctlbind(ctls, "type", CTL_CONTEXT(ctx, type), "");
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nonmaxSuppression", CTL_CONTEXT(ctx, nonmaxSuppression), "");
+    });
+#endif
+#if HAVE_FEATURE2D_STAR
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_STAR, [&, ctx = CTL_CONTEXT(ctx, star)] () {
+      ctlbind(ctls, "maxSize", CTL_CONTEXT(ctx, maxSize), "");
+      ctlbind(ctls, "responseThreshold", CTL_CONTEXT(ctx, responseThreshold), "");
+      ctlbind(ctls, "lineThresholdProjected", CTL_CONTEXT(ctx, lineThresholdProjected), "");
+      ctlbind(ctls, "lineThresholdBinarized", CTL_CONTEXT(ctx, lineThresholdBinarized), "");
+      ctlbind(ctls, "suppressNonmaxSize", CTL_CONTEXT(ctx, suppressNonmaxSize), "");
+    });
+#endif
+#if HAVE_MORPH_EXTRACTOR
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MORPH, [&, ctx = CTL_CONTEXT(ctx, morph)] () {
+      ctlbind(ctls, "morph_type", CTL_CONTEXT(ctx, morph_type), "");
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
+    });
+#endif
+#if HAVE_STAR_EXTRACTOR
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR, [&, ctx = CTL_CONTEXT(ctx, sex)] () {
+      ctlbind(ctls, "lvls", CTL_CONTEXT(ctx, lvls), "");
+      ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
+      ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
+      ctlbind(ctls, "weight_decay", CTL_CONTEXT(ctx, weight_decay), "");
+      ctlbind(ctls, "kmad", CTL_CONTEXT(ctx, kmad), "");
+      ctlbind(ctls, "min_a", CTL_CONTEXT(ctx, min_a), "");
+      ctlbind(ctls, "max_a", CTL_CONTEXT(ctx, max_a), "");
+      ctlbind(ctls, "max_elongation", CTL_CONTEXT(ctx, max_elongation), "");
+      ctlbind(ctls, "min_compactness", CTL_CONTEXT(ctx, min_compactness), "");
+    });
+#endif
+#if HAVE_FEATURE2D_MSD
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MSD, [&, ctx = CTL_CONTEXT(ctx, msd)] () {
+      ctlbind(ctls, "m_patch_radius", CTL_CONTEXT(ctx, m_patch_radius), "");
+      ctlbind(ctls, "m_search_area_radius", CTL_CONTEXT(ctx, m_search_area_radius), "");
+      ctlbind(ctls, "m_nms_radius", CTL_CONTEXT(ctx, m_nms_radius), "");
+      ctlbind(ctls, "m_nms_scale_radius", CTL_CONTEXT(ctx, m_nms_scale_radius), "");
+      ctlbind(ctls, "m_th_saliency", CTL_CONTEXT(ctx, m_th_saliency), "");
+      ctlbind(ctls, "m_kNN", CTL_CONTEXT(ctx, m_kNN), "");
+      ctlbind(ctls, "m_scale_factor", CTL_CONTEXT(ctx, m_scale_factor), "");
+      ctlbind(ctls, "m_n_scales", CTL_CONTEXT(ctx, m_n_scales), "");
+      ctlbind(ctls, "m_compute_orientation", CTL_CONTEXT(ctx, m_compute_orientation), "");
+    });
+#endif
+#if HAVE_FEATURE2D_HL
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_HL, [&, ctx = CTL_CONTEXT(ctx, hl)] () {
+      ctlbind(ctls, "numOctaves", CTL_CONTEXT(ctx, numOctaves), "");
+      ctlbind(ctls, "corn_thresh", CTL_CONTEXT(ctx, corn_thresh), "");
+      ctlbind(ctls, "DOG_thresh", CTL_CONTEXT(ctx, DOG_thresh), "");
+      ctlbind(ctls, "maxCorners", CTL_CONTEXT(ctx, maxCorners), "");
+      ctlbind(ctls, "num_layers", CTL_CONTEXT(ctx, num_layers), "");
+    });
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector)] () {
+      ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, gsigma), "");
+      ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
+    });
+#endif
+  });
+}
+
+template<class RootObjectType>
+void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_sparse_feature_descriptor_options> & ctx)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_sparse_feature_descriptor_options;
+
+  ctlbind_stacked_group(ctls, "Descripoor:",  CTL_CONTEXT(ctx, type), [&]() {
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+      ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
+      ctlbind(ctls, "scaleFactor", CTL_CONTEXT(ctx, scaleFactor), "");
+      ctlbind(ctls, "nlevels", CTL_CONTEXT(ctx, nlevels), "");
+      ctlbind(ctls, "edgeThreshold", CTL_CONTEXT(ctx, edgeThreshold), "");
+      ctlbind(ctls, "firstLevel", CTL_CONTEXT(ctx, firstLevel), "");
+      ctlbind(ctls, "WTA_K", CTL_CONTEXT(ctx, WTA_K), "");
+      ctlbind(ctls, "scoreType", CTL_CONTEXT(ctx, scoreType), "");
+      ctlbind(ctls, "patchSize", CTL_CONTEXT(ctx, patchSize), "");
+      ctlbind(ctls, "fastThreshold", CTL_CONTEXT(ctx, fastThreshold), "");
+    });
+#if HAVE_FEATURE2D_BRISK
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
+      ctlbind(ctls, "thresh", CTL_CONTEXT(ctx, thresh), "");
+      ctlbind(ctls, "octaves", CTL_CONTEXT(ctx, octaves), "");
+      ctlbind(ctls, "patternScale", CTL_CONTEXT(ctx, patternScale), "");
+    });
+#endif
+#if HAVE_FEATURE2D_AKAZE
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
+      ctlbind(ctls, "descriptor_type", CTL_CONTEXT(ctx, descriptor_type), "");
+      ctlbind(ctls, "descriptor_size", CTL_CONTEXT(ctx, descriptor_size), "");
+      ctlbind(ctls, "descriptor_channels", CTL_CONTEXT(ctx, descriptor_channels), "");
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "diffusivity", CTL_CONTEXT(ctx, diffusivity), "");
+    });
+#endif
+#if HAVE_FEATURE2D_KAZE
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
+      ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "diffusivity", CTL_CONTEXT(ctx, diffusivity), "");
+      ctlbind(ctls, "extended", CTL_CONTEXT(ctx, extended), "");
+      ctlbind(ctls, "upright", CTL_CONTEXT(ctx, upright), "");
+    });
+#endif
+#if HAVE_FEATURE2D_SIFT
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
+      ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "contrastThreshold", CTL_CONTEXT(ctx, contrastThreshold), "");
+      ctlbind(ctls, "edgeThreshold", CTL_CONTEXT(ctx, edgeThreshold), "");
+      ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
+    });
+#endif
+#if HAVE_FEATURE2D_SURF
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
+      // c_feature2d_surf::options surf;
+      ctlbind(ctls, "hessianThreshold", CTL_CONTEXT(ctx, hessianThreshold), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
+      ctlbind(ctls, "extended", CTL_CONTEXT(ctx, extended), "");
+      ctlbind(ctls, "upright", CTL_CONTEXT(ctx, upright), "");
+    });
+#endif
+#if HAVE_FEATURE2D_FREAK
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_FREAK, [&, ctx = CTL_CONTEXT(ctx, freak)] () {
+      // c_feature2d_freak::options freak;
+      ctlbind(ctls, "orientationNormalized", CTL_CONTEXT(ctx, orientationNormalized), "");
+      ctlbind(ctls, "scaleNormalized", CTL_CONTEXT(ctx, scaleNormalized), "");
+      ctlbind(ctls, "patternScale", CTL_CONTEXT(ctx, patternScale), "");
+      ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
+      // const std::vector<int> * selectedPairs = NULL;
+    });
+#endif
+#if HAVE_FEATURE2D_BRIEF
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRIEF, [&, ctx = CTL_CONTEXT(ctx, brief)] () {
+      // c_feature2d_brief::options brief;
+      ctlbind(ctls, "bytes", CTL_CONTEXT(ctx, bytes), "");
+      ctlbind(ctls, "use_orientation", CTL_CONTEXT(ctx, use_orientation), "");
+    });
+#endif
+#if HAVE_FEATURE2D_LUCID
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LUCID, [&, ctx = CTL_CONTEXT(ctx, lucid)] () {
+      // c_feature2d_lucid::options lucid;
+      ctlbind(ctls, "lucid_kernel", CTL_CONTEXT(ctx, lucid_kernel), "");
+      ctlbind(ctls, "blur_kernel", CTL_CONTEXT(ctx, blur_kernel), "");
+    });
+#endif
+#if HAVE_FEATURE2D_LATCH
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LATCH, [&, ctx = CTL_CONTEXT(ctx, latch)] () {
+      //c_feature2d_latch::options latch;
+      ctlbind(ctls, "bytes", CTL_CONTEXT(ctx, bytes), "");
+      ctlbind(ctls, "rotationInvariance", CTL_CONTEXT(ctx, rotationInvariance), "");
+      ctlbind(ctls, "half_ssd_size", CTL_CONTEXT(ctx, half_ssd_size), "");
+      ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
+    });
+#endif
+#if HAVE_FEATURE2D_DAISY
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_DAISY, [&, ctx = CTL_CONTEXT(ctx, daisy)] () {
+      //c_feature2d_daisy::options daisy;
+      ctlbind(ctls, "radius", CTL_CONTEXT(ctx, radius), "");
+      ctlbind(ctls, "q_radius", CTL_CONTEXT(ctx, q_radius), "");
+      ctlbind(ctls, "q_theta", CTL_CONTEXT(ctx, q_theta), "");
+      ctlbind(ctls, "q_hist", CTL_CONTEXT(ctx, q_hist), "");
+      ctlbind(ctls, "norm", CTL_CONTEXT(ctx, norm), "");
+      ctlbind(ctls, "interpolation", CTL_CONTEXT(ctx, interpolation), "");
+      ctlbind(ctls, "use_orientation", CTL_CONTEXT(ctx, use_orientation), "");
+    });
+#endif
+#if HAVE_FEATURE2D_VGG
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_VGG, [&, ctx = CTL_CONTEXT(ctx, vgg)] () {
+      ctlbind(ctls, "desc", CTL_CONTEXT(ctx, desc), "");
+      ctlbind(ctls, "isigma", CTL_CONTEXT(ctx, isigma), "");
+      ctlbind(ctls, "img_normalize", CTL_CONTEXT(ctx, img_normalize), "");
+      ctlbind(ctls, "use_scale_orientation", CTL_CONTEXT(ctx, use_scale_orientation), "");
+      ctlbind(ctls, "scale_factor", CTL_CONTEXT(ctx, scale_factor), "");
+      ctlbind(ctls, "dsc_normalize", CTL_CONTEXT(ctx, dsc_normalize), "");
+    });
+#endif
+#if HAVE_FEATURE2D_BOOST
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BOOST, [&, ctx = CTL_CONTEXT(ctx, boost)] () {
+      ctlbind(ctls, "desc", CTL_CONTEXT(ctx, desc), "");
+      ctlbind(ctls, "use_scale_orientation", CTL_CONTEXT(ctx, use_scale_orientation), "");
+      ctlbind(ctls, "scale_factor", CTL_CONTEXT(ctx, scale_factor), "");
+    });
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, [&, ctx = CTL_CONTEXT(ctx, triangles)] () {
+      ctlbind(ctls, "max_points", CTL_CONTEXT(ctx, max_points), "");
+      ctlbind(ctls, "min_side_size", CTL_CONTEXT(ctx, min_side_size), "");
+    });
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+    });
+#endif
+  });
+}
 
 #endif /* __feature_detection_h__ */

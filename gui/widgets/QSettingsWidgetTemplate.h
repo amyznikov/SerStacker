@@ -53,7 +53,13 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         QSettingsWidget * newSettings = new QSettingsWidget(currentSettings);
         newSettings->setContentsMargins(0,0,0,0);
-        currentSettings->addRow(currentGroup = newSettings);
+
+        if ( QStackedGroupBox * stackedGroup = dynamic_cast<QStackedGroupBox *>(currentGroup)) {
+          stackedGroup->addWidget(c.selectorValue, currentGroup = newSettings);
+        }
+        else {
+          currentSettings->addRow(currentGroup = newSettings);
+        }
 
         QObject::connect(newSettings, &QSettingsWidget::parameterChanged,
             currentSettings, &QSettingsWidget::parameterChanged);
@@ -88,6 +94,11 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         QSettingsWidget * newSettings = new QSettingsWidget(currentSettings);
         QExpandableGroupBox * expandableGroup = currentSettings->add_expandable_groupbox(c.cname.c_str(), newSettings);
+
+        if ( QStackedGroupBox * stackedGroup = dynamic_cast<QStackedGroupBox *>(currentGroup)) {
+          stackedGroup->addWidget(c.selectorValue, expandableGroup);
+        }
+
         currentGroup = expandableGroup;
 
         QObject::connect(newSettings, &QSettingsWidget::parameterChanged,
@@ -114,6 +125,40 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings = newSettings;
         break;
       }
+
+      ////////////////////////////////////////////////////////////////////////
+      case CtlType::BeginStackedGroup: {
+        if( currentGroup ) {
+          groups.emplace_back(currentGroup);
+        }
+
+        QStackedGroupBox * stackedGroup =
+            currentSettings->add_stacked_groupbox(QString::fromStdString(c.cname),
+                c.get_enum_members ? c.get_enum_members() :
+                    nullptr);
+
+        currentGroup = stackedGroup;
+
+        if( c.getvalue && c.get_enum_members ) {
+          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
+              [_this, stackedGroup, c]() {
+                std::string s;
+                if ( c.getvalue(_this->opts(), &s) ) {
+                  const c_enum_member* memb = fromString(s, c.get_enum_members());
+                  stackedGroup->setCurrentSelection(memb ? memb->value : -1);
+                }
+              });
+        }
+        if( c.setvalue ) {
+          QObject::connect(stackedGroup, &QStackedGroupBox::currentSelectionChanged,
+              [_this, currentSettings, c](int selectorValue) {
+                if ( c.setvalue(_this->opts(), toString(selectorValue)) ) {
+                  Q_EMIT currentSettings->parameterChanged();
+                }
+              });
+        }
+        break;
+      }
       ////////////////////////////////////////////////////////////////////////
       case CtlType::EndGroup: {
         if( groups.empty() ) {
@@ -136,12 +181,16 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
             QObject::connect(expandableGroup, &QExpandableGroupBox::collapsed,
                 _this, &QSettingsWidget::groupCollapsed);
           }
+          else if (QStackedGroupBox * stackedGroup = dynamic_cast<QStackedGroupBox *>(currentGroup)) {
+            stackedGroup->updateSelection();
+          }
           else {
             currentSettings = dynamic_cast<QSettingsWidget *>(currentGroup);
           }
         }
-       break;
+        break;
       }
+
 
       ////////////////////////////////////////////////////////////////////////
       case CtlType::Textbox: {
@@ -358,14 +407,6 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         ctl->setRange(c.range.min, c.range.max);
         ctl->setSingleStep(c.range.step);
         ctl->setDecimals((c.range.step > 0) ? std::max(0, (int)std::ceil(-std::log10(c.range.step))) : 2);
-
-//        double step = ctl->singleStep();
-//        double minv = ctl->minimum();
-//        double maxv = ctl->maximum();
-//        CF_DEBUG("DoubleSliderSpinBox: c: min=%g max=%g step=%g ctl: min=%g max=%g step=%g ",
-//            c.range.min, c.range.max, c.range.step,
-//            minv, maxv, step);
-
         break;
       }
       ////////////////////////////////////////////////////////////////////////
@@ -834,7 +875,6 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings->addRow(w);
         break;
       }
-      ////////////////////////////////////////////////////////////////////////
     }
   }
 

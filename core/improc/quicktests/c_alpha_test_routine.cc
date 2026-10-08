@@ -49,8 +49,15 @@ namespace {
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _wienerRadius);
-    SERIALIZE_OPTION(settings, save, *this, _wienerNoiseSigma);
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "opts1")) {
+      SERIALIZE_OPTION(group, save, *this, opts1);
+    }
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "opts2")) {
+      SERIALIZE_OPTION(group, save, *this, opts2);
+    }
+
     return true;
   }
   return false;
@@ -58,14 +65,23 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
+  ctlbind_expandable_group(ctls, "Detector Options", [&]() {
+    ctlbind_sparse_feature_detector(ctls, ctx(&this_class::opts1));
+  });
+
+  ctlbind_expandable_group(ctls, "Descriptor Options", [&]() {
+    ctlbind_sparse_feature_descriptor(ctls, ctx(&this_class::opts2));
+  });
+
   //ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "Radius", CTL_CONTEXT(ctx, _wienerRadius), "");
-  ctlbind(ctls, "NoiseSigma", CTL_CONTEXT(ctx, _wienerNoiseSigma), "");
+//  ctlbind(ctls, "Radius", CTL_CONTEXT(ctx, _wienerRadius), "");
+//  ctlbind(ctls, "NoiseSigma", CTL_CONTEXT(ctx, _wienerNoiseSigma), "");
 }
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  return true; // local_wiener_filter(image, mask, _wienerRadius, _wienerNoiseSigma );
+  CF_DEBUG("opts.type=%d (%s)", opts1.type, toCString(opts1.type));
+  return true;
 }
 
 

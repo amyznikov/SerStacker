@@ -26,12 +26,12 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
   setSizeAdjustPolicy(AdjustToContents);
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred); // Maximum
 
-  completer_ = new QCompleter(this);
-  completer_->setModel(this->model());
-  completer_->setCompletionMode(QCompleter::PopupCompletion);
-  completer_->setFilterMode(Qt::MatchContains);
-  completer_->setCaseSensitivity(Qt::CaseInsensitive);
-  setCompleter(completer_);
+  _completer = new QCompleter(this);
+  _completer->setModel(this->model());
+  _completer->setCompletionMode(QCompleter::PopupCompletion);
+  _completer->setFilterMode(Qt::MatchContains);
+  _completer->setCaseSensitivity(Qt::CaseInsensitive);
+  setCompleter(_completer);
 
   Base::updateGeometry();
 
@@ -66,20 +66,20 @@ QEnumComboBoxBase::QEnumComboBoxBase(const c_enum_member * membs, QWidget * pare
 
 }
 
-void QEnumComboBoxBase::setupItems(const c_enum_member * membs)
-{
-  if( membs ) {
-    while (!membs->name.empty()) {
-      Base::addItem(membs->name.c_str(), (int) (membs->value));
-      if( !membs->comment.empty() ) {
-        Base::setItemData(count() - 1, QString(membs->comment.c_str()), Qt::WhatsThisRole);
-      }
-      ++membs;
-    }
-
-    Base::updateGeometry();
-  }
-}
+//void QEnumComboBoxBase::setupItems(const c_enum_member * membs)
+//{
+//  if( membs ) {
+//    while (!membs->name.empty()) {
+//      Base::addItem(membs->name.c_str(), (int) (membs->value));
+//      if( !membs->comment.empty() ) {
+//        Base::setItemData(count() - 1, QString(membs->comment.c_str()), Qt::WhatsThisRole);
+//      }
+//      ++membs;
+//    }
+//
+//    Base::updateGeometry();
+//  }
+//}
 
 void QEnumComboBoxBase::wheelEvent(QWheelEvent *e)
 {

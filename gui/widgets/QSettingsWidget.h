@@ -15,6 +15,7 @@
 #include <gui/widgets/QFlagsEditBox.h>
 #include <gui/widgets/QLineEditBox.h>
 #include <gui/widgets/QExpandableGroupBox.h>
+#include <gui/widgets/QStackedGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QFFmpegOptionsControl.h>
@@ -1262,6 +1263,30 @@ public:
   {
     return add_expandable_groupbox(this->form, title, ctl, stretch, alignment);
   }
+  /////////////////////////////////////////////////////////////////////
+
+  QStackedGroupBox* add_stacked_groupbox(QFormLayout * form, const QString & label, const c_enum_member * membs)
+  {
+    QStackedGroupBox *gbox = new QStackedGroupBox(label, membs);
+    form->addRow(gbox);
+    return gbox;
+  }
+
+  QStackedGroupBox* add_stacked_groupbox(QFormLayout * form, const QString & label)
+  {
+    return add_stacked_groupbox(form, label, nullptr);
+  }
+
+  QStackedGroupBox * add_stacked_groupbox(const QString & label, const c_enum_member * membs)
+  {
+    return add_stacked_groupbox(this->form, label, membs);
+  }
+
+  QStackedGroupBox * add_stacked_groupbox(const QString & label)
+  {
+    return add_stacked_groupbox(this->form, label);
+  }
+
 
   /////////////////////////////////////////////////////////////////////
   QToolButton * add_tool_button(QFormLayout * form, const QString & name, const QIcon & icon,

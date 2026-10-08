@@ -46,6 +46,7 @@ struct c_ctlbind
     None,
     BeginGroup,
     BeginExpandableGroup,
+    BeginStackedGroup,
     EndGroup,
     Textbox,
     MultilineTextbox,
@@ -79,6 +80,7 @@ struct c_ctlbind
   std::string cname;
   std::string cdesc;
   CtlType ctype = CtlType::None;
+  int selectorValue = 0;
 
   struct {
     double min = 0;
@@ -391,14 +393,66 @@ void ctlbind_group(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Root
   ctls.emplace_back(c);
 }
 
-
-
 template<class RootObjectType>
 void ctlbind_end_group(c_ctlist<RootObjectType> & ctls)
 {
   using BindType = c_ctlbind<RootObjectType>;
 
   BindType c;
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
+}
+
+template<class RootObjectType, class SelectorEnumType>
+void ctlbind_stacked_group(c_ctlist<RootObjectType> & ctls, const std::string & selectorName,
+    const c_ctlbind_context<RootObjectType, SelectorEnumType> & selectorCtx,
+    std::function<void()> && bindMembers)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.ctype = BindType::CtlType::BeginStackedGroup;
+
+  c.cname = selectorName;
+
+  c.get_enum_members = get_members_of<SelectorEnumType>();
+
+  c.getvalue = [offset = selectorCtx.offset](const RootObjectType * obj, std::string * s) -> bool {
+    return obj ? *s = toString(*reinterpret_cast<const SelectorEnumType*>(
+        reinterpret_cast<const uint8_t*>(obj) + offset)), true :
+        false;
+  };
+
+  c.setvalue = [offset = selectorCtx.offset](RootObjectType * obj, const std::string & v) -> bool {
+    return obj ? fromString(v, reinterpret_cast<SelectorEnumType*>(
+        reinterpret_cast<uint8_t*>(obj) + offset)) :
+        false;
+  };
+
+  ctls.emplace_back(c);
+
+  bindMembers();
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
+}
+
+template<class RootObjectType>
+void ctlbind_group(c_ctlist<RootObjectType> & ctls, int selectorValue,
+    std::function<void()> && bindMembers)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  BindType c;
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::BeginGroup;
+  c.selectorValue = selectorValue;
+  ctls.emplace_back(c);
+
+  bindMembers();
+
+  c.cname = "";
   c.ctype = BindType::CtlType::EndGroup;
   ctls.emplace_back(c);
 }

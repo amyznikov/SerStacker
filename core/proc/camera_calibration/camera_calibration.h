@@ -114,5 +114,23 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
   ctls.emplace_back(c);
 }
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_camera_intrinsics> & ctx)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_camera_intrinsics;
+
+  BindType c;
+  c.ctype = BindType::CtlType::CameraIntrinsicts;
+
+  const size_t offset = ctx.offset;
+  c.camera_intrinsicts =
+      [offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
+
 
 #endif /* __camera_calibration_h__ */

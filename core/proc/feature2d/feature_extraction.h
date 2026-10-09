@@ -975,7 +975,7 @@ public:
   struct options : public base::options
   {
     using feature2d_class = this_class;
-    AKAZEDescriptorType descriptor_type = AKAZEDescriptorType::DESCRIPTOR_MLDB;
+    AKAZEDescriptorType descriptor_type = AKAZEDescriptorType::DESCRIPTOR_MLDB_UPRIGHT;
     int descriptor_size = 256;
     int descriptor_channels = 3;
     float threshold = 0.001f;
@@ -1935,7 +1935,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
   using FieldType = c_sparse_feature_detector_options;
 
   ctlbind_stacked_group(ctls, "Detector:", CTL_CONTEXT(ctx, type),  [&]() {
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
       ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
       ctlbind(ctls, "scaleFactor", CTL_CONTEXT(ctx, scaleFactor), "");
       ctlbind(ctls, "nlevels", CTL_CONTEXT(ctx, nlevels), "");
@@ -1946,7 +1946,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
       ctlbind(ctls, "patchSize", CTL_CONTEXT(ctx, patchSize), "");
       ctlbind(ctls, "fastThreshold", CTL_CONTEXT(ctx, fastThreshold), "");
     });
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_GFTT, [&, ctx = CTL_CONTEXT(ctx, gftt)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_GFTT, [&, ctx = CTL_CONTEXT(ctx, gftt)] () {
       ctlbind(ctls, "maxCorners", CTL_CONTEXT(ctx, maxCorners), "");
       ctlbind(ctls, "qualityLevel", CTL_CONTEXT(ctx, qualityLevel), "");
       ctlbind(ctls, "minDistance", CTL_CONTEXT(ctx, minDistance), "");
@@ -1955,7 +1955,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
       ctlbind(ctls, "useHarrisDetector", CTL_CONTEXT(ctx, useHarrisDetector), "");
       ctlbind(ctls, "k", CTL_CONTEXT(ctx, k), "");
     });
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_BLOB, [&, ctx = CTL_CONTEXT(ctx, blob)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_BLOB, [&, ctx = CTL_CONTEXT(ctx, blob)] () {
       ctlbind(ctls, "thresholdStep", CTL_CONTEXT(ctx, thresholdStep), "");
       ctlbind(ctls, "minThreshold", CTL_CONTEXT(ctx, minThreshold), "");
       ctlbind(ctls, "maxThreshold", CTL_CONTEXT(ctx, maxThreshold), "");
@@ -1977,7 +1977,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
       ctlbind(ctls, "maxConvexity", CTL_CONTEXT(ctx, maxConvexity), "");
       ctlbind(ctls, "collectContours", CTL_CONTEXT(ctx, collectContours), "");
     });
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MSER, [&, ctx = CTL_CONTEXT(ctx, mser)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_MSER, [&, ctx = CTL_CONTEXT(ctx, mser)] () {
       ctlbind(ctls, "delta", CTL_CONTEXT(ctx, delta), "");
       ctlbind(ctls, "min_area", CTL_CONTEXT(ctx, min_area), "");
       ctlbind(ctls, "max_area", CTL_CONTEXT(ctx, max_area), "");
@@ -1988,21 +1988,21 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
       ctlbind(ctls, "min_margin", CTL_CONTEXT(ctx, min_margin), "");
       ctlbind(ctls, "edge_blur_size", CTL_CONTEXT(ctx, edge_blur_size), "");
     });
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_FAST, [&, ctx = CTL_CONTEXT(ctx, fast)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_FAST, [&, ctx = CTL_CONTEXT(ctx, fast)] () {
       ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
       ctlbind(ctls, "nonmaxSuppression", CTL_CONTEXT(ctx, nonmaxSuppression), "");
       ctlbind(ctls, "type", CTL_CONTEXT(ctx, type), "");
     });
 
 #if HAVE_FEATURE2D_BRISK
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
       ctlbind(ctls, "thresh", CTL_CONTEXT(ctx, thresh), "");
       ctlbind(ctls, "octaves", CTL_CONTEXT(ctx, octaves), "");
       ctlbind(ctls, "patternScale", CTL_CONTEXT(ctx, patternScale), "");
     });
 #endif
 #if HAVE_FEATURE2D_AKAZE
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
       ctlbind(ctls, "descriptor_type", CTL_CONTEXT(ctx, descriptor_type), "");
       ctlbind(ctls, "descriptor_size", CTL_CONTEXT(ctx, descriptor_size), "");
       ctlbind(ctls, "descriptor_channels", CTL_CONTEXT(ctx, descriptor_channels), "");
@@ -2013,7 +2013,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_KAZE
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
       ctlbind(ctls, "extended", CTL_CONTEXT(ctx, extended), "");
       ctlbind(ctls, "upright", CTL_CONTEXT(ctx, upright), "");
       ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
@@ -2023,7 +2023,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_SIFT
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
       ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
       ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
       ctlbind(ctls, "contrastThreshold", CTL_CONTEXT(ctx, contrastThreshold), "");
@@ -2032,7 +2032,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_SURF
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
       ctlbind(ctls, "hessianThreshold", CTL_CONTEXT(ctx, hessianThreshold), "");
       ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
       ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
@@ -2041,14 +2041,14 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_AGAST
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_AGAST, [&, ctx = CTL_CONTEXT(ctx, agast)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_AGAST, [&, ctx = CTL_CONTEXT(ctx, agast)] () {
       ctlbind(ctls, "type", CTL_CONTEXT(ctx, type), "");
       ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
       ctlbind(ctls, "nonmaxSuppression", CTL_CONTEXT(ctx, nonmaxSuppression), "");
     });
 #endif
 #if HAVE_FEATURE2D_STAR
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_STAR, [&, ctx = CTL_CONTEXT(ctx, star)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_STAR, [&, ctx = CTL_CONTEXT(ctx, star)] () {
       ctlbind(ctls, "maxSize", CTL_CONTEXT(ctx, maxSize), "");
       ctlbind(ctls, "responseThreshold", CTL_CONTEXT(ctx, responseThreshold), "");
       ctlbind(ctls, "lineThresholdProjected", CTL_CONTEXT(ctx, lineThresholdProjected), "");
@@ -2057,14 +2057,14 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_MORPH_EXTRACTOR
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MORPH, [&, ctx = CTL_CONTEXT(ctx, morph)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_MORPH, [&, ctx = CTL_CONTEXT(ctx, morph)] () {
       ctlbind(ctls, "morph_type", CTL_CONTEXT(ctx, morph_type), "");
       ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
       ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
     });
 #endif
 #if HAVE_STAR_EXTRACTOR
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR, [&, ctx = CTL_CONTEXT(ctx, sex)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR, [&, ctx = CTL_CONTEXT(ctx, sex)] () {
       ctlbind(ctls, "lvls", CTL_CONTEXT(ctx, lvls), "");
       ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
       ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
@@ -2077,7 +2077,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_MSD
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_MSD, [&, ctx = CTL_CONTEXT(ctx, msd)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_MSD, [&, ctx = CTL_CONTEXT(ctx, msd)] () {
       ctlbind(ctls, "m_patch_radius", CTL_CONTEXT(ctx, m_patch_radius), "");
       ctlbind(ctls, "m_search_area_radius", CTL_CONTEXT(ctx, m_search_area_radius), "");
       ctlbind(ctls, "m_nms_radius", CTL_CONTEXT(ctx, m_nms_radius), "");
@@ -2090,7 +2090,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_FEATURE2D_HL
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_HL, [&, ctx = CTL_CONTEXT(ctx, hl)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_HL, [&, ctx = CTL_CONTEXT(ctx, hl)] () {
       ctlbind(ctls, "numOctaves", CTL_CONTEXT(ctx, numOctaves), "");
       ctlbind(ctls, "corn_thresh", CTL_CONTEXT(ctx, corn_thresh), "");
       ctlbind(ctls, "DOG_thresh", CTL_CONTEXT(ctx, DOG_thresh), "");
@@ -2099,7 +2099,7 @@ void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     });
 #endif
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
-    ctlbind_group(ctls, SPARSE_FEATURE_DETECTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector)] () {
       ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, gsigma), "");
       ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
     });
@@ -2115,7 +2115,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
   using FieldType = c_sparse_feature_descriptor_options;
 
   ctlbind_stacked_group(ctls, "Descripoor:",  CTL_CONTEXT(ctx, type), [&]() {
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
       ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
       ctlbind(ctls, "scaleFactor", CTL_CONTEXT(ctx, scaleFactor), "");
       ctlbind(ctls, "nlevels", CTL_CONTEXT(ctx, nlevels), "");
@@ -2127,14 +2127,14 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
       ctlbind(ctls, "fastThreshold", CTL_CONTEXT(ctx, fastThreshold), "");
     });
 #if HAVE_FEATURE2D_BRISK
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRISK, [&, ctx = CTL_CONTEXT(ctx, brisk)] () {
       ctlbind(ctls, "thresh", CTL_CONTEXT(ctx, thresh), "");
       ctlbind(ctls, "octaves", CTL_CONTEXT(ctx, octaves), "");
       ctlbind(ctls, "patternScale", CTL_CONTEXT(ctx, patternScale), "");
     });
 #endif
 #if HAVE_FEATURE2D_AKAZE
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_AKAZE, [&, ctx = CTL_CONTEXT(ctx, akaze)] () {
       ctlbind(ctls, "descriptor_type", CTL_CONTEXT(ctx, descriptor_type), "");
       ctlbind(ctls, "descriptor_size", CTL_CONTEXT(ctx, descriptor_size), "");
       ctlbind(ctls, "descriptor_channels", CTL_CONTEXT(ctx, descriptor_channels), "");
@@ -2145,7 +2145,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_KAZE
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_KAZE, [&, ctx = CTL_CONTEXT(ctx, kaze)] () {
       ctlbind(ctls, "threshold", CTL_CONTEXT(ctx, threshold), "");
       ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
       ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
@@ -2155,7 +2155,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_SIFT
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SIFT, [&, ctx = CTL_CONTEXT(ctx, sift)] () {
       ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
       ctlbind(ctls, "nOctaveLayers", CTL_CONTEXT(ctx, nOctaveLayers), "");
       ctlbind(ctls, "contrastThreshold", CTL_CONTEXT(ctx, contrastThreshold), "");
@@ -2164,7 +2164,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_SURF
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_SURF, [&, ctx = CTL_CONTEXT(ctx, surf)] () {
       // c_feature2d_surf::options surf;
       ctlbind(ctls, "hessianThreshold", CTL_CONTEXT(ctx, hessianThreshold), "");
       ctlbind(ctls, "nOctaves", CTL_CONTEXT(ctx, nOctaves), "");
@@ -2174,7 +2174,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_FREAK
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_FREAK, [&, ctx = CTL_CONTEXT(ctx, freak)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_FREAK, [&, ctx = CTL_CONTEXT(ctx, freak)] () {
       // c_feature2d_freak::options freak;
       ctlbind(ctls, "orientationNormalized", CTL_CONTEXT(ctx, orientationNormalized), "");
       ctlbind(ctls, "scaleNormalized", CTL_CONTEXT(ctx, scaleNormalized), "");
@@ -2184,21 +2184,21 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_BRIEF
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRIEF, [&, ctx = CTL_CONTEXT(ctx, brief)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BRIEF, [&, ctx = CTL_CONTEXT(ctx, brief)] () {
       // c_feature2d_brief::options brief;
       ctlbind(ctls, "bytes", CTL_CONTEXT(ctx, bytes), "");
       ctlbind(ctls, "use_orientation", CTL_CONTEXT(ctx, use_orientation), "");
     });
 #endif
 #if HAVE_FEATURE2D_LUCID
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LUCID, [&, ctx = CTL_CONTEXT(ctx, lucid)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LUCID, [&, ctx = CTL_CONTEXT(ctx, lucid)] () {
       // c_feature2d_lucid::options lucid;
       ctlbind(ctls, "lucid_kernel", CTL_CONTEXT(ctx, lucid_kernel), "");
       ctlbind(ctls, "blur_kernel", CTL_CONTEXT(ctx, blur_kernel), "");
     });
 #endif
 #if HAVE_FEATURE2D_LATCH
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LATCH, [&, ctx = CTL_CONTEXT(ctx, latch)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_LATCH, [&, ctx = CTL_CONTEXT(ctx, latch)] () {
       //c_feature2d_latch::options latch;
       ctlbind(ctls, "bytes", CTL_CONTEXT(ctx, bytes), "");
       ctlbind(ctls, "rotationInvariance", CTL_CONTEXT(ctx, rotationInvariance), "");
@@ -2207,7 +2207,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_DAISY
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_DAISY, [&, ctx = CTL_CONTEXT(ctx, daisy)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_DAISY, [&, ctx = CTL_CONTEXT(ctx, daisy)] () {
       //c_feature2d_daisy::options daisy;
       ctlbind(ctls, "radius", CTL_CONTEXT(ctx, radius), "");
       ctlbind(ctls, "q_radius", CTL_CONTEXT(ctx, q_radius), "");
@@ -2219,7 +2219,7 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_VGG
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_VGG, [&, ctx = CTL_CONTEXT(ctx, vgg)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_VGG, [&, ctx = CTL_CONTEXT(ctx, vgg)] () {
       ctlbind(ctls, "desc", CTL_CONTEXT(ctx, desc), "");
       ctlbind(ctls, "isigma", CTL_CONTEXT(ctx, isigma), "");
       ctlbind(ctls, "img_normalize", CTL_CONTEXT(ctx, img_normalize), "");
@@ -2229,20 +2229,20 @@ void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_
     });
 #endif
 #if HAVE_FEATURE2D_BOOST
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BOOST, [&, ctx = CTL_CONTEXT(ctx, boost)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_BOOST, [&, ctx = CTL_CONTEXT(ctx, boost)] () {
       ctlbind(ctls, "desc", CTL_CONTEXT(ctx, desc), "");
       ctlbind(ctls, "use_scale_orientation", CTL_CONTEXT(ctx, use_scale_orientation), "");
       ctlbind(ctls, "scale_factor", CTL_CONTEXT(ctx, scale_factor), "");
     });
 #endif
 #if HAVE_TRIANGLE_EXTRACTOR
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, [&, ctx = CTL_CONTEXT(ctx, triangles)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, [&, ctx = CTL_CONTEXT(ctx, triangles)] () {
       ctlbind(ctls, "max_points", CTL_CONTEXT(ctx, max_points), "");
       ctlbind(ctls, "min_side_size", CTL_CONTEXT(ctx, min_side_size), "");
     });
 #endif
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
-    ctlbind_group(ctls, SPARSE_FEATURE_DESCRIPTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
+    ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
     });
 #endif
   });

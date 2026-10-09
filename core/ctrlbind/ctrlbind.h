@@ -439,7 +439,7 @@ void ctlbind_stacked_group(c_ctlist<RootObjectType> & ctls, const std::string & 
 }
 
 template<class RootObjectType>
-void ctlbind_group(c_ctlist<RootObjectType> & ctls, int selectorValue,
+void ctlbind_selectable_group(c_ctlist<RootObjectType> & ctls, int selectorValue,
     std::function<void()> && bindMembers)
 {
   using BindType = c_ctlbind<RootObjectType>;

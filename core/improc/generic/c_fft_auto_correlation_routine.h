@@ -102,10 +102,10 @@ protected:
 protected: // Controlling parameters
   DISPLAY _display = DISPLAY_CORRELATION_MAP;
   double _downscaleFactor = 4;
-  double _gsigma = 15;
-  double _csigma = 0.5;
-  double _calpha = 0.1;
-  int _apodizationSize = 21;
+  double _gsigma = 5;
+  double _csigma = 0;
+  double _calpha = 0;
+  int _apodizationSize = 0;
   bool _printDebug = false;
 
 protected: // Cached data

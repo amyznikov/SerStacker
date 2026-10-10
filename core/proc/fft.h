@@ -231,7 +231,8 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
  * CV_32FC1 CCS input -> CV_32FC2 Complex output
  * */
 bool fftUnpackCCSSpectrum(cv::InputArray ccsSpectrum,
-    cv::OutputArray _complexSpectrum);
+    cv::OutputArray _complexSpectrum,
+    bool centerDC);
 
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output with sign alternating

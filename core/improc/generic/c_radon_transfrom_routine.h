@@ -16,13 +16,15 @@ class c_radon_transfrom_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_radon_transfrom_routine,
-      "radon_transfrom", "calls cv::ximgproc::RadonTransform()");
+      "radon_transfrom", "DFT-based RadonTransform");
 
   enum DISPLAY {
     DISPLAY_SINOGRAM,
     DISPLAY_P_SPECTRUM,
-    DISPLAY_POLAR_MAGNITUDE,
-    DISPLAY_POLAR_SPECTRUM,
+    DISPLAY_CMLPX_SPEC_CART,
+    DISPLAY_CMLPX_SPEC_CART_POLAR,
+    DISPLAY_CMLPX_SPEC_POLAR,
+    DISPLAY_CMLPX_SPEC_POLAR_POLAR
   };
 
   bool serialize(c_config_setting settings, bool save) final;

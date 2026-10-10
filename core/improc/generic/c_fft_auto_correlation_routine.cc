@@ -165,9 +165,14 @@ bool c_fft_auto_correlation_routine::ensureInitialized(const cv::Size & expected
 
 void c_fft_auto_correlation_routine::generateBandpassFilter()
 {
-  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
-  // rho2 = (u^2 + v^2) / fsigma^2;
-  // F(u, v) = rho2 * exp (-0.5 * rho2 )
+  // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
+  // otherwise the bandpass filter become not symmetrical due to embedded sign alternating
+  // ilambda = _gsigma * (2 * sqrt(pi))
+  // rho2 = (u^2 + v^2) * ilambda^2;
+  // F(u, v) = rho2 * exp (-rho2 )
+  // the alternating +1 and -1 is also embedded into filter to avoid later fftSwapQudrants()
+
+  INSTRUMENT_REGION("");
 
   _bandpassFilter.create(_fftSize);
 
@@ -189,43 +194,108 @@ void c_fft_auto_correlation_routine::generateBandpassFilter()
     });
   }
   else {
-    const double sgsigma = _gsigma / _downscaleFactor;
-    const float lambda2 = float(0.5 * CV_PI * CV_PI * sgsigma * sgsigma);
-
-    const float inv_cols = float (1.0 / cols);
-    const float inv_rows = float (1.0 / rows);
+    const double ilambda_x = (2.0 * M_PI * _gsigma) / cols;
+    const double ilambda_y = (2.0 * M_PI * _gsigma) / rows;
+    const float ilambda_x2 = float(ilambda_x * ilambda_x);
+    const float ilambda_y2 = float(ilambda_y * ilambda_y);
 
     parallel_for(0, rows, [=](const auto & range) {
       for( int y = rbegin(range); y < rend(range); ++y ) {
         float * __restrict fltp = (float * )(filter_base + y * filter_stride);
 
         const int fy = (y > rows / 2) ? (rows - y) : y;
-        const float v = fy * inv_rows;
-        const float v2 = v * v;
+        const float v2 = float(fy * fy) * ilambda_y2;
 
         for( int x = 0; x < cols; ++x ) {
           const int fx = (x > cols / 2) ? (cols - x) : x;
           const int sign = ((x + y) & 1) ? -1 : 1;
-
-          const float u = fx * inv_cols;
-          const float u2 = u * u;
-          const float rho2 = (u2 + v2) * lambda2;
-
-          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+          const float u2 = float(fx * fx) * ilambda_x2;
+          const float rho2 = u2 + v2;
+          fltp[x] = sign * rho2 * std::exp(-rho2);
         }
       }
     });
   }
 
-  if( _csigma > 0 && _calpha > 0 ) {
+  if ( _csigma > 0  && _calpha > 0) {
+    // Embed also cross-like spectrum features suppression directly into filter instead of pixel space apodization
     fftGenerateInverseCrossFilter(_fftSize, _currentValidSize, _inverseCross, _csigma, _calpha, false);
-    if ( !_inverseCross.empty()  ) {
-      cv::multiply(_bandpassFilter, _inverseCross, _bandpassFilter);
-    }
+    cv::multiply(_bandpassFilter, _inverseCross, _bandpassFilter);
   }
 
-  _bandpassFilterNorm = cv::norm(_bandpassFilter, cv::NORM_L1);
-  cv::multiply(_bandpassFilter, 1. / _bandpassFilterNorm, _bandpassFilter);
+  cv::multiply(_bandpassFilter, 1. / cv::norm(_bandpassFilter, cv::NORM_L1),
+      _bandpassFilter);
+
+//  if ( _vlapFilter.size() != _fftSize ) {
+//    _vlapFilter = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
+//  }
+//
+//  if ( _aalpha > 0 &&  _apodizationWindow.size() != _fftSize ) {
+//    generateTukeyApodizationWindow(_apodizationWindow, _fftSize, _aalpha);
+//  }
+
+
+//  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
+//  // rho2 = (u^2 + v^2) / fsigma^2;
+//  // F(u, v) = rho2 * exp (-0.5 * rho2 )
+//
+//  _bandpassFilter.create(_fftSize);
+//
+//  const uint8_t * filter_base = _bandpassFilter.ptr();
+//  const size_t filter_stride = _bandpassFilter.step;
+//
+//  const int cols = _fftSize.width;
+//  const int rows = _fftSize.height;
+//
+//  if ( _gsigma <= 0 ) {
+//    parallel_for(0, rows, [=](const auto & range) {
+//      for( int y = rbegin(range); y < rend(range); ++y ) {
+//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+//        const float start_sign = (y & 1) ? -1.0f : 1.0f;
+//        for( int x = 0; x < cols; ++x ) {
+//          fltp[x] = (x & 1) ? -start_sign : start_sign;
+//        }
+//      }
+//    });
+//  }
+//  else {
+//    const double sgsigma = _gsigma / _downscaleFactor;
+//    const float lambda2 = float(0.5 * CV_PI * CV_PI * sgsigma * sgsigma);
+//
+//    const float inv_cols = float (1.0 / cols);
+//    const float inv_rows = float (1.0 / rows);
+//
+//    parallel_for(0, rows, [=](const auto & range) {
+//      for( int y = rbegin(range); y < rend(range); ++y ) {
+//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+//
+//        const int fy = (y > rows / 2) ? (rows - y) : y;
+//        const float v = fy * inv_rows;
+//        const float v2 = v * v;
+//
+//        for( int x = 0; x < cols; ++x ) {
+//          const int fx = (x > cols / 2) ? (cols - x) : x;
+//          const int sign = ((x + y) & 1) ? -1 : 1;
+//
+//          const float u = fx * inv_cols;
+//          const float u2 = u * u;
+//          const float rho2 = (u2 + v2) * lambda2;
+//
+//          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+//        }
+//      }
+//    });
+//  }
+//
+//  if( _csigma > 0 && _calpha > 0 ) {
+//    fftGenerateInverseCrossFilter(_fftSize, _currentValidSize, _inverseCross, _csigma, _calpha, false);
+//    if ( !_inverseCross.empty()  ) {
+//      cv::multiply(_bandpassFilter, _inverseCross, _bandpassFilter);
+//    }
+//  }
+//
+//  _bandpassFilterNorm = cv::norm(_bandpassFilter, cv::NORM_L1);
+//  cv::multiply(_bandpassFilter, 1. / _bandpassFilterNorm, _bandpassFilter);
 }
 
 bool c_fft_auto_correlation_routine::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
@@ -483,15 +553,15 @@ bool c_fft_auto_correlation_routine::process(cv::InputOutputArray image, cv::Inp
       break;
     }
     case DISPLAY_CURRENT_SPECTRUM_CART: {
-      fftUnpackCCSSpectrum(_currentSpectrum, image);
-      fftSwapQuadrants(image, image);
+      fftUnpackCCSSpectrum(_currentSpectrum, image, true);
+      //fftSwapQuadrants(image, image);
       mask.release();
       break;
     }
     case DISPLAY_CURRENT_SPECTRUM_POLAR:  {
-      fftUnpackCCSSpectrum(_currentSpectrum, image);
+      fftUnpackCCSSpectrum(_currentSpectrum, image, true);
       fftSpectrumToPolar(image, image);
-      fftSwapQuadrants(image, image);
+      //fftSwapQuadrants(image, image);
       mask.release();
       break;
     }

@@ -110,22 +110,11 @@ QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
 {
   init_resources();
 
-  QWidget *groupBox =
-      add_widget<QWidget>("");
-
-  QVBoxLayout * groupBoxLayout =
-      new QVBoxLayout(groupBox);
-
-  QHBoxLayout * tooltipLayout =
-      new QHBoxLayout();
-
-  QLabel * iconLabel =
-      new QLabel(this);
-
-  QPixmap pxmap =
-      getPixmap(ICON_lidar);
-
-  // CF_DEBUG("pxmap: isNull=%d %dx%d", pxmap.isNull(), pxmap.width(), pxmap.height());
+  QWidget *groupBox = add_widget<QWidget>("");
+  QVBoxLayout * groupBoxLayout = new QVBoxLayout(groupBox);
+  QHBoxLayout * tooltipLayout = new QHBoxLayout();
+  QLabel * iconLabel = new QLabel(this);
+  QPixmap pxmap = getPixmap(ICON_lidar);
 
   iconLabel->setPixmap(pxmap);
 
@@ -140,8 +129,7 @@ QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
 
   ///
 
-  QHBoxLayout * ctrlLayout =
-      new QHBoxLayout();
+  QHBoxLayout * ctrlLayout = new QHBoxLayout();
 
   ctrlLayout->setAlignment(Qt::AlignTop);
 

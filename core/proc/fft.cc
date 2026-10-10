@@ -2324,8 +2324,6 @@ bool fftUnpackCCSSpectrum(cv::InputArray _ccsSpectrum, cv::OutputArray _complexS
   const uint8_t * ccs_base = ccsSpectrum.ptr();
   const size_t ccs_stride = ccsSpectrum.step;
 
-//  _complexSpectrum.create(rows, cols, CV_32FC2);
-//  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
   cv::Mat2f complexSpectrum = createOutOfPlace(_ccsSpectrum, _complexSpectrum, rows, cols, CV_32FC2);
   uint8_t * cmplx_base = complexSpectrum.ptr();
   const size_t cmplx_stride = complexSpectrum.step;

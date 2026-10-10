@@ -31,13 +31,14 @@ public:
 
 protected:
   OutputType _output_type = OutputRadialGradient;
-  cv::Point2f _reference_point = cv::Point2f(0,0);
+  cv::Point2f _referencePoint = cv::Point2f(0,0);
   int _kradius = 3;
   double _scale = 1;
   double _delta = 0;
+  bool _imageCenter = true;
   bool _magnitude = false;
   bool _squared = false;
-  bool _erode_mask = false;
+  bool _erode_mask = true;
 };
 
 #endif /* __c_radial_gradient_routine_h__ */

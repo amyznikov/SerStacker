@@ -1413,6 +1413,8 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, enum COLORID colo
   return cv::countNonZero(tmp) > 0;
 }
 
+//  _dst_bayer.create(rows4 * 2, cols4 * 2, CV_MAKE_TYPE(_src_planes.depth(), 1));
+//  cv::Mat & dst_bayer = _dst_bayer.getMatRef();
 
 template<class _Tp>
 static bool _bayer_planes_to_bayer(cv::InputArray _src_planes, cv::OutputArray _dst_bayer)
@@ -1421,10 +1423,13 @@ static bool _bayer_planes_to_bayer(cv::InputArray _src_planes, cv::OutputArray _
 
   const int rows4 = _src_planes.rows();
   const int cols4 = _src_planes.cols();
-  const cv::Mat src_planes = _src_planes.getMat();
 
-  _dst_bayer.create(rows4 * 2, cols4 * 2, CV_MAKE_TYPE(_src_planes.depth(), 1));
-  cv::Mat & dst_bayer = _dst_bayer.getMatRef();
+  const cv::Mat src_planes =
+      _src_planes.getMat();
+
+  cv::Mat dst_bayer =
+      createOutOfPlace(_src_planes, _dst_bayer, rows4 * 2, cols4 * 2,
+          CV_MAKE_TYPE(_src_planes.depth(), 1));
 
   const uint8_t * const planes_base = (const uint8_t*) src_planes.ptr();
   const size_t planes_stride = src_planes.step;
@@ -1446,6 +1451,7 @@ static bool _bayer_planes_to_bayer(cv::InputArray _src_planes, cv::OutputArray _
     }
   });
 
+  assignOutOfPlace(_dst_bayer, dst_bayer);
   return true;
 }
 

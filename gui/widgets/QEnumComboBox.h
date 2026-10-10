@@ -72,8 +72,7 @@ public:
 
   void setCurrentItem(E value)
   {
-    QComboBox::setCurrentIndex(QComboBox::findData((int) (value),
-        Qt::WhatsThisRole));
+    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
   }
 
   E currentItem(void)
@@ -85,8 +84,7 @@ public:
 
   void setValue(E value)
   {
-    QComboBox::setCurrentIndex(QComboBox::findData((int) (value),
-        Qt::WhatsThisRole));
+    QComboBox::setCurrentIndex(QComboBox::findData((int) (value)));
   }
 
 };

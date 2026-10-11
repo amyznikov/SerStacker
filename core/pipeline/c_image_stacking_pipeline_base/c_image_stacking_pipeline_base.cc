@@ -106,6 +106,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
 
   const enum COLORID colorid = input_sequence->colorid();
 
+  //CF_DEBUG("darkbayer: %dx%d depth=%d", _darkbayer.cols, _darkbayer.rows, _darkbayer.depth());
+
   if( !is_external_master_frame ) {
 
     if( !_darkbayer.empty() ) {
@@ -122,8 +124,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
             1. / ((1 << input_sequence->bpp())));
       }
 
-      //  CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
-      //    _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
+      CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
+        _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
 
       cv::subtract(output_image, _darkbayer,
           output_image);
@@ -228,9 +230,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     }
   }
 
-  if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
+  if ( !_missing_pixel_mask.empty() && !output_mask.empty() && input_options.inpaint_missing_pixels ) {
     average_pyramid_inpaint(output_image, output_mask, output_image, output_mask, 32);
-    //  linear_interpolation_inpaint(output_image, output_mask);
   }
 
   if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {

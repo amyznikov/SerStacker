@@ -512,6 +512,7 @@ bool c_canvas_average_pipeline::initialize_pipeline()
   _triangle_extractor.clear();
   _feature2d.reset();
 
+  CF_DEBUG("_input_options.darkbayer_filename='%s'", _input_options.darkbayer_filename.c_str());
   if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
     if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
@@ -519,6 +520,8 @@ bool c_canvas_average_pipeline::initialize_pipeline()
       return false;
     }
   }
+
+  CF_DEBUG("darkbayer: %dx%d depth=%d", _darkbayer.cols, _darkbayer.rows, _darkbayer.depth());
 
   if ( !_input_options.flatbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
@@ -786,16 +789,35 @@ static void remapCurrentFrame(cv::InputArray currentFrame,
     cv::BorderTypes borderType = cv::BORDER_REPLICATE,
     const cv::Scalar & borderValue = cv::Scalar())
 {
+//  CF_DEBUG("oldGlobalBox: %dx%d", oldGlobalBox.width, oldGlobalBox.height);
+//  CF_DEBUG("newGlobalBox: %dx%d", newGlobalBox.width, newGlobalBox.height);
+//  CF_DEBUG("rmap: %dx%d", rmap.cols, rmap.rows);
+//
+//  CF_DEBUG("currentFrame: %dx%d", currentFrame.cols(), currentFrame.rows());
+//  CF_DEBUG("currentWeights: %dx%d", currentWeights.cols(), currentWeights.rows());
+
   const cv::Mat img = currentFrame.getMat();
   const cv::Mat weights = currentWeights.getMat();
 
   if( !rmap.empty() ) {
+
     if( remappedFrame.needed() ) {
       cv::remap(img, remappedFrame, rmap, cv::noArray(), interpolation, borderType, borderValue);
     }
     if( remappedWeights.needed() ) {
-      cv::remap(weights, remappedWeights, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT,
+      if ( weights.empty() ) {
+        cv::remap(cv::Mat1b(img.size(), (uint8_t)255),
+            remappedWeights, rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT,
+            cv::Scalar::all(0));
+      }
+      else if ( weights.depth() == CV_8U ) {
+        cv::remap(weights, remappedWeights, rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT,
           cv::Scalar::all(0));
+      }
+      else {
+        cv::remap(weights, remappedWeights, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT,
+          cv::Scalar::all(0));
+      }
     }
   }
   else {
@@ -1256,7 +1278,6 @@ bool c_canvas_average_pipeline::process_current_frame()
       CF_ERROR("save_substack_frame() fails");
       return false;
     }
-
   }
 
   return true;

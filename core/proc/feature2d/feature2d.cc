@@ -387,7 +387,9 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
   else {
     // Regular case with descriptor matcher
     detectAndCompute(image, mask, _reference_keypoints, _reference_descriptors);
-    _matcher->train(_reference_keypoints, _reference_descriptors);
+    if ( _reference_keypoints.size() > 0 ) {
+      _matcher->train(_reference_keypoints, _reference_descriptors);
+    }
     _reference_positions.clear();
   }
 

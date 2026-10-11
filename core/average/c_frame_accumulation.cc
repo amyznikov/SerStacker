@@ -1007,6 +1007,8 @@ bool c_bayer_drizzle::reinitialize(cv::InputArray src, cv::InputArray accw)
 
 bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
 {
+  CF_DEBUG("c_bayer_drizzle: enter");
+
   if( _accumulated_frames < 1 ) {
     const cv::Size image_size = src.size();
     _accumulator.create(image_size);
@@ -1017,6 +1019,7 @@ bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
     generate_bayer_lookup_mask();
   }
 
+  CF_DEBUG("c_bayer_drizzle: call bayer_drizzle()");
   if ( !bayer_drizzle(src, _accumulator, _counter, _rmap, bayer_lookup, weights, _pixfrac) ) {
     CF_ERROR("bayer_drizzle() fails");
     return false;
@@ -1024,12 +1027,16 @@ bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
 
   ++_accumulated_frames;
 
+  CF_DEBUG("c_bayer_drizzle: leave. _accumulated_frames=%d", _accumulated_frames);
   return true;
 }
 
 bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
+  CF_DEBUG("enter");
+
   if( _accumulated_frames < 1 ) {
+    CF_DEBUG("no frames");
     return false;
   }
 
@@ -1043,6 +1050,7 @@ bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double 
     reduce_color_channels(msk, mask, cv::REDUCE_MAX);
   }
 
+  CF_DEBUG("leave");
   return true;
 }
 

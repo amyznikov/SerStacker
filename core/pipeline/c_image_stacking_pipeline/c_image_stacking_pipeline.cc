@@ -585,10 +585,12 @@ bool c_image_stacking_pipeline::run_image_stacking()
       if ( true ) {
         lock_guard lock(mutex());
 
+        CF_DEBUG("call _frame_accumulation->compute()");
         if( !_frame_accumulation->compute(accumulated_image, accumulated_mask) ) {
           CF_ERROR("ERROR: frame_accumulation_->compute() fails");
           return false;
         }
+        CF_DEBUG("_frame_accumulation->compute() OK");
         if( _output_options.save_acc ) {
           if( (acc = _frame_accumulation->get_accumulator()).empty() ) {
             CF_ERROR("frame_accumulation->get_accumulator() returned empty acc image");
@@ -941,10 +943,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
         return false;
       }
 
+      CF_DEBUG("call _frame_accumulation->compute()");
       if( !_frame_accumulation->compute(reference_frame, reference_mask) ) {
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
+      CF_DEBUG("_frame_accumulation->compute() OK");
 
       linear_interpolation_inpaint(reference_frame,
           reference_mask,
@@ -1401,10 +1405,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             current_mask.cols, current_mask.rows,
             current_mask.depth());
 
+        CF_DEBUG("call _frame_accumulation->add()");
         if ( !_frame_accumulation->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
         }
+        CF_DEBUG("_frame_accumulation->add() OK");
       }
 
       if ( canceled() ) {
@@ -1664,10 +1670,12 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
       case stacking_stage_in_progress:
       case stacking_stage_finishing:
       if( _frame_accumulation && _frame_accumulation->accumulated_frames() > 0 ) {
+        CF_DEBUG("Call compute");
         if( !_frame_accumulation->compute(dst, dst_mask) ) {
           CF_ERROR("frame_accumulation_->compute() fails");
           return false;
         }
+        CF_DEBUG("compute OK");
         if ( _input_bpp > 1 ) {
           cv::multiply(dst, cv::Scalar::all(1 << _input_bpp), dst);
         }

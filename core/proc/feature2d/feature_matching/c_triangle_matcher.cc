@@ -195,24 +195,30 @@ cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(const c_triangle_extr
 
 void c_triangle_extractor::compute(cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
 {
-  size_t max_points_to_use = keypoints.size();
-
-  if( _opts.max_points > 0 && (int) keypoints.size() > _opts.max_points ) {
-    std::sort(keypoints.begin(), keypoints.end(),
-        [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
-          return prev.response > next.response;
-        });
-
-    max_points_to_use = (size_t)_opts.max_points;
+  if ( keypoints.size() < 3 ) {
+    CF_ERROR("Not enough keypoints to build triangles (%zu)", keypoints.size());
   }
+  else {
 
-  if ( !build_triangles(keypoints, descriptors, max_points_to_use, _opts.min_side_size) ) {
-    CF_ERROR("build_triangles() fails");
-    descriptors.release();
+    size_t max_points_to_use = keypoints.size();
+
+    if( _opts.max_points > 0 && (int) keypoints.size() > _opts.max_points ) {
+      std::sort(keypoints.begin(), keypoints.end(),
+          [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
+            return prev.response > next.response;
+          });
+
+      max_points_to_use = (size_t)_opts.max_points;
+    }
+
+    if ( !build_triangles(keypoints, descriptors, max_points_to_use, _opts.min_side_size) ) {
+      CF_ERROR("build_triangles() fails");
+      descriptors.release();
+    }
+
+    CF_DEBUG("c_triangle_extractor: Use %zu/%zu points. descriptors.rows=%d",
+        max_points_to_use, keypoints.size(), descriptors.rows());
   }
-
-  CF_DEBUG("c_triangle_extractor: Use %zu/%zu points. descriptors.rows=%d",
-      max_points_to_use, keypoints.size(), descriptors.rows());
 }
 
 int c_triangle_extractor::descriptorSize() const

@@ -560,16 +560,26 @@ const std::string& c_frame_registration::debug_path() const
   return _debug_path;
 }
 
-bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
+bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray _reference_mask)
 {
   INSTRUMENT_REGION("c_frame_registration");
 
+  cv::Mat reference_mask;
   cv::Mat reference_ecc_image;
   cv::Mat reference_ecc_mask;
   cv::Mat reference_eccflow_mask;
 
   _reference_frame_size = reference_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
+
+  if( !_reference_mask.empty() ) {
+    if( _reference_mask.depth() == CV_8U ) {
+      reference_mask = _reference_mask.getMat();
+    }
+    else {
+      cv::compare(_reference_mask, 0, reference_mask, cv::CMP_GT);
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
@@ -678,11 +688,12 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   return true;
 }
 
-bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray current_mask,
+bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray _current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
   INSTRUMENT_REGION("");
 
+  cv::Mat current_mask;
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
   cv::Mat eccflow_mask;
@@ -705,6 +716,15 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   _current_frame_size = current_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
+
+  if( !_current_mask.empty() ) {
+    if( _current_mask.depth() == CV_8U ) {
+      current_mask = _current_mask.getMat();
+    }
+    else {
+      cv::compare(_current_mask, 0, current_mask, cv::CMP_GT);
+    }
+  }
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {

@@ -83,15 +83,15 @@ void QBrowsePathCombo::construct(void)
 
   QLineEdit* edit = combo->lineEdit();
   QObject::connect(edit, &QLineEdit::textEdited, this, [this]() {
-    _hasChanges = true;
+    setHasChanges(true);
   });
   QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), this, [this](int /*index*/) {
-     _hasChanges = false;
+    setHasChanges(false);
      Q_EMIT pathChanged();
  });
   QObject::connect(edit, &QLineEdit::returnPressed, this, [this]() {
    if (_hasChanges) {
-     _hasChanges = false;
+     setHasChanges(false);
      Q_EMIT pathChanged();
    }
  });
@@ -102,7 +102,7 @@ bool QBrowsePathCombo::eventFilter(QObject * watched, QEvent * event)
 {
   if( _hasChanges && combo && watched == combo ) {
     if( event->type() == QEvent::FocusOut ) {
-      _hasChanges = false;
+      setHasChanges(false);
       Q_EMIT pathChanged();
     }
   }
@@ -187,6 +187,7 @@ void QBrowsePathCombo::onBrowseForPath(void)
 
   if( !path.isEmpty() ) {
     addPath(path);
+    Q_EMIT pathChanged();
   }
 }
 
@@ -204,7 +205,7 @@ void QBrowsePathCombo::addPath(const QString & path)
     combo->insertItem(0, path);
   }
   combo->setCurrentIndex(0);
-  _hasChanges = false;
+  setHasChanges(false);
   // Q_EMIT pathChanged();
 }
 

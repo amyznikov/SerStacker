@@ -71,6 +71,7 @@
 #include "generic/c_equalize_hist_routine.h"
 #include "generic/c_linear_interpolation_inpaint_routine.h"
 
+#include "generic/c_tonemap_drago_routine.h"
 #include "generic/c_bilateral_filter_routine.h"
 #include "generic/c_guided_filter_routine.h"
 #include "generic/c_edge_preserving_filter_routine.h"
@@ -336,6 +337,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_absdiff_routine::class_factory_instance());
     register_class_factory(c_find_chessboard_corners_routine::class_factory_instance());
 
+    register_class_factory(c_tonemap_drago_routine::class_factory_instance());
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
     register_class_factory(c_guided_filter_routine::class_factory_instance());
     register_class_factory(c_edge_preserving_filter_routine::class_factory_instance());

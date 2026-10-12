@@ -26,6 +26,7 @@ public:
     DisplayReal,
     DisplayImag,
     DisplayPolar,
+    DisplayMagnitudePolar,
     };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -34,6 +35,7 @@ public:
 
 protected:
   DisplayType _outputDisplay = DisplayPower;
+  cv::Mat2f polarReamp;
   bool _dftComplex = false;
   bool _dftScale = false;
   bool _centerDC = false;

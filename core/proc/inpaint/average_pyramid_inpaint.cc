@@ -179,7 +179,6 @@ static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask, int max_l
     cv::Mat1f filtered_mask;
 
     average_pyramid_filter_down(image, mask, filtered_image, filtered_mask);
-
     downstrike(filtered_image, filtered_image);
     downstrike(filtered_mask, filtered_mask);
 
@@ -187,7 +186,10 @@ static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask, int max_l
       average_pyramid_recurse(filtered_image, filtered_mask, max_levels - 1);
     }
 
-    upject(filtered_image, filtered_image, image.size(), &filtered_mask);
+    if ( !upject(filtered_image, filtered_image, image.size(), &filtered_mask) ) {
+      CF_ERROR("APP BUG: upject() fails: filtered_image:%dx%d -> image: %dx%d",
+          filtered_image.cols, filtered_image.rows, image.cols, image.rows);
+    }
 
     average_pyramid_filter_up(filtered_image, filtered_mask,
         filtered_image, filtered_mask,
@@ -209,7 +211,7 @@ static bool _average_pyramid_init(cv::InputArray _src, cv::InputArray _srcmask,
     return false;
   }
 
-  if ( _srcmask.type() != CV_8UC1 ) {
+  if ( _srcmask.channels() != 1 ) {
     CF_ERROR("Input mask must be of CV_8UC1 type");
     return false;
   }
@@ -218,7 +220,14 @@ static bool _average_pyramid_init(cv::InputArray _src, cv::InputArray _srcmask,
   const int cn = _src.channels();
 
   const cv::Mat src = _src.getMat();
-  const cv::Mat mask = _srcmask.getMat();
+  cv::Mat mask;
+
+  if ( _srcmask.depth() == CV_8U ) {
+    mask = _srcmask.getMat();
+  }
+  else {
+    cv::compare(_srcmask, 0, mask, cv::CMP_GT);
+  }
 
   cv::Mat dst = createOutOfPlace(_src, _dst, size, CV_MAKETYPE(CV_32F, cn));
   cv::Mat dstmask = createOutOfPlace(_srcmask, _dstmask, size, CV_MAKETYPE(CV_32F, 1));
@@ -271,6 +280,12 @@ void average_pyramid_inpaint(cv::InputArray _src, cv::InputArray _mask,
 {
   INSTRUMENT_REGION("");
 
+  if ( !_mask.empty() && (_mask.size() != _src.size() || _mask.channels() != 1) ) {
+    CF_ERROR("APP BUG: _src: %dx%d _mask: %dx%d depth=%d channels=%d",
+        _src.cols(), _src.rows(), _mask.cols(), _mask.rows(), _mask.depth(), _mask.channels());
+    return;
+  }
+
   if ( _mask.empty() || is_mask_fully_filled(_mask) ) {
     _src.copyTo(dst);
     if (_dstmask.needed()) {
@@ -278,6 +293,7 @@ void average_pyramid_inpaint(cv::InputArray _src, cv::InputArray _mask,
     }
     return;
   }
+
 
   cv::Mat src;
   cv::Mat1f msk;

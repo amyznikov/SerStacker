@@ -36,8 +36,6 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
   const int src_rows = _src.rows();
   const int channels = _src.channels();
 
-  const cv::Mat_<_Tp> src = _src.getMat();
-
   if (dsize.empty()) {
     dsize = cv::Size((src_cols + 1) / 2, (src_rows + 1) / 2);
   }
@@ -47,17 +45,24 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
     return false;
   }
 
-  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+  const cv::Mat src = _src.getMat();
+  cv::Mat dst = createOutOfPlace(_src, _dst, dsize, _src.type());
 
   const int ymax = dsize.height;
   const int xmax = dsize.width;
 
-  parallel_for(0, ymax, [&, channels, xmax, src_rows, src_cols](const auto & range) {
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  const uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  parallel_for(0, ymax, [=](const auto & range) {
     for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
       const int src_y = std::min(2 * y + 1, src_rows - 1);
-      const _Tp * srcp = src[src_y] + channels;
-      const _Tp * srce = src[src_y] + (src_cols - 1) * channels;
-      _Tp * __restrict dstp = dst[y];
+      const _Tp * srcp = (const _Tp * )(src_base + src_y * src_stride) + channels;
+      const _Tp * srce = (const _Tp * )(src_base + src_y * src_stride) + (src_cols - 1) * channels;
+      _Tp * __restrict dstp = (_Tp * )(dst_base + y * dst_stride);
 
       for ( int x = 0; x < xmax; ++x, srcp = std::min(srcp + channels, srce) ) {
         for ( int c = 0; c < channels; ++c ) {
@@ -115,8 +120,6 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
   const int src_rows = _src.rows();
   const int channels = _src.channels();
 
-  const cv::Mat_<_Tp> src = _src.getMat();
-
   if (dsize.empty()) {
     dsize = cv::Size((src_cols + 1) / 2, (src_rows + 1) / 2);
   }
@@ -126,17 +129,24 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
     return false;
   }
 
-  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+  const cv::Mat src = _src.getMat();
+  cv::Mat dst = createOutOfPlace(_src, _dst, dsize, _src.type());
 
   const int ymax = dsize.height;
   const int xmax = dsize.width;
 
-  parallel_for(0, ymax, [&, channels, xmax, src_rows, src_cols](const auto & range) {
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  const uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  parallel_for(0, ymax, [=](const auto & range) {
     for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
       const int src_y = std::min(2 * y, src_rows - 1);
-      const _Tp * srcp = src[src_y];
-      const _Tp * srce = src[src_y] + (src_cols - 1) * channels;
-      _Tp * __restrict dstp = dst[y];
+      const _Tp * srcp = (const _Tp * )(src_base + src_y * src_stride);
+      const _Tp * srce = (const _Tp * )(src_base + src_y * src_stride) + (src_cols - 1) * channels;
+      _Tp * __restrict dstp = (_Tp * )(dst_base + y * dst_stride);
 
       for ( int x = 0; x < xmax; ++x, srcp = std::min(srcp + channels, srce) ) {
         for ( int c = 0; c < channels; ++c ) {
@@ -184,10 +194,9 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
   const int src_cols = _src.cols();
   const int src_rows = _src.rows();
   const int src_channels = _src.channels();
-  const cv::Mat_<_Tp> src = _src.getMat();
 
   if (dsize.empty()) {
-    dsize = cv::Size(src_cols * 2, src.rows * 2);
+    dsize = cv::Size(src_cols * 2, src_rows * 2);
   }
   else if (std::abs(dsize.width - src_cols * 2) > 2 || std::abs(dsize.height - src_rows * 2) > 2) {
     CF_ERROR("Invalid dsize %dx%d for src %dx%d", dsize.width, dsize.height, src_cols, src_rows);
@@ -195,10 +204,18 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
   }
 
   // Sequentially form a block of two rows of dsize: (2*y) and (2*y + 1).
+
+  const cv::Mat src = _src.getMat();
+  cv::Mat dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+
   const int ymax = src_rows;
   const int xmax = src_cols;
 
-  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  const uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
 
   if ( !_zmask ) {
 
@@ -211,15 +228,15 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
       }
 
       // Even row 2*y is completely zero, erase it from memory in one fell swoop.
-      _Tp* __restrict dst_row_even = dst[dst_y_even];
+      _Tp* __restrict dst_row_even = (_Tp* )(dst_base + dst_y_even * dst_stride);
       std::memset(dst_row_even, 0, dsize.width * src_channels * sizeof(_Tp));
       if (dst_y_odd >= dsize.height) {
         return;
       }
 
       // Odd row 2*y + 1  - contains alternation: Zero, Value, Zero, Value...
-      const _Tp* srcp = src[y];
-      _Tp* __restrict dst_row_odd = dst[dst_y_odd];
+      const _Tp* srcp = (const _Tp* )(src_base + y * src_stride);
+      _Tp* __restrict dst_row_odd = (_Tp* )(dst_base + dst_y_odd * dst_stride);
 
       // Sequential writing in pairs (Zero + Pixel).
       const int safe_xmax = std::min(xmax, (dsize.width - 1) / 2);
@@ -256,7 +273,8 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
       // If dsize.width is wider than 2 * xmax, zero out the remaining tail of the string
       const int filled_width = 2 * xmax;
       if (filled_width < dsize.width) {
-        std::memset(dst_row_odd + filled_width * src_channels, 0, (dsize.width - filled_width) * src_channels * sizeof(_Tp));
+        std::memset(dst_row_odd + filled_width * src_channels, 0,
+            (dsize.width - filled_width) * src_channels * sizeof(_Tp));
       }
     });
   }
@@ -264,7 +282,10 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
 
     _zmask->create(dsize);
 
-    parallel_loop(0, ymax, [&, xmax, src_channels, dsize](int y) {
+    const uint8_t * const zmask_base = _zmask->ptr();
+    const size_t zmask_stride = _zmask->step;
+
+    parallel_loop(0, ymax, [=](int y) {
 
       const int dst_y_even = 2 * y;
       const int dst_y_odd = 2 * y + 1;
@@ -273,18 +294,20 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsi
       }
 
       // Even row 2*y is completely zero, erase it from memory in one fell swoop.
-      _Tp* __restrict dst_row_even = dst[dst_y_even];
+      _Tp* __restrict dst_row_even = (_Tp* )(dst_base + dst_y_even * dst_stride);
+      float * __restrict zmask_even_p = (float * )(zmask_base + dst_y_even * zmask_stride);
+
       std::memset(dst_row_even, 0, dsize.width * src_channels * sizeof(_Tp));
-      std::memset((*_zmask)[dst_y_even], 0, dsize.width *  sizeof(*(*_zmask)[dst_y_even]));
+      std::memset(zmask_even_p, 0, dsize.width *  sizeof(*zmask_even_p));
 
       if (dst_y_odd >= dsize.height) {
         return;
       }
 
       // Odd row 2*y + 1  - contains alternation: Zero, Value, Zero, Value...
-      const _Tp* srcp = src[y];
-      _Tp* __restrict dst_row_odd = dst[dst_y_odd];
-      float * __restrict zmp = (*_zmask)[dst_y_odd];
+      const _Tp* srcp = (const _Tp* )(src_base + y * src_stride);
+      _Tp* __restrict dst_row_odd = (_Tp* )(dst_base + dst_y_odd * dst_stride);
+      float * __restrict zmp = (float * )(zmask_base + dst_y_odd * zmask_stride);
 
       // Sequential writing in pairs (Zero + Pixel).
       const int safe_xmax = std::min(xmax, (dsize.width - 1) / 2);
@@ -362,15 +385,14 @@ template<class _Tp>
 static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
     cv::Size dsize, cv::OutputArray _zmask, int zdepth)
 {
-  const int src_cols = _src.cols();
-  const int src_rows = _src.rows();
-  const int src_channels = _src.channels();
-
   if (_src.empty()) {
     return false;
   }
 
-  const cv::Mat_<_Tp> src = _src.getMat();
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int src_channels = _src.channels();
+
 
   if (dsize.empty()) {
     dsize = cv::Size(src_cols * 2, src_rows * 2);
@@ -380,7 +402,8 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
     return false;
   }
 
-  cv::Mat_<_Tp> dst = createOutOfPlace(_src, _dst, dsize, _src.type());
+  const cv::Mat src = _src.getMat();
+  cv::Mat dst = createOutOfPlace(_src, _dst, dsize, _src.type());
   dst.setTo(cv::Scalar::all(0));
 
   const bool zmask_requested = _zmask.needed();
@@ -389,12 +412,20 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
   const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
   const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
 
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  const uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  const uint8_t * const zmask_base = zmask_requested ? zmask.ptr() : nullptr;
+  const size_t zmask_stride = zmask_requested ? zmask.step : 0;
+
   parallel_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
 
-    const _Tp* srcp = src[y];
-    _Tp* dstp = dst[2 * y];
-
-    uint8_t * zmp = zmask_requested ? zmask[2 * y] : nullptr;
+    const _Tp* srcp = (const _Tp* )(src_base +  y * src_stride);
+    _Tp* __restrict dstp = (_Tp* )(dst_base + 2 * y * dst_stride);
+    uint8_t * __restrict zmp = (uint8_t * )(zmask_requested ? (zmask_base + 2 * y * zmask_stride) : nullptr);
 
     for (int x = 0; x < xmax; ++x) {
       for (int c = 0; c < src_channels; ++c) {

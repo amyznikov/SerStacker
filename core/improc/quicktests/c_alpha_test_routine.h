@@ -17,6 +17,7 @@
 #include <core/proc/image_registration/estimate_image_transform.h>
 #include <core/proc/feature2d/feature_extraction.h>
 #include <core/proc/feature2d/feature2d_settings.h>
+#include <core/proc/mreduce.h>
 
 class c_alpha_test_routine :
     public c_image_processor_routine
@@ -30,9 +31,6 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected: // Controlling parameters
-  //c_estimate_image_transform_options opts;
-  c_sparse_feature_detector_options opts1;
-  c_sparse_feature_descriptor_options opts2;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

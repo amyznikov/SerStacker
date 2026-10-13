@@ -22,13 +22,18 @@ static bool _average_pyramid_filter_down(const cv::Mat & src, const cv::Mat1f & 
 
   constexpr cv::BorderTypes border_mode = cv::BORDER_REPLICATE;
   const cv::Size ksize(3, 3);
+  static const cv::Matx33f K = cv::Matx33f::ones();
 
   if ( true ) {
     INSTRUMENT_REGION("boxFilter");
-    parallel_invoke(
-        [&] { cv::boxFilter(src, dst, src.depth(), ksize, cv::Point(-1, -1), false, border_mode); },
-        [&] { cv::boxFilter(srcmask, dstmask, dstmask.depth(), ksize, cv::Point(-1, -1), false, border_mode); }
-    );
+      parallel_invoke(
+          [&] { cv::boxFilter(src, dst, src.depth(), ksize, cv::Point(-1, -1), false, border_mode); },
+          [&] { cv::boxFilter(srcmask, dstmask, dstmask.depth(), ksize, cv::Point(-1, -1), false, border_mode); }
+      );
+    //    parallel_invoke(
+    //        [&] { cv::filter2D(src, dst, src.depth(), K, cv::Point(-1, -1), 0, border_mode); },
+    //        [&] { cv::filter2D(srcmask, dstmask, dstmask.depth(), K, cv::Point(-1, -1), 0, border_mode); }
+    //    );
   }
 
   if ( true ) {
@@ -110,8 +115,9 @@ static bool _average_pyramid_filter_up(const cv::Mat & src, const cv::Mat1f & sr
       for ( int x = 0; x < dstSize.width; ++x, ++mskp, ++fbkmsk, dstp += cn, fbksrc += cn ) {
         const float m = *mskp;
         const float fm = *fbkmsk;
-        const float scale = m ? 1.0f / m : 0.f;
-        *mskp = (m || fm) ?  1.0f : 0.f;
+        const bool hasm = m > 0;
+        const float scale = hasm ? 1.0f / m : 0.f;
+        *mskp = (hasm || fm) ?  1.0f : 0.f;
         for ( int c = 0; c < cn; ++c ) {
           dstp[c] = fm ? fbksrc[c] : m ? cv::saturate_cast<_Tp>(dstp[c] * scale) : _Tp(0);
         }

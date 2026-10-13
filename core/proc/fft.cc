@@ -2230,6 +2230,66 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
   return mask;
 }
 
+cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edgeSize)
+{
+  cv::Mat1f W(size);
+
+  if (edgeSize <= 0.0) {
+    W.setTo(1.0f);
+    return W;
+  }
+
+  const float cx = (size.width - 1) / 2.0f;
+  const float cy = (size.height - 1) / 2.0f;
+
+  const float A = size.width / 2.0f;
+  const float B = size.height / 2.0f;
+  const float inv_A2 = 1.0f / (A * A);
+  const float inv_B2 = 1.0f / (B * B);
+
+  const float CV_PI_F = 3.1415926535f;
+  const float inv_edgeSize = 1.0f / static_cast<float>(edgeSize);
+
+  uint8_t * w_base = W.data;
+  const size_t w_stride = W.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict wp = reinterpret_cast<float *>(w_base + y * w_stride);
+
+      const float dy = y - cy;
+      const float dy2 = dy * dy;
+
+      for ( int x = 0; x < size.width; ++x ) {
+        const float dx = x - cx;
+        const float dx2 = dx * dx;
+
+        const float r_outer2 = dx2 * inv_A2 + dy2 * inv_B2;
+        if (r_outer2 >= 1.0f) {
+          wp[x] = 0.0f;
+          continue;
+        }
+
+        const float R = std::sqrt(dx2 + dy2);
+        const float inv_R_ext2 = (dx2 * inv_A2 + dy2 * inv_B2) / (R * R + 1e-6f);
+        const float R_ext = 1.0f / std::sqrt(inv_R_ext2);
+        const float R_int = std::max(0.0f, R_ext - static_cast<float>(edgeSize));
+
+        if ( R <= R_int ) {
+          wp[x] = 1.0f;
+        }
+        else {
+          const float d_pixels = R - R_int;
+          const float arg = d_pixels * inv_edgeSize * CV_PI_F;
+          wp[x] = 0.5f * (1.0f + std::cos(arg));
+        }
+      }
+    }
+  });
+
+  return W;
+}
+
 
 /**
  * @brief Generate 2D Tukey apodization window.

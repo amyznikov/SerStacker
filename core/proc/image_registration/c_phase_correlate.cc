@@ -342,7 +342,7 @@ void c_phase_correlate::generateFilters()
   // otherwise the bandpass filter become not symmetrical due to embedded sign alternating
   // ilambda = _gsigma * (2 * sqrt(pi))
   // rho2 = (u^2 + v^2) * ilambda^2;
-  // F(u, v) = rho2 * exp (-rho2 )
+  // F(u, v) = rho2 * rho2 * exp (-rho2 )
   // the alternating +1 and -1 is also embedded into filter to avoid later fftSwapQudrants()
 
   INSTRUMENT_REGION("");
@@ -384,7 +384,7 @@ void c_phase_correlate::generateFilters()
           const int sign = ((x + y) & 1) ? -1 : 1;
           const float u2 = float(fx * fx) * ilambda_x2;
           const float rho2 = u2 + v2;
-          fltp[x] = sign * rho2 * std::exp(-rho2);
+          fltp[x] = sign * rho2 * rho2 * std::exp(-rho2);
         }
       }
     });

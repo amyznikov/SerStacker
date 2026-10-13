@@ -23,7 +23,7 @@ struct c_phase_correlate_options
   double downscale_factor = 2;
 
   /** @brief Bandpass filter radius in space domain [px]. Defines the target texture characteristic size. */
-  double gsigma = 5;
+  double gsigma = 3;
 
   /** @brief Inverse cross-filter blur parameter for deconvolution/mask-edge compensation. */
   double csigma = 0.5;

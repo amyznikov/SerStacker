@@ -50,14 +50,6 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
 
-    if ( auto group = SERIALIZE_GROUP(settings, save, "opts1")) {
-      SERIALIZE_OPTION(group, save, *this, opts1);
-    }
-
-    if ( auto group = SERIALIZE_GROUP(settings, save, "opts2")) {
-      SERIALIZE_OPTION(group, save, *this, opts2);
-    }
-
     return true;
   }
   return false;
@@ -65,22 +57,42 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind_expandable_group(ctls, "Detector Options", [&]() {
-    ctlbind_sparse_feature_detector(ctls, ctx(&this_class::opts1));
-  });
-
-  ctlbind_expandable_group(ctls, "Descriptor Options", [&]() {
-    ctlbind_sparse_feature_descriptor(ctls, ctx(&this_class::opts2));
-  });
-
   //ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-//  ctlbind(ctls, "Radius", CTL_CONTEXT(ctx, _wienerRadius), "");
-//  ctlbind(ctls, "NoiseSigma", CTL_CONTEXT(ctx, _wienerNoiseSigma), "");
 }
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  CF_DEBUG("opts.type=%d (%s)", opts1.type, toCString(opts1.type));
+  cv::Mat src;
+  if ( image.channels() == 1 ) {
+    src = image.getMat();
+  }
+  else {
+    cv::cvtColor(image, src, cv::COLOR_BGR2GRAY);
+  }
+
+  if ( src.depth() != CV_32F ) {
+    src.convertTo(src, CV_32F);
+  }
+
+  cv::Mat IR, IC, IRP, ICP;
+  mreduce(src, IR, 0, cv::REDUCE_SUM);
+  mreduce(src, IC, 1, cv::REDUCE_SUM);
+  cv::repeat(IR, src.cols, 1, IRP);
+  cv::repeat(IC, 1, src.rows, ICP);
+
+  cv::Mat IP;
+  cv::multiply(IRP, ICP, IP);
+
+
+//  fftPPSDecompositionCCS(IR, fftGenerateDiscreteLaplacianFilter(IR.size(), false), IRP, cv::noArray());
+//  fftPPSDecompositionCCS(IC, fftGenerateDiscreteLaplacianFilter(IC.size(), false), ICP, cv::noArray());
+//  fftCCSSpectrumMagnitude(IRP, IRP, true);
+//  fftCCSSpectrumMagnitude(ICP, ICP, true);
+//
+//  cv::Mat IP = ICP * IRP;
+
+  image.move(IP);
+
   return true;
 }
 

@@ -13,51 +13,6 @@
 namespace {
 
 /**
-* @brief Generate transformation map for cv::remap (Cartesian -> Polar).
-*   The radial dimension of the output matrix is ​​strictly tied to the physical FFT size to eliminate distortions.
-*
-* @param outputMap Output two-channel CV_32FC2 matrix for cv::remap.
-* @param fftSize Size of the initial Cartesian spectrum (must be even).
-* @param numAngles Number of discrete scanning angles (height of the output matrix).
-* */
-//static void fftCreateCart2PolarRemap(cv::Mat2f & outputMap, const cv::Size & fftSize, const int numAngles)
-//{
-//  const float centerX = fftSize.width / 2;
-//  const float centerY = fftSize.height / 2;
-//
-//  // The number of radial samples is strictly the distance from the center to the nearest frame edge.
-//  // Since fftSize is even, this is simply lossless integer division.
-//  const int numRadii = (fftSize.width < fftSize.height) ? (fftSize.width / 2) : (fftSize.height / 2);
-//
-//  // The radial step equals 1 pixel of the source matrix.
-//  // The rIdx multiplier can be used directly.
-//  const float stepTheta = float(2.0 * CV_PI / numAngles);
-//
-//  // The matrix is ​​created with the exact size physically justified by the FFT spectrum.
-//  outputMap.create(cv::Size(numRadii, numAngles));
-//
-//  uint8_t * const outmap_base = outputMap.ptr();
-//  const size_t outmap_stride = outputMap.step;
-//
-//  parallel_for(0, numAngles, [=](const auto & range) {
-//    for( int thetaIdx = rbegin(range); thetaIdx < rend(range); ++thetaIdx ) {
-//      cv::Vec2f * __restrict mp = (cv::Vec2f * ) (outmap_base + thetaIdx * outmap_stride);
-//      const float theta = float(thetaIdx) * stepTheta;
-//      const float cos_t = std::cos(theta);
-//      const float sin_t = std::sin(theta);
-//
-//      // normalization factor for the square FFT frequency grid.
-//      // stretches the beam step along the diagonals (where max is 0.707, turning the step into 1.414)
-//      const float grid_scale = 1.0f / std::fmax(std::abs(cos_t), std::abs(sin_t));
-//      for( int rIdx = 0; rIdx < numRadii; ++rIdx ) {
-//        const float r = float(rIdx* grid_scale);
-//        mp[rIdx] = cv::Vec2f(centerX + r * cos_t, centerY + r * sin_t);
-//      }
-//    }
-//  });
-//}
-
-/**
 * @brief Generate transformation map for cv::remap (Cartesian -> Log-Polar).
 *   The radial dimension of the output matrix is strictly logarithmic to eliminate distortions in Fourier-Mellin transform.
 *

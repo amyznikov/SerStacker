@@ -266,10 +266,10 @@ int main(int argc, char *argv[])
   // TBF
   opts.enable_ecc_registration = true;
   opts.ecc.ecch_estimate_translation_first = false;
-  opts.ecc.scale = 1;
+  opts.ecc.image_scale = 1;
   opts.ecc.min_rho = 0.5;
-  opts.ecc.ecch_max_level = 5;
-  opts.ecc.ecch_minimum_image_size = 4;
+  opts.ecc.ecch.maxlevel = 5;
+  opts.ecc.ecch.minimum_image_size = 4;
 
   opts.enable_eccflow_registration = false;
 

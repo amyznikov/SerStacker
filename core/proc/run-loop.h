@@ -146,7 +146,7 @@ static inline void parallel_reduce(RangeType start, RangeType end, Reducer & roo
 template<typename T, typename Func>
 static inline void parallel_loop(T start, T end, Func&& f)
 {
-#if 0 // HAVE_TBB
+#if HAVE_TBB
     tbb::parallel_for(start, end, std::forward<Func>(f), tbb::static_partitioner());
 #else
     cv::parallel_for_(cv::Range(start, end), [&](const cv::Range & range) {

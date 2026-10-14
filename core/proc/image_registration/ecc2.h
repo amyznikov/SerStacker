@@ -155,19 +155,24 @@ protected:
 
 // Coarse-To-Fine ECC registration using image pyramids
 
+enum ECCH_PYRAMID_TYPE {
+  ECCH_PYRAMID_PYRDOWN, // pyrDown
+  ECCH_PYRAMID_SCHARR // pyrDown on Scharr magnitude
+};
+
 struct c_ecch_options
 {
   double epsx = 1e-5;
-  //double min_rho = 0.8;
   double reference_smooth_sigma = 1;
   double input_smooth_sigma = 1;
-  double update_step_scale = 1.f;
+  double update_step_scale = 1.5;
 
-  ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+  enum ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+  enum ECCH_PYRAMID_TYPE pyramid_type = ECCH_PYRAMID_PYRDOWN;
 
   int max_iterations = 50;
-  int minimum_image_size = 8;
+  int minimum_image_size = 16;
   int maxlevel = 0;
 };
 
@@ -176,7 +181,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_ecch_options;
 
-  ctlbind(ctls, "ecch method",  ctx(&S::method), "");
+  ctlbind(ctls, "ecc method",  ctx(&S::method), "");
+  ctlbind(ctls, "pyramid type",  ctx(&S::pyramid_type), "");
   ctlbind(ctls, "minimum_image_size", ctx(&S::minimum_image_size),  "");
   ctlbind(ctls, "maxlevel",  ctx(&S::maxlevel), "");
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
@@ -189,6 +195,17 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
 bool serialize_ecch_options(c_config_setting section, bool save,
     c_ecch_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_ecch_options & opts)
+{
+  return serialize_ecch_options(section, true,
+      const_cast<c_ecch_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_ecch_options * opts)
+{
+  return serialize_ecch_options(section, false, *opts);
+}
 
 class c_ecch
 {
@@ -661,7 +678,7 @@ protected:
   mutable cv::Mat1f W;
 };
 
-bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy = true);
+bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy = true, bool scharr_gradient = false);
 void ecc_normalize(cv::InputArray src, cv::InputArray src_mask, cv::OutputArray dst, int lvl, double eps);
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);

@@ -197,7 +197,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _master_options.registration.enable_feature_registration = false;
     _master_options.registration.enable_ecc_registration = true;
-    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _master_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
 
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
@@ -206,7 +206,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _stack_options.registration.enable_feature_registration = false;
     _stack_options.registration.enable_ecc_registration = true;
-    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _stack_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
 
     _stack_options.registration.enable_eccflow_registration = true;
     _stack_options.registration.eccflow.downscale_method = ECCFlowDownscalePyramid;
@@ -230,7 +230,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
     _master_options.registration.enable_ecc_registration = true;
-    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _master_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 
@@ -242,7 +242,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
 
     _stack_options.registration.enable_ecc_registration = true;
-    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _stack_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
 
     _stack_options.registration.enable_eccflow_registration = true;
     _stack_options.registration.eccflow.downscale_method = ECCFlowDownscalePyramid;
@@ -270,7 +270,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
     _master_options.registration.enable_ecc_registration = false;
-    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _master_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 
@@ -280,7 +280,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
     _stack_options.registration.enable_ecc_registration = false;
-    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _stack_options.registration.ecc.ecch.method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _stack_options.registration.enable_eccflow_registration = false;
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
   }
@@ -1033,22 +1033,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
   for ( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
-    double t0, t1, start_time, total_time;
-    double time_read = 0;
-    double time_upscale = 0;
-    double time_register = 0;
-    double time_remap = 0;
-    double time_accumulate = 0;
-    double time_select_roi = 0;
-
     CF_DEBUG("_generating_master_frame=%d", _generating_master_frame);
 
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
     }
-
-    t0 = start_time = get_realtime_ms();
 
     if( is_bad_frame_index(input_sequence->current_pos()) ) {
       CF_DEBUG("[F %d] Skip frame as blacklisted", input_sequence->current_pos());
@@ -1068,7 +1058,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     _input_bpp = input_sequence->bpp();
 
-    time_read = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
@@ -1083,7 +1072,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       continue;
     }
 
-    time_select_roi = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
@@ -1172,7 +1160,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
 
-    time_upscale = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
@@ -1343,7 +1330,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
     }
 
-    time_register = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
@@ -1405,12 +1391,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             current_mask.cols, current_mask.rows,
             current_mask.depth());
 
-        CF_DEBUG("call _frame_accumulation->add()");
         if ( !_frame_accumulation->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
         }
-        CF_DEBUG("_frame_accumulation->add() OK");
       }
 
       if ( canceled() ) {
@@ -1462,32 +1446,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     /////////////////////////////////////
 
-    time_accumulate = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
     }
 
     ///////////////
-
-    total_time = get_realtime_ms() - start_time;
-
-    CF_DEBUG("[F %d / %5d / %5d / %6d] OK  %g ms\n"
-        "read    : %g ms\n"
-        "roi     : %g ms\n"
-        "upscale : %g ms\n"
-        "register: %g ms\n"
-        "remap   : %g ms\n"
-        "process : %g ms\n"
-        "-----------\n\n\n",
-        _processed_frames + startpos, _processed_frames, _accumulated_frames, _total_frames, total_time,
-
-        time_read,
-        time_select_roi,
-        time_upscale,
-        time_register,
-        time_remap,
-        time_accumulate);
 
     on_status_update();
   }
@@ -1670,16 +1634,13 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
       case stacking_stage_in_progress:
       case stacking_stage_finishing:
       if( _frame_accumulation && _frame_accumulation->accumulated_frames() > 0 ) {
-        CF_DEBUG("Call compute");
         if( !_frame_accumulation->compute(dst, dst_mask) ) {
           CF_ERROR("frame_accumulation_->compute() fails");
           return false;
         }
-        CF_DEBUG("compute OK");
         if ( _input_bpp > 1 ) {
           cv::multiply(dst, cv::Scalar::all(1 << _input_bpp), dst);
         }
-
         return true;
       }
       break;
@@ -2255,9 +2216,8 @@ bool c_image_stacking_pipeline::save_preprocessed_video(const cv::Mat & current_
       _output_options.output_preprocessed_video_options;
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("preproc%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".preproc%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {
@@ -2305,9 +2265,8 @@ bool c_image_stacking_pipeline::save_sparse_matches_blend_video(int seqindex)
         _output_options.output_sparse_match_blend_options;
 
     const bool fOK =
-        add_output_writer(writer,
-            output_opts,
-            ssprintf("sparse-matches%s",_generating_master_frame ? "-master" : ""),
+        add_output_writer(writer, output_opts,
+            ssprintf(".sparse-matches%s",_generating_master_frame ? "-master" : ""),
             ".avi");
 
     if( !fOK ) {
@@ -2365,9 +2324,8 @@ bool c_image_stacking_pipeline::save_feature_video(int seqindex)
   }
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("feat%s", _generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".feat%s", _generating_master_frame ? "-master" : ""),
           ".ser");
 
   if( !fOK ) {
@@ -2396,9 +2354,8 @@ bool c_image_stacking_pipeline::save_ecc_video(int seqindex)
   }
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("ecc%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".ecc%s",_generating_master_frame ? "-master" : ""),
           ".ser");
 
   if( !fOK ) {
@@ -2426,9 +2383,8 @@ bool c_image_stacking_pipeline::save_eccflow_video(int seqindex)
 
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("uv%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".uv%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {
@@ -2465,9 +2421,8 @@ bool c_image_stacking_pipeline::save_aligned_video(const cv::Mat & current_frame
   c_output_frame_writer & writer = _aligned_video_writer;
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("algned%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".aligned%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {
@@ -2498,9 +2453,8 @@ bool c_image_stacking_pipeline::save_incremental_video(const cv::Mat & current_f
 
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("incremental%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".incremental%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {
@@ -2522,9 +2476,8 @@ bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & cu
   c_output_frame_writer & writer = _accumulation_masks_writer;
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("-acc_masks%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".acc_masks%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {
@@ -2645,9 +2598,8 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
       _output_options.output_sparse_matches_video_options;
 
   const bool fOK =
-      add_output_writer(writer,
-          output_opts,
-          ssprintf("sparse_matches%s",_generating_master_frame ? "-master" : ""),
+      add_output_writer(writer, output_opts,
+          ssprintf(".sparse_matches%s",_generating_master_frame ? "-master" : ""),
           ".avi");
 
   if( !fOK ) {

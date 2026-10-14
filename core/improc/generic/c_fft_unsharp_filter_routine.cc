@@ -89,14 +89,14 @@ bool c_fft_unsharp_filter_routine::serialize(c_config_setting settings, bool sav
     SERIALIZE_OPTION(settings, save, *this, _gain_cutoff);
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "gaussian_filter") ) {
-      SERIALIZE_OPTION(settings, save, gaussian_filter, sigma);
-      SERIALIZE_OPTION(settings, save, gaussian_filter, gain);
+      SERIALIZE_OPTION(group, save, gaussian_filter, sigma);
+      SERIALIZE_OPTION(group, save, gaussian_filter, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "butterworth_filter") ) {
-      SERIALIZE_OPTION(settings, save, butterworth_filter, rc);
-      SERIALIZE_OPTION(settings, save, butterworth_filter, order);
-      SERIALIZE_OPTION(settings, save, butterworth_filter, gain);
+      SERIALIZE_OPTION(group, save, butterworth_filter, rc);
+      SERIALIZE_OPTION(group, save, butterworth_filter, order);
+      SERIALIZE_OPTION(group, save, butterworth_filter, gain);
     }
 
     return true;

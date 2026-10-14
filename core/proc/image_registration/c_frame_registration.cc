@@ -19,41 +19,31 @@
 
 bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
 {
-  LOAD_OPTION(settings, *opts, scale);
-  LOAD_OPTION(settings, *opts, eps);
+  LOAD_OPTION(settings, *opts, image_scale);
   LOAD_OPTION(settings, *opts, min_rho);
-  LOAD_OPTION(settings, *opts, input_smooth_sigma);
-  LOAD_OPTION(settings, *opts, reference_smooth_sigma);
-  LOAD_OPTION(settings, *opts, update_step_scale);
-  LOAD_OPTION(settings, *opts, normalization_noise);
   LOAD_OPTION(settings, *opts, normalization_scale);
-  LOAD_OPTION(settings, *opts, ecc_method);
-  LOAD_OPTION(settings, *opts, max_iterations);
-  LOAD_OPTION(settings, *opts, ecch_minimum_image_size);
-  LOAD_OPTION(settings, *opts, ecch_max_level);
+  LOAD_OPTION(settings, *opts, normalization_eps);
   LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
-//  LOAD_OPTION(settings, *opts, replace_planetary_disk_with_mask);
-//  LOAD_OPTION(settings, *opts, se_radius);
+
+  if ( auto group = SERIALIZE_GROUP(settings, false, "ecch")) {
+    load_settings(group, &opts->ecch);
+  }
+
   return true;
 }
 
 bool save_settings(c_config_setting settings, const c_ecc_registration_options & opts)
 {
-  SAVE_OPTION(settings, opts, scale);
-  SAVE_OPTION(settings, opts, eps);
+  SAVE_OPTION(settings, opts, image_scale);
   SAVE_OPTION(settings, opts, min_rho);
-  SAVE_OPTION(settings, opts, input_smooth_sigma);
-  SAVE_OPTION(settings, opts, reference_smooth_sigma);
-  SAVE_OPTION(settings, opts, update_step_scale);
-  SAVE_OPTION(settings, opts, normalization_noise);
   SAVE_OPTION(settings, opts, normalization_scale);
-  SAVE_OPTION(settings, opts, ecc_method);
-  SAVE_OPTION(settings, opts, max_iterations);
-  SAVE_OPTION(settings, opts, ecch_minimum_image_size);
-  SAVE_OPTION(settings, opts, ecch_max_level);
+  SAVE_OPTION(settings, opts, normalization_eps);
   SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
-//  SAVE_OPTION(settings, opts, replace_planetary_disk_with_mask);
-//  SAVE_OPTION(settings, opts, se_radius);
+
+  if ( auto group = SERIALIZE_GROUP(settings, true, "ecch")) {
+    save_settings(group, opts.ecch);
+  }
+
   return true;
 }
 
@@ -395,7 +385,7 @@ bool c_frame_registration::create_image_transfrom()
 
     _image_transform->parameters().copyTo(_image_transform_defaut_parameters);
 
-    if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
+    if( _options.enable_ecc_registration && _options.ecc.image_scale > 0 ) {
       _ecch.set_image_transform(_image_transform.get());
     }
   }
@@ -626,31 +616,32 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     //  }
 
     if( _options.enable_ecc_registration ) {
-      _ecch.set_method(_options.ecc.ecc_method);
-      _ecch.set_max_eps(_options.ecc.eps);
-      // _ecch.set_min_rho(_options.ecc.min_rho);
-      _ecch.set_input_smooth_sigma(_options.ecc.input_smooth_sigma);
-      _ecch.set_reference_smooth_sigma(_options.ecc.reference_smooth_sigma);
-      _ecch.set_update_step_scale(_options.ecc.update_step_scale);
-      _ecch.set_max_iterations(_options.ecc.max_iterations);
-      _ecch.set_maxlevel(_options.ecc.ecch_max_level);
-      _ecch.set_minimum_image_size(_options.ecc.ecch_minimum_image_size);
+      _ecch.set_options(_options.ecc.ecch);
+      //      _ecch.set_method(_options.ecc.ecc_method);
+      //      _ecch.set_max_eps(_options.ecc.eps);
+      //      _ecch.set_min_rho(_options.ecc.min_rho);
+      //      _ecch.set_input_smooth_sigma(_options.ecc.input_smooth_sigma);
+      //      _ecch.set_reference_smooth_sigma(_options.ecc.reference_smooth_sigma);
+      //      _ecch.set_update_step_scale(_options.ecc.update_step_scale);
+      //      _ecch.set_max_iterations(_options.ecc.max_iterations);
+      //      _ecch.set_maxlevel(_options.ecc.ecch_max_level);
+      //      _ecch.set_minimum_image_size(_options.ecc.ecch_minimum_image_size);
 
       cv::Mat1f ecc_image;
       cv::Mat1b ecc_mask;
 
-      if( _options.ecc.scale > 0 && _options.ecc.scale != 1 ) {
-        scaleImage(_options.ecc.scale, reference_ecc_image, reference_ecc_mask, ecc_image, ecc_mask);
+      if( _options.ecc.image_scale > 0 && _options.ecc.image_scale != 1 ) {
+        scaleImage(_options.ecc.image_scale, reference_ecc_image, reference_ecc_mask, ecc_image, ecc_mask);
       }
       else {
         ecc_image = reference_ecc_image;
         ecc_mask = reference_ecc_mask;
       }
 
-      if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
+      if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
         ecc_normalize(ecc_image, ecc_mask, ecc_image,
             _options.ecc.normalization_scale,
-            _options.ecc.normalization_noise);
+            _options.ecc.normalization_eps);
       }
 
       if( !_ecch.set_reference_image(ecc_image, ecc_mask) ) {
@@ -790,10 +781,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     _current_status.timings.extract_ecc_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
-    if( _options.ecc.scale > 0 && _options.ecc.scale != 1 ) {
-      scaleImage(_options.ecc.scale, ecc_image, ecc_mask, current_ecc_image, current_ecc_mask);
+    if( _options.ecc.image_scale > 0 && _options.ecc.image_scale != 1 ) {
+      scaleImage(_options.ecc.image_scale, ecc_image, ecc_mask, current_ecc_image, current_ecc_mask);
       if( have_transform ) {
-        _image_transform->scale_transfrom(_options.ecc.scale);
+        _image_transform->scale_transfrom(_options.ecc.image_scale);
       }
     }
     else {
@@ -801,17 +792,17 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_ecc_mask = ecc_mask;
     }
 
-    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
+    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
       ecc_normalize(current_ecc_image, current_ecc_mask, current_ecc_image,
           _options.ecc.normalization_scale,
-          _options.ecc.normalization_noise);
+          _options.ecc.normalization_eps);
     }
 
 
     const bool estimate_translation_first =
         _options.motion_type != IMAGE_MOTION_TRANSLATION &&
         _options.ecc.ecch_estimate_translation_first &&
-        _options.ecc.ecch_max_level != 0 ;
+        _options.ecc.ecch.maxlevel != 0 ;
 
     if( estimate_translation_first ) {
 
@@ -863,8 +854,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    if( _options.ecc.scale > 0 &&  _options.ecc.scale != 1 ) {
-      _image_transform->scale_transfrom(1. / _options.ecc.scale);
+    if( _options.ecc.image_scale > 0 &&  _options.ecc.image_scale != 1 ) {
+      _image_transform->scale_transfrom(1. / _options.ecc.image_scale);
     }
 
     _current_status.timings.ecc_align = (t1 = get_realtime_ms()) - t0, t0 = t1;

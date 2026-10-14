@@ -506,16 +506,25 @@ void c_euclidean_image_transform::scale_transfrom(double factor)
   update_parameters();
 }
 
-double c_euclidean_image_transform::eps(const cv::Mat1f & dp,const cv::Size & image_size)
+double c_euclidean_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
 {
   float dTx = 0, dTy = 0, da = 0, ds = 0, dCx = 0, dCy = 0;
 
   get_parameters(dp, &dTx, &dTy, &da, &ds, &dCx, &dCy);
 
   const float sa = std::sin(da);
-  const float eps =
-      std::sqrt(square(dTx) + square(dTy) + square(image_size.width * sa) + square(image_size.height * sa) +
-          square(std::max(image_size.width, image_size.height) * ds));
+
+  // Scale specifics:
+  // If ds is around 1.0 (Inverse Compositional), we need its deviation: (ds - 1.0)
+  // If ds is around 0.0 (Forward Additive), then (ds - 0.0)
+  // hack: if ds > 0.5, treat it as an absolute IC scale and subtract 1.0
+  const float scale_increment = (ds > 0.5f) ? (ds - 1.0f) : ds;
+
+  const float max_radius = std::sqrt(square(image_size.width * 0.5f) +
+      square(image_size.height * 0.5f));
+
+  const float eps = std::sqrt(square(dTx) + square(dTy) + square(max_radius * sa) +
+      square(max_radius * scale_increment));
 
   return eps;
 }

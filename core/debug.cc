@@ -436,12 +436,13 @@ void cf_plog(int pri, const char * file, const char * func, int line, const char
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 
-std::mutex c_scope_timer::mtx_;
-std::vector<c_scope_timer::c_callgraph *> c_scope_timer::allgraphs_;
-thread_local c_scope_timer::c_callgraph * c_scope_timer::mygraph_;
+std::mutex c_scope_timer::_mtx;
+std::vector<c_scope_timer::c_callgraph *> c_scope_timer::_graphs;
+thread_local c_scope_timer::c_callgraph * c_scope_timer::_mygraph;
 
 
 // REALTIME ns
+__attribute__((always_inline))
 static inline double get_timestamp_ns(void)
 {
   struct timespec t;
@@ -449,59 +450,44 @@ static inline double get_timestamp_ns(void)
   return (double) (t.tv_sec * 1e9 + t.tv_nsec);
 }
 
-c_scope_timer::c_scope_timer(const char * _func, const char * _scope)
-  : tstamp_(get_timestamp_ns())
+c_scope_timer::c_scope_timer(const std::string_view *  _function, const char * _scope)
+  : _tstamp(get_timestamp_ns())
 {
   // check if call graph for this thread was already created
-  if ( !mygraph_ ) {
-
-    mtx_.lock();
-
-    allgraphs_.emplace_back(
-        mygraph_ = new c_callgraph(
-            get_tid()));
-
-    mtx_.unlock();
+  if ( !_mygraph ) {
+    _mtx.lock();
+    _graphs.emplace_back(_mygraph = new c_callgraph( get_tid()));
+    _mtx.unlock();
   }
 
 
   // check if graph node for this scope was already created
 
   c_graph_node *& node =
-      mygraph_->nodes[c_callgraph::key(mygraph_, _func, _scope)];
+      _mygraph->nodes[c_callgraph::key(_mygraph, _function, _scope)];
 
   if ( !node ) {
-
     // Create new node to track this scope calls.
     // Add it to the list of childs of parent node
-
-    node =
-        new c_graph_node(
-            _func,
-            _scope);
-
-    if ( mygraph_->current != nullptr ) { // has parent
-      node->parent = mygraph_->current->node_;
+    node = new c_graph_node( _function,_scope);
+    if ( _mygraph->current != nullptr ) { // has parent
+      node->parent = _mygraph->current->_node;
       node->parent->childs.emplace_back(node);
     }
   }
 
   // update current call counter and current scope track
-  ++(this->node_ = node)->call_count;
-  this->parent_ = mygraph_->current;
-  mygraph_->current = this;
+  ++(this->_node = node)->call_count;
+  this->_parent = _mygraph->current;
+  _mygraph->current = this;
 
 }
 
 c_scope_timer::~c_scope_timer()
 {
   // update current timer and current scope track
-
-  node_->total_time +=
-      get_timestamp_ns() - tstamp_;
-
-  mygraph_->current =
-      this->parent_;
+  _node->total_time += get_timestamp_ns() - _tstamp;
+  _mygraph->current = this->_parent;
 }
 
 // call graph dump utility
@@ -544,9 +530,9 @@ void c_callgraph_dump::dump()
 
     fprintf(fp, "scope\tcalls\ttotal_time\tavg_time\n");
 
-    c_scope_timer::mtx_.lock();
+    c_scope_timer::_mtx.lock();
 
-    for ( const c_callgraph * graph : c_scope_timer::allgraphs_ ) {
+    for ( const c_callgraph * graph : c_scope_timer::_graphs ) {
 
       fprintf(fp, "PID: %u\n", (unsigned int) graph->pid);
 
@@ -561,7 +547,7 @@ void c_callgraph_dump::dump()
       fprintf(fp, "\n");
     }
 
-    c_scope_timer::mtx_.unlock();
+    c_scope_timer::_mtx.unlock();
 
     fclose(fp);
   }
@@ -583,10 +569,10 @@ void c_callgraph_dump::dump_node(FILE * fp, const c_graph_node * node, int level
 
 
   if ( node->scope && *node->scope ) {
-    fprintf(fp, "%s/%s", node->functon, node->scope);
+    fprintf(fp, "%.*s/%s", (int)node->functon->length(), node->functon->data(), node->scope);
   }
   else {
-    fprintf(fp, "%s", node->functon);
+    fprintf(fp, "%.*s", (int)node->functon->length(), node->functon->data());
   }
 
   const double time =

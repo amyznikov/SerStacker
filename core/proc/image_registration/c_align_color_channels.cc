@@ -139,27 +139,27 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
     }
   }
 
-  c_ecch ecc(opts.method);
-  ecc.set_maxlevel(opts.max_level);
-  ecc.set_interpolation(opts.interpolation);
-  ecc.set_update_step_scale(opts.update_step_scale);
-  ecc.set_reference_smooth_sigma(opts.smooth_sigma);
-  ecc.set_input_smooth_sigma(opts.smooth_sigma);
-  ecc.set_max_iterations(opts.max_iterations);
-  ecc.set_max_eps(opts.eps);
+  c_ecch ecch(opts.method);
+  ecch.set_maxlevel(opts.max_level);
+  ecch.set_interpolation(opts.interpolation);
+  ecch.set_update_step_scale(opts.update_step_scale);
+  ecch.set_reference_smooth_sigma(opts.smooth_sigma);
+  ecch.set_input_smooth_sigma(opts.smooth_sigma);
+  ecch.set_max_iterations(opts.max_iterations);
+  ecch.set_max_eps(opts.eps);
 
-  if( !ecc.set_reference_image(reference_channel, reference_mask) ) {
+  if( !ecch.set_reference_image(reference_channel, reference_mask) ) {
     CF_ERROR("ecc.set_reference_image() fails");
     return false;
   }
 
   for( int i = 0; i < cn; ++i ) {
     if( _image_transforms[i] ) {
-      ecc.set_image_transform(_image_transforms[i].get());
-      if( !ecc.align(channels[i], masks[i]) ) {
+      ecch.set_image_transform(_image_transforms[i].get());
+      if( !ecch.align(channels[i], masks[i]) ) {
         CF_ERROR("ecc.align_to_reference(channel=%d) fails: iterations=%d eps=%g", i,
-            ecc.num_iterations(),
-            ecc.eps());
+            ecch.num_iterations(),
+            ecch.eps());
       }
     }
   }

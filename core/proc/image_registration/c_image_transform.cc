@@ -767,7 +767,7 @@ cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, c
     dAngle = 0.0f;
   }
 
-  // CRITICAL MAGIC: The base increment scale is always 1.0.
+  // CRITICAL: The base increment scale is always 1.0.
   // If the scale is not fixed, add the dScale increment to it.
   const float scale_dp = _fix_scale ? 1.0f : (1.0f + dScale);
 
@@ -790,9 +790,8 @@ cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, c
 
   // Mp uses absolute scale, Mdp uses incremental scale (around 1.0)
   const cv::Matx33f Mp  = get_matrix3x3(Tx, Ty, angle, scale, Cx, Cy);
-  const cv::Matx33f Mdp = get_matrix3x3(dTx, dTy, dAngle, scale_dp, Cx, Cy);
+  const cv::Matx33f Mdp = get_matrix3x3(dTx, dTy, dAngle, scale_dp, 0.0f, 0.0f);
 
-  // Invert the incremental matrix Mdp (it is now guaranteed NOT to be singular)
   const cv::Matx23f Mdp_2x3(Mdp(0, 0), Mdp(0, 1), Mdp(0, 2), Mdp(1, 0), Mdp(1, 1), Mdp(1, 2));
   cv::Matx23f Mdp_inv_2x3;
   cv::invertAffineTransform(Mdp_2x3, Mdp_inv_2x3);
@@ -803,7 +802,6 @@ cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, c
       Mdp_inv(r, c) = Mdp_inv_2x3(r, c);
     }
   }
-
   // Composition: Mp_new = Mp * (Mdp^-1)
   const cv::Matx33f M_res = Mp * Mdp_inv;
 

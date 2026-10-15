@@ -109,6 +109,22 @@ bool c_normalize_mean_stdev_routine::serialize(c_config_setting settings, bool s
 
 bool c_normalize_mean_stdev_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  ecc_normalize(image.getMat(), mask, image, _level, _eps);
+  cv::Scalar mv, sv;
+  cv::meanStdDev(image, mv, sv, mask);
+
+  CF_DEBUG("mv={%g %g %g %g } sv = {%g %g %g %g}",
+      mv[0], mv[1], mv[2], mv[3],
+      sv[0], sv[1], sv[2], sv[3]);
+
+  for ( int i = 0; i < 4; ++i ) {
+    sv[i] = sv[i] > 0 ? 1./sv[i] : 0.;
+  }
+
+
+  cv::subtract(image, mv, image);
+  cv::multiply(image, sv, image);
+
+
+  //ecc_normalize(image.getMat(), mask, image, _level, _eps);
   return true;
 }

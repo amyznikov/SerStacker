@@ -1072,6 +1072,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       continue;
     }
 
+    // CF_DEBUG("R")
+
     if ( canceled() ) {
       set_status_msg("canceled");
       break;
@@ -1172,6 +1174,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       _frame_registration->set_current_timestamp(input_sequence->last_ts(),
           input_sequence->has_last_ts());
 
+      CF_DEBUG("[F %d] CALL REGISTRER ", input_sequence->current_pos() - 1);
       const bool registered =
           _frame_registration->register_frame(current_frame,
               current_mask);
@@ -1267,14 +1270,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           _frame_registration->custom_remap(current_remap,
               current_weights, current_weights,
               cv::noArray(), cv::noArray(),
-              registration_options.interpolation,
+              ECC_INTER_LINEAR, // force INTER_LINEAR to avoid negative artifacts
               ECC_BORDER_CONSTANT);
         }
         else {
           _frame_registration->custom_remap(current_remap,
               cv::noArray(), cv::noArray(),
               current_mask, current_mask,
-              registration_options.interpolation,
+              ECC_INTER_LINEAR, // force INTER_LINEAR to avoid negative artifacts
               ECC_BORDER_CONSTANT);
         }
       }
@@ -1289,11 +1292,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             registration_options.border_value);
 
         if( !current_weights.empty() ) {
-
           _frame_registration->custom_remap(current_remap,
               current_weights, current_weights,
               cv::noArray(), cv::noArray(),
-              registration_options.interpolation,
+              ECC_INTER_LINEAR,
               ECC_BORDER_CONSTANT);
         }
 
@@ -1369,10 +1371,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               input_sequence->colorid());
         }
 
-        CF_DEBUG("bayer_drizzle: current_mask: %dx%d depth=%d",
-            current_mask.cols, current_mask.rows,
-            current_mask.depth());
-
         static const cv::Mat2f empty_remap;
         bayer_drizzle->set_remap(_frame_registration ? _frame_registration->current_remap() : empty_remap);
         bayer_drizzle->add(_raw_bayer_image, current_mask);
@@ -1387,10 +1385,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               input_sequence->colorid());
         }
 
-        CF_DEBUG("_frame_accumulation: current_mask: %dx%d depth=%d",
-            current_mask.cols, current_mask.rows,
-            current_mask.depth());
-
         if ( !_frame_accumulation->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
@@ -1402,8 +1396,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      _accumulated_frames =
-          _frame_accumulation->accumulated_frames();
+      _accumulated_frames = _frame_accumulation->accumulated_frames();
 
       if( _output_options.save_incremental_frames ) {
 

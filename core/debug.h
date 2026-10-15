@@ -102,13 +102,14 @@ void cf_pbt(void);
 #include <vector>
 #include <map>
 #include <mutex>
+#include <string_view>
 
 class c_scope_timer
 {
   friend class c_callgraph_dump;
 
   struct c_graph_node {
-    const char * functon;
+    const std::string_view * functon;
     const char * scope;
     double total_time = 0;
     int call_count = 0;
@@ -116,7 +117,7 @@ class c_scope_timer
     c_graph_node * parent = nullptr;
     std::vector<c_graph_node *> childs;
 
-    c_graph_node(const char * _functon, const char * _scope) :
+    c_graph_node(const std::string_view * _functon, const char * _scope) :
          functon(_functon), scope(_scope)
     {
     }
@@ -126,12 +127,12 @@ class c_scope_timer
 
     struct key {
       c_graph_node * parent;
-      const char * func;
+      const std::string_view * function;
       const char * scope;
 
-      key(c_callgraph * graph, const char * _func, const char * _scope) :
-          parent(graph->current ? graph->current->node_ : nullptr) ,
-          func(_func),
+      key(c_callgraph * graph, const std::string_view * _function, const char * _scope) :
+          parent(graph->current ? graph->current->_node : nullptr) ,
+          function(_function),
           scope(_scope)
       {
       }
@@ -142,10 +143,10 @@ class c_scope_timer
           return true;
         }
         if ( parent == rhs.parent ) {
-          if ( func < rhs.func ) {
+          if ( function < rhs.function ) {
             return true;
           }
-          if ( func == rhs.func ) {
+          if ( function == rhs.function ) {
             if ( scope < rhs.scope ) {
               return true;
             }
@@ -165,23 +166,39 @@ class c_scope_timer
   };
 
 public:
-  c_scope_timer(const char * _func, const char * _scope);
+  c_scope_timer(const std::string_view *  _function, const char * _scope);
   ~c_scope_timer();
 
 protected:
-  c_scope_timer * parent_;
-  c_graph_node * node_;
-  double tstamp_;
+  c_scope_timer * _parent;
+  c_graph_node * _node;
+  double _tstamp;
 
 protected:
-  static std::mutex mtx_;
-  static std::vector<c_scope_timer::c_callgraph *> allgraphs_;
-  static thread_local c_callgraph * mygraph_;
+  static std::mutex _mtx;
+  static std::vector<c_scope_timer::c_callgraph *> _graphs;
+  static thread_local c_callgraph * _mygraph;
 };
 
+constexpr inline std::string_view clean_pretty_function(std::string_view pretty) {
+  size_t paren = pretty.find('(');
+  if (paren != std::string_view::npos) {
+      pretty = pretty.substr(0, paren);
+  }
+  size_t space = pretty.rfind(' ');
+  if (space != std::string_view::npos) {
+      pretty = pretty.substr(space + 1);
+  }
+
+  return pretty;
+}
 
 #define INSTRUMENT_REGION(scope) \
-    c_scope_timer my_scope_timer(__FUNCTION__, scope)
+    constexpr static auto __clean_this_function_name = clean_pretty_function(__PRETTY_FUNCTION__); \
+    c_scope_timer my_scope_timer(&__clean_this_function_name, scope)
+
+//#define INSTRUMENT_REGION(scope) \
+//    c_scope_timer my_scope_timer(__PRETTY_FUNCTION__, scope)
 
 #else // ENABLE_TIME_INSTRUMENTATION
 

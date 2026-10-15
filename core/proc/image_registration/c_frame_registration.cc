@@ -617,15 +617,6 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     if( _options.enable_ecc_registration ) {
       _ecch.set_options(_options.ecc.ecch);
-      //      _ecch.set_method(_options.ecc.ecc_method);
-      //      _ecch.set_max_eps(_options.ecc.eps);
-      //      _ecch.set_min_rho(_options.ecc.min_rho);
-      //      _ecch.set_input_smooth_sigma(_options.ecc.input_smooth_sigma);
-      //      _ecch.set_reference_smooth_sigma(_options.ecc.reference_smooth_sigma);
-      //      _ecch.set_update_step_scale(_options.ecc.update_step_scale);
-      //      _ecch.set_max_iterations(_options.ecc.max_iterations);
-      //      _ecch.set_maxlevel(_options.ecc.ecch_max_level);
-      //      _ecch.set_minimum_image_size(_options.ecc.ecch_minimum_image_size);
 
       cv::Mat1f ecc_image;
       cv::Mat1b ecc_mask;
@@ -826,7 +817,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
           _ecch.reference_image(), _ecch.reference_mask(),
           _ecch.create_remap());
 
-      if( rho < 0.75 * _options.ecc.min_rho ) {
+      if( rho < 0.5 * _options.ecc.min_rho ) {
         CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
         _ecch.set_image_transform(_image_transform.get());
         return false;

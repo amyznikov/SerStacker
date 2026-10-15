@@ -122,10 +122,6 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
-//  const cv::Mat2f & current_remap() const;
-
-  //bool create_current_remap(const cv::Size & size);
-
 protected:
   cv::Mat1f _reference_image;
   cv::Mat1b _reference_mask;
@@ -162,7 +158,7 @@ enum ECCH_PYRAMID_TYPE {
 
 struct c_ecch_options
 {
-  double epsx = 1e-5;
+  double epsx = 0.1;
   double reference_smooth_sigma = 1;
   double input_smooth_sigma = 1;
   double update_step_scale = 1.5;
@@ -309,8 +305,8 @@ public:
     return cv::Size(((currentSize.width + 1) >> 1) & ~0x1, ((currentSize.height + 1) >> 1) & ~0x1);
   }
 
-  static inline void downscale_image(cv::Mat & image, cv::Mat & mask,
-      const cv::Size & nextSize);
+  inline void downscale_image(cv::Mat & image, cv::Mat & mask,
+      const cv::Size & nextSize) const;
 
 protected:
   c_ecc_align::uptr create_ecc_align(double epsx) const;
@@ -321,7 +317,7 @@ protected:
   c_image_transform  * _image_transform = nullptr;
   double sigmaRef = 0, sigmaCur = 0;
   cv::Mat1f Gref, Gcur;
-  int _num_iterations = -1;
+  int _total_iterations = -1;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +358,7 @@ public:
 protected:
   cv::Mat1b wmask, iwmask; // image masks
   cv::Mat1f gw; // warped input image
-  cv::Mat1f /*gx, gy, */gxw, gyw; // input image derivatives
+  cv::Mat1f gxw, gyw; // input image derivatives
   cv::Mat1f H; // Hessian matrix and its inverse
   cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1]
   cv::Mat1f rhs, ep;  // error image and it's projection
@@ -453,7 +449,6 @@ protected:
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
   cv::Mat1f rhs;
-  // double nrms = 0;
   double rms = 0;
 };
 

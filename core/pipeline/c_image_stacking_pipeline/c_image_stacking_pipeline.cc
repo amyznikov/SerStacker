@@ -1365,12 +1365,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           bayer_drizzle->set_bayer_pattern(_raw_bayer_colorid);
         }
 
-        if( _input_options.enable_bground_normalization ) {
-          nomalizeImageHistogram(_raw_bayer_image, cv::noArray(), _raw_bayer_image,
-              _input_options.background_normalization_options,
-              input_sequence->colorid());
-        }
-
         static const cv::Mat2f empty_remap;
         bayer_drizzle->set_remap(_frame_registration ? _frame_registration->current_remap() : empty_remap);
         bayer_drizzle->add(_raw_bayer_image, current_mask);
@@ -1378,12 +1372,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       else {
 
         lock_guard lock(mutex());
-
-        if ( _input_options.enable_bground_normalization && current_frame.channels() > 1 ) {
-          nomalizeImageHistogram(current_frame, current_mask, current_frame,
-              _input_options.background_normalization_options,
-              input_sequence->colorid());
-        }
 
         if ( !_frame_accumulation->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
@@ -1448,8 +1436,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     on_status_update();
   }
-
-  CF_DEBUG("Leave");
 
   return true;
 }

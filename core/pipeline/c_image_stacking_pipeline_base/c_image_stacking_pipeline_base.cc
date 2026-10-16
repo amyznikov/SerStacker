@@ -124,8 +124,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
             1. / ((1 << input_sequence->bpp())));
       }
 
-      CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
-        _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
+      //      CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
+      //        _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
 
       cv::subtract(output_image, _darkbayer,
           output_image);
@@ -152,6 +152,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
 
 
     if ( input_options.enable_bground_normalization ) {
+      //      CF_DEBUG("call nomalizeImageHistogram: output_image: %dx%d depth=%d channels=%d",
+      //          output_image.cols, output_image.rows, output_image.channels(), output_image.depth());
       nomalizeImageHistogram(output_image, output_mask, output_image,
           input_options.background_normalization_options,
           colorid);

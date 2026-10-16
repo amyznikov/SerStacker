@@ -21,9 +21,9 @@ bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
 {
   LOAD_OPTION(settings, *opts, image_scale);
   LOAD_OPTION(settings, *opts, min_rho);
-  LOAD_OPTION(settings, *opts, normalization_scale);
-  LOAD_OPTION(settings, *opts, normalization_eps);
-  LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
+//  LOAD_OPTION(settings, *opts, normalization_scale);
+//  LOAD_OPTION(settings, *opts, normalization_eps);
+//  LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
 
   if ( auto group = SERIALIZE_GROUP(settings, false, "ecch")) {
     load_settings(group, &opts->ecch);
@@ -36,9 +36,9 @@ bool save_settings(c_config_setting settings, const c_ecc_registration_options &
 {
   SAVE_OPTION(settings, opts, image_scale);
   SAVE_OPTION(settings, opts, min_rho);
-  SAVE_OPTION(settings, opts, normalization_scale);
-  SAVE_OPTION(settings, opts, normalization_eps);
-  SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
+//  SAVE_OPTION(settings, opts, normalization_scale);
+//  SAVE_OPTION(settings, opts, normalization_eps);
+//  SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
 
   if ( auto group = SERIALIZE_GROUP(settings, true, "ecch")) {
     save_settings(group, opts.ecch);
@@ -629,11 +629,11 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
         ecc_mask = reference_ecc_mask;
       }
 
-      if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
-        ecc_normalize(ecc_image, ecc_mask, ecc_image,
-            _options.ecc.normalization_scale,
-            _options.ecc.normalization_eps);
-      }
+//      if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
+//        ecc_normalize(ecc_image, ecc_mask, ecc_image,
+//            _options.ecc.normalization_scale,
+//            _options.ecc.normalization_eps);
+//      }
 
       if( !_ecch.set_reference_image(ecc_image, ecc_mask) ) {
         CF_ERROR("_ecch.set_reference_image() fails");
@@ -783,49 +783,49 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_ecc_mask = ecc_mask;
     }
 
-    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
-      ecc_normalize(current_ecc_image, current_ecc_mask, current_ecc_image,
-          _options.ecc.normalization_scale,
-          _options.ecc.normalization_eps);
-    }
+//    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
+//      ecc_normalize(current_ecc_image, current_ecc_mask, current_ecc_image,
+//          _options.ecc.normalization_scale,
+//          _options.ecc.normalization_eps);
+//    }
 
 
-    const bool estimate_translation_first =
-        _options.motion_type != IMAGE_MOTION_TRANSLATION &&
-        _options.ecc.ecch_estimate_translation_first &&
-        _options.ecc.ecch.maxlevel != 0 ;
+//    const bool estimate_translation_first =
+//        _options.motion_type != IMAGE_MOTION_TRANSLATION &&
+//        _options.ecc.ecch_estimate_translation_first &&
+//        _options.ecc.ecch.maxlevel != 0 ;
 
-    if( estimate_translation_first ) {
-
-      c_translation_image_transform transform(_image_transform->translation());
-      _ecch.set_image_transform(&transform);
-
-      if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
-
-        CF_ERROR("ERROR: _ecch.align() fails for translation estimate: "
-            "eps=%g/%g iterations=%d/%d",
-            _ecch.eps(), _ecch.max_eps(),
-            _ecch.num_iterations(), _ecch.max_iterations()
-            );
-
-        _ecch.set_image_transform(_image_transform.get());
-
-        return false;
-      }
-
-      rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
-          _ecch.reference_image(), _ecch.reference_mask(),
-          _ecch.create_remap());
-
-      if( rho < 0.5 * _options.ecc.min_rho ) {
-        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
-        _ecch.set_image_transform(_image_transform.get());
-        return false;
-      }
-
-      _image_transform->set_translation(transform.translation());
-      _ecch.set_image_transform(_image_transform.get());
-    }
+//    if( estimate_translation_first ) {
+//
+//      c_translation_image_transform transform(_image_transform->translation());
+//      _ecch.set_image_transform(&transform);
+//
+//      if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
+//
+//        CF_ERROR("ERROR: _ecch.align() fails for translation estimate: "
+//            "eps=%g/%g iterations=%d/%d",
+//            _ecch.eps(), _ecch.max_eps(),
+//            _ecch.num_iterations(), _ecch.max_iterations()
+//            );
+//
+//        _ecch.set_image_transform(_image_transform.get());
+//
+//        return false;
+//      }
+//
+//      rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
+//          _ecch.reference_image(), _ecch.reference_mask(),
+//          _ecch.create_remap());
+//
+//      if( rho < 0.5 * _options.ecc.min_rho ) {
+//        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
+//        _ecch.set_image_transform(_image_transform.get());
+//        return false;
+//      }
+//
+//      _image_transform->set_translation(transform.translation());
+//      _ecch.set_image_transform(_image_transform.get());
+//    }
 
     if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
 

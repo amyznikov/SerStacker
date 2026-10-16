@@ -60,9 +60,9 @@ struct c_ecc_registration_options
   //int ecch_minimum_image_size = 16;
   double image_scale = 0.5;
   double min_rho = 0.8;
-  double normalization_eps = 0.01;
-  int normalization_scale = 0;
-  bool ecch_estimate_translation_first = true;
+  //  double normalization_eps = 0.01;
+  //  int normalization_scale = 0;
+  //  bool ecch_estimate_translation_first = true;
 };
 
 template<class RootObjectType>
@@ -72,19 +72,18 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   using S = c_ecc_registration_options;
   ctlbind(ctls, "image scale", ctx(&S:: image_scale), "");
   ctlbind(ctls, ctx(&S:: ecch));
-
   ctlbind(ctls, "min_rho", ctx(&S:: min_rho), "");
 //  ctlbind(ctls, "ecc_method", ctx(&S:: ecc_method), "");
 //  ctlbind(ctls, "eps", ctx(&S:: eps), "");
 //  ctlbind(ctls, "input_smooth_sigma", ctx(&S:: input_smooth_sigma), "");
 //  ctlbind(ctls, "reference_smooth_sigma", ctx(&S:: reference_smooth_sigma), "");
-  ctlbind(ctls, "normalization_scale", ctx(&S:: normalization_scale), "");
+//  ctlbind(ctls, "normalization_scale", ctx(&S:: normalization_scale), "");
 //  ctlbind(ctls, "normalization_noise", ctx(&S:: normalization_noise), "");
 //  ctlbind(ctls, "update_step_scale", ctx(&S:: update_step_scale), "");
 //  ctlbind(ctls, "max_iterations", ctx(&S:: max_iterations), "");
 //  ctlbind(ctls, "ecch_max_level", ctx(&S:: ecch_max_level), "");
 //  ctlbind(ctls, "ecch_minimum_image_size", ctx(&S:: ecch_minimum_image_size), "");
-  ctlbind(ctls, "Estimate translation first", ctx(&S:: ecch_estimate_translation_first), "");
+//  ctlbind(ctls, "Estimate translation first", ctx(&S:: ecch_estimate_translation_first), "");
   // ctlbind(ctls, "replace_planetary_disk_with_mask", ctx(&S:: replace_planetary_disk_with_mask), "");
   //ctlbind(ctls, "planetary_disk_se_close_size", ctx(&S:: se_radius), "");
 }

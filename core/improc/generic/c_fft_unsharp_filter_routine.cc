@@ -7,6 +7,7 @@
 
 #include "c_fft_unsharp_filter_routine.h"
 #include <core/proc/fft.h>
+#include <core/proc/divide.h>
 #include <core/ssprintf.h>
 
 
@@ -66,6 +67,7 @@ void c_fft_unsharp_filter_routine::getcontrols(c_control_list & ctls, const ctlb
 {
   ctlbind(ctls, "Filter: ", CTL_CONTEXT(ctx, _filter), "Select base filter");
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
+  ctlbind(ctls, "ignore_mask: ", CTL_CONTEXT(ctx, _ignore_mask), "Don't process mask");
 
   ctlbind_expandable_group(ctls, "Gaussian",
       [&, ctx = CTL_CONTEXT(ctx, gaussian_filter)]() {
@@ -86,7 +88,9 @@ bool c_fft_unsharp_filter_routine::serialize(c_config_setting settings, bool sav
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _filter);
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _gain_cutoff);
+    SERIALIZE_OPTION(settings, save, *this, _ignore_mask);
+//    SERIALIZE_OPTION(settings, save, *this, _gain_cutoff);
+
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "gaussian_filter") ) {
       SERIALIZE_OPTION(group, save, gaussian_filter, sigma);
@@ -122,7 +126,6 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
     case FILTER_BUTTERWORTH: {
       const int ksize = std::min(63, std::max(3, 2 * (int) (3 * std::abs(butterworth_filter.rc)) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      //CF_DEBUG("fftSize= %dx%d", fftSize.width, fftSize.height);
       FILTER = fftGenerateButterworthUnsharpFilter(fftSize,
           butterworth_filter.rc,
           butterworth_filter.order,
@@ -135,7 +138,6 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
       default: {
       const int ksize = std::min(63, std::max(3, 2 * (int) (3 * std::abs(gaussian_filter.sigma)) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      //CF_DEBUG("fftSize= %dx%d", fftSize.width, fftSize.height);
       FILTER = fftGenerateGaussianUnsharpFilter(fftSize,
           gaussian_filter.sigma,
           gaussian_filter.gain,
@@ -193,8 +195,27 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
   }
 
   cv::merge(real_channels, image);
+
   if ( _display != DISPLAY_FILTERED_IMAGE ) {
     mask.release();
+  }
+  else if( !_ignore_mask && !mask.empty() ) {
+    cv::Mat m = mask.getMat();
+    cv::Mat blurred_mask;
+    cv::Mat complex_mask;
+
+    fftCopyMakeBorder(m, blurred_mask, fftSize);
+    blurred_mask.convertTo(blurred_mask, CV_32F, 1.0 / 255.0);
+    fftImageToSpectrum(blurred_mask, complex_mask, fftSize, true);
+    fftMulSpectrum(complex_mask, FILTER, complex_mask);
+    fftSwapQuadrants(complex_mask);
+    cv::idft(complex_mask, blurred_mask, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+
+    if( !rc.empty() ) {
+      blurred_mask = blurred_mask(rc);
+    }
+
+    divideImages(image, blurred_mask, image, -1, 1, 1e-3);
   }
 
   return true;

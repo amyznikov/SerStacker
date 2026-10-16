@@ -74,18 +74,20 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray _mask, cv::Outp
   cv::Mat src;
   cv::Mat msk;
 
-  if ( _mask.channels() == 1 ) {
-    if ( _mask.depth() == CV_8U ) {
-      msk = _mask.getMat();
+  if ( !_mask.empty() ) {
+    if ( _mask.channels() == 1 ) {
+      if ( _mask.depth() == CV_8U ) {
+        msk = _mask.getMat();
+      }
+      else {
+        cv::compare(_mask, 0, msk, cv::CMP_GT);
+      }
     }
     else {
-      cv::compare(_mask, 0, msk, cv::CMP_GT);
-    }
-  }
-  else {
-    reduce_color_channels(_mask, msk, cv::REDUCE_MIN);
-    if ( _mask.depth() != CV_8U ) {
-      cv::compare(_mask, 0, msk, cv::CMP_GT);
+      reduce_color_channels(_mask, msk, cv::REDUCE_MIN);
+      if ( _mask.depth() != CV_8U ) {
+        cv::compare(_mask, 0, msk, cv::CMP_GT);
+      }
     }
   }
 
@@ -162,16 +164,27 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray _mask, cv::Outp
           };
 
   switch (opts.norm_type) {
-
-    case normalize_histogram_mean:
-      stretchLevels(image, dst, cv::mean(src, msk), opts, isBayerPattern);
+    case normalize_histogram_mean: {
+      const cv::Scalar mv = cv::mean(src, msk);
+      stretchLevels(src, dst, mv, opts, isBayerPattern);
+      // const cv::Scalar newmv = cv::mean(dst, msk);
+      //CF_DEBUG("mean:(%g %g %g %g) -> (%g %g %g %g)", mv(0), mv(1), mv(2), mv(3), newmv(0), newmv(1), newmv(2), newmv(3));
       break;
-    case normalize_histogram_mode:
-      stretchLevels(image, dst, computeImageMode(src, msk), opts, isBayerPattern);
+    }
+    case normalize_histogram_mode: {
+      const cv::Scalar mv = computeImageMode(src, msk);
+      stretchLevels(src, dst, mv, opts, isBayerPattern);
+      // const cv::Scalar newmv = computeImageMode(dst, msk);
+      //CF_DEBUG("mode:(%g %g %g %g) -> (%g %g %g %g)", mv(0), mv(1), mv(2), mv(3), newmv(0), newmv(1), newmv(2), newmv(3));
       break;
-    case normalize_histogram_median:
-      stretchLevels(image, dst, computeImageMedian(src, msk), opts, isBayerPattern);
+    }
+    case normalize_histogram_median: {
+      const cv::Scalar mv = computeImageMedian(src, msk);
+      stretchLevels(src, dst, mv, opts, isBayerPattern);
+      // const cv::Scalar newmv = computeImageMedian(dst, msk);
+      //CF_DEBUG("median:(%g %g %g %g) -> (%g %g %g %g)", mv(0), mv(1), mv(2), mv(3), newmv(0), newmv(1), newmv(2), newmv(3));
       break;
+    }
     default:
       CF_ERROR("Invalid norm_type=%d requested", opts.norm_type);
       return false;

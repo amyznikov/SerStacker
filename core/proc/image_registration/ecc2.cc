@@ -232,7 +232,7 @@ static bool ecc_remap(const c_image_transform * image_transform,
 /*
  * Pyramid down to specific level
  */
-bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
+static bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
 {
   cv::pyrDown(src, dst, cv::Size(), border_mode);
   for( int l = 1; l < level; ++l ) {
@@ -245,7 +245,7 @@ bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode
 /*
  * Pyramid up to specific size
  */
-bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
+static bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
 {
   const cv::Size inputSize = image.size();
 
@@ -285,7 +285,7 @@ bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
 /*
  * Create identity remap
  */
-void ecc_create_identity_remap(cv::Mat2f & rmap, const cv::Size & size)
+static void ecc_create_identity_remap(cv::Mat2f & rmap, const cv::Size & size)
 {
   rmap.create(size);
 
@@ -303,7 +303,7 @@ void ecc_create_identity_remap(cv::Mat2f & rmap, const cv::Size & size)
 /**
  * Compute Hessian matrix for ECC image alignment
  */
-void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/*, int nparams*/)
+static void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/*, int nparams*/)
 {
   INSTRUMENT_REGION("");
 
@@ -636,13 +636,24 @@ double c_ecc_align::update_step_scale() const
   return _update_step_scale;
 }
 
+void c_ecc_align::set_enable_image_normalization(bool v)
+{
+  _enable_image_normalization = v;
+}
+
+bool c_ecc_align::enable_image_normalization() const
+{
+  return _enable_image_normalization;
+}
+
 void c_ecc_align::copy_parameters(const this_class & rhs)
 {
-  _interpolation = rhs._interpolation;
-  _num_iterations  = rhs._num_iterations;
-  _max_iterations = rhs._max_iterations;
-  _update_step_scale = rhs._update_step_scale;
   _max_eps = rhs._max_eps;
+  _max_epse = rhs._max_epse;
+  _update_step_scale = rhs._update_step_scale;
+  _max_iterations = rhs._max_iterations;
+  _interpolation = rhs._interpolation;
+  _enable_image_normalization = rhs._enable_image_normalization;
 }
 
 
@@ -689,7 +700,7 @@ bool c_ecc_align::set_reference_image(cv::InputArray reference_image, cv::InputA
   }
 
 
-  if( false ) {
+  if( !_enable_image_normalization ) {
     reference_mask.copyTo(_reference_mask);
     if( reference_image.depth() == CV_32F ) {
       reference_image.copyTo(_reference_image);
@@ -744,7 +755,7 @@ bool c_ecc_align::set_current_image(cv::InputArray current_image, cv::InputArray
     }
   }
 
-   if( false ) {
+  if( !_enable_image_normalization ) {
      current_mask.copyTo(_current_mask);
 
      if( current_image.depth() == CV_32F ) {
@@ -1075,11 +1086,11 @@ cv::Mat2f c_ecch::create_remap() const
   return rmap;
 }
 
-c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
+c_ecc_align::uptr c_ecch::create_ecc_align(enum ECC_ALIGN_METHOD method, double epsx) const
 {
   c_ecc_align::uptr ecc;
 
-  switch (_opts.method) {
+  switch (method) {
     case ECC_ALIGN_FORWARD_ADDITIVE:
       ecc.reset(new c_ecc_forward_additive());
       break;
@@ -1098,6 +1109,7 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
   ecc->set_interpolation(_opts.interpolation);
   ecc->set_max_iterations(_opts.max_iterations);
   ecc->set_update_step_scale(_opts.update_step_scale);
+  ecc->set_enable_image_normalization(_opts.enable_image_normalization);
   ecc->set_max_eps(epsx);
 
   return ecc;
@@ -1145,29 +1157,43 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
 
   // Estimate how many pyramid levels is required
-  const int min_image_size = std::max(4, this->_opts.minimum_image_size);
 
-  cv::Size test_size = image.size();
-  int required_lvls = 1;
+  const int min_image_size = std::max(4, this->_opts.minimum_image_size);
+  std::vector<cv::Size> sizes;
+
+  sizes.emplace_back(image.size());
   while (true) {
-    if( _opts.maxlevel >= 0 && required_lvls >= std::max(0, _opts.maxlevel) ) {
+    if( _opts.maxlevel >= 0 && sizes.size() >= std::max(0, _opts.maxlevel) ) {
       break;
     }
 
-    const cv::Size next_size = compute_next_pyramid_layer_size(test_size);
+    const cv::Size next_size = compute_next_pyramid_layer_size(sizes.back());
     if( next_size.width < min_image_size || next_size.height < min_image_size ) {
       break;
     }
 
-    test_size = next_size;
-    ++required_lvls;
+    sizes.emplace_back(next_size);
   }
+
+  static const auto is_direct_method = [](enum ECC_ALIGN_METHOD method) {
+    return method == ECC_ALIGN_FORWARD_ADDITIVE ||  method == ECC_ALIGN_LM;
+  };
+
+  const int required_lvls = sizes.size();
 
   if( _pyramid.size() != required_lvls ) {
     _pyramid.clear();
+
     double epsx = _opts.epsx;
-    for( int i = 0; i < required_lvls; ++i ) {
-      _pyramid.emplace_back(create_ecc_align(epsx / (i + 1)));
+    for( int lvl = 0; lvl < required_lvls; ++lvl ) {
+      ECC_ALIGN_METHOD method = _opts.method;
+      if ( _opts.force_direct_methods_for_coarse_levels && !is_direct_method(_opts.method) ) {
+        const cv::Size & size = sizes[lvl];
+        if ( std::min(size.width, size.height) < 256 ) {
+          method = ECC_ALIGN_LM;
+        }
+      }
+      _pyramid.emplace_back(create_ecc_align(method, epsx / (lvl + 1)));
     }
   }
 
@@ -1235,7 +1261,6 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
     }
 
     if( lvl < lvls - 1 ) {
-
       const cv::Size prev_size = image.size();
       const cv::Size next_size = compute_next_pyramid_layer_size(prev_size);
       if( next_size.width < 4 || next_size.height < 4 ) {
@@ -1293,7 +1318,6 @@ bool c_ecch::align()
   _total_iterations = 0;
 
   for( ; lvl >= 0; --lvl ) {
-
     const cv::Size curSize = _pyramid[lvl]->current_image().size();
     const cv::Size refSize = _pyramid[lvl]->reference_image().size();
     const int minWidth = std::min(curSize.width, refSize.width);
@@ -1307,7 +1331,7 @@ bool c_ecch::align()
       const cv::Mat1f & cimg = _pyramid[lvl]->current_image();
       const cv::Vec2f T = alignMatchTemplateZNCC(rimg, cimg, 2);
       _pyramid[lvl]->image_transform()->set_translation(T);
-      CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
+//       CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
       fOK = true;
     }
     else {
@@ -1319,8 +1343,8 @@ bool c_ecch::align()
       const double eps = _pyramid[lvl]->eps();
       const double maxeps = _pyramid[lvl]->max_eps();
       const cv::Vec2f T = _pyramid[lvl]->image_transform()->translation();
-      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
-          iterations, eps, maxeps, T[0], T[1]);
+//      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
+//          iterations, eps, maxeps, T[0], T[1]);
     }
 
     if( fOK && lvl > 0 ) {
@@ -2079,7 +2103,7 @@ void c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, cv::Mat1
 
 bool c_ecclm_inverse_compositional::align()
 {
-  INSTRUMENT_REGION("ecclm");
+  INSTRUMENT_REGION("");
 
   _failed = true;
 
@@ -3039,6 +3063,9 @@ bool serialize_ecch_options(c_config_setting section, bool save, c_ecch_options 
   SERIALIZE_OPTION(section, save, opts, max_iterations);
   SERIALIZE_OPTION(section, save, opts, minimum_image_size);
   SERIALIZE_OPTION(section, save, opts, maxlevel);
+  SERIALIZE_OPTION(section, save, opts, enable_image_normalization);
+  SERIALIZE_OPTION(section, save, opts, force_direct_methods_for_coarse_levels);
+
   return true;
 }
 

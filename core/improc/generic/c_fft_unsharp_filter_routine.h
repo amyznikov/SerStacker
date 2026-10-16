@@ -39,6 +39,13 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  bool initialize() final
+  {
+    _ignore_mask = true;
+    return true;
+  }
+
+protected:
   FILTER _filter = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
 
@@ -54,7 +61,7 @@ protected:
   } butterworth_filter;
 
 
-  double _gain_cutoff = 0.7;
+  //double _gain_cutoff = 0.7;
 };
 
 #endif /* __c_fft_unsharp_filter_routine_h__ */

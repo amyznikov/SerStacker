@@ -92,6 +92,9 @@ public:
   void set_update_step_scale(double v);
   double update_step_scale() const;
 
+  void set_enable_image_normalization(bool v);
+  bool enable_image_normalization() const;
+
   virtual void copy_parameters(const this_class & rhs);
 
   virtual bool set_reference_image(cv::InputArray reference_image,
@@ -129,25 +132,22 @@ protected:
   cv::Mat1b _current_mask;
 
   c_image_transform * _transform = nullptr;
-
-  enum ECC_INTERPOLATION_METHOD _interpolation = ECC_INTER_LINEAR;
-  bool _failed = false;
-
-  int _num_iterations  = 0;
-  int _max_iterations = 30;
-  float _update_step_scale = 1.f;
-
   double _max_eps = 0.2f;
   double _max_epse = 1e-4;
+  float _update_step_scale = 1.f;
+  int _max_iterations = 30;
+  enum ECC_INTERPOLATION_METHOD _interpolation = ECC_INTER_LINEAR;
+  bool _enable_image_normalization = true;
 
   double _eps = FLT_MAX;
   int _nparams = 0;
+  int _num_iterations  = 0;
+  bool _failed = false;
 
 };
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 // Coarse-To-Fine ECC registration using image pyramids
 
@@ -170,6 +170,8 @@ struct c_ecch_options
   int max_iterations = 50;
   int minimum_image_size = 16;
   int maxlevel = 0;
+  bool enable_image_normalization = true;
+  bool force_direct_methods_for_coarse_levels = true;
 };
 
 template<class RootObjectType>
@@ -187,21 +189,10 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
   ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
   ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
+  ctlbind(ctls, "normalize images", ctx(&S::enable_image_normalization), "Normalize images by subtracting mean and scaling by stdev");
+  ctlbind(ctls, "coarse_direct", ctx(&S::force_direct_methods_for_coarse_levels), "force_direct_methods_for_coarse_levels");
 }
 
-bool serialize_ecch_options(c_config_setting section, bool save,
-    c_ecch_options & opts);
-
-inline bool save_settings(c_config_setting section, const c_ecch_options & opts)
-{
-  return serialize_ecch_options(section, true,
-      const_cast<c_ecch_options & >(opts));
-}
-
-inline bool load_settings(c_config_setting section, c_ecch_options * opts)
-{
-  return serialize_ecch_options(section, false, *opts);
-}
 
 class c_ecch
 {
@@ -309,7 +300,7 @@ public:
       const cv::Size & nextSize) const;
 
 protected:
-  c_ecc_align::uptr create_ecc_align(double epsx) const;
+  c_ecc_align::uptr create_ecc_align(enum ECC_ALIGN_METHOD method, double epsx) const;
 
 protected:
   c_ecch_options _opts;
@@ -505,7 +496,6 @@ protected:
   cv::Mat2f _rmap;
   cv::Mat1f _rhs;
   cv::Mat1f Hp;
-  //cv::Mat1b _dummy_mask;
   double _last_rms = 0;
   double RMA = 0;
   double CMA = 0;
@@ -679,5 +669,20 @@ void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
 double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
 double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap);
+
+
+bool serialize_ecch_options(c_config_setting section, bool save,
+    c_ecch_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_ecch_options & opts)
+{
+  return serialize_ecch_options(section, true,
+      const_cast<c_ecch_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_ecch_options * opts)
+{
+  return serialize_ecch_options(section, false, *opts);
+}
 
 #endif /* __ecc2_h__ */

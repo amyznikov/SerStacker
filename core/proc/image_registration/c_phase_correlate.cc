@@ -367,8 +367,8 @@ void c_phase_correlate::generateFilters()
     });
   }
   else {
-    const double ilambda_x = (2.0 * M_PI * _gsigma) / cols;
-    const double ilambda_y = (2.0 * M_PI * _gsigma) / rows;
+    const double ilambda_x = (2.0 * CV_PI * _gsigma) / cols;
+    const double ilambda_y = (2.0 * CV_PI * _gsigma) / rows;
     const float ilambda_x2 = float(ilambda_x * ilambda_x);
     const float ilambda_y2 = float(ilambda_y * ilambda_y);
 
@@ -377,12 +377,12 @@ void c_phase_correlate::generateFilters()
         float * __restrict fltp = (float * )(filter_base + y * filter_stride);
 
         const int fy = (y > rows / 2) ? (rows - y) : y;
-        const float v2 = float(fy * fy) * ilambda_y2;
+        const float v2 = float(fy * fy * ilambda_y2);
 
         for( int x = 0; x < cols; ++x ) {
           const int fx = (x > cols / 2) ? (cols - x) : x;
           const int sign = ((x + y) & 1) ? -1 : 1;
-          const float u2 = float(fx * fx) * ilambda_x2;
+          const float u2 = float(fx * fx * ilambda_x2);
           const float rho2 = u2 + v2;
           fltp[x] = sign * rho2 * rho2 * std::exp(-rho2);
         }
@@ -413,7 +413,7 @@ bool c_phase_correlate::setupInputImage(cv::InputArray srcImage, cv::InputArray 
     cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
     cv::Size & outValidSize, cv::Point & outCropOffset,
     cv::Mat1f & outSingleSpectrum,
-    std::vector<cv::Mat1f> & outMultiSpectrums)
+    std::vector<cv::Mat1f> & outMultiSpectrums) const
 {
   INSTRUMENT_REGION("");
 

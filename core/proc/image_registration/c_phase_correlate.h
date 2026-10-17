@@ -176,7 +176,7 @@ protected: // internal helpers
       cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
       cv::Size & outValidSize, cv::Point & outCropOffset,
       cv::Mat1f & outSingleSpectrum,
-      std::vector<cv::Mat1f> & outMultiSpectrums);
+      std::vector<cv::Mat1f> & outMultiSpectrums) const;
 
 protected: // internal data
   cv::Size _fftSize;

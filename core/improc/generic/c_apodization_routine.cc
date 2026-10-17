@@ -14,7 +14,7 @@ bool c_apodization_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, edgeSize);
-    SERIALIZE_OPTION(settings, save, *this, lvls);
+    SERIALIZE_OPTION(settings, save, *this, zeroMean);
     return true;
   }
   return false;
@@ -23,7 +23,7 @@ bool c_apodization_routine::serialize(c_config_setting settings, bool save)
 void c_apodization_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "edgeSize [px]: ", CTL_CONTEXT(ctx, edgeSize), "");
-  ctlbind(ctls, "lvls: ", CTL_CONTEXT(ctx, lvls), "");
+  ctlbind(ctls, "zeroMean: ", CTL_CONTEXT(ctx, zeroMean), "");
 
 }
 
@@ -34,6 +34,20 @@ bool c_apodization_routine::process(cv::InputOutputArray image, cv::InputOutputA
   if ( apodizationWindow.size() != image.size() || edgeSize != oldEdgeSize ) {
     apodizationWindow = fftCreateEllipticalApodizationWindow(image.size(), oldEdgeSize = edgeSize);
   }
+
+  if ( zeroMean ) {
+    cv::Mat msk;
+    if ( !mask.empty() ) {
+      if ( mask.depth() == CV_8U ) {
+        msk = mask.getMat();
+      }
+      else {
+        cv::compare(mask, 0, msk, cv::CMP_GT);
+      }
+    }
+    cv::subtract(image, cv::mean(image), msk);
+  }
+
   multiplyImages(image, apodizationWindow, image);
   return true;
 }

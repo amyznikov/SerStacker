@@ -25,8 +25,8 @@ public:
 protected:
   cv::Mat1f apodizationWindow;
   double edgeSize = 15;
-  int lvls = 10;
   double oldEdgeSize = 15;
+  bool zeroMean = true;
 };
 
 #endif /* __c_apodization_routine_h__ */

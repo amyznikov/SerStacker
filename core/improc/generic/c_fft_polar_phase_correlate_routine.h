@@ -19,11 +19,16 @@ public:
       "fft_polar_phase_correlate", "Test");
 
   enum DISPLAY {
+    DISPLAY_CURRENT_IMAGE,
+    DISPLAY_REFERENCE_IMAGE,
     DISPLAY_CURRENT_SPECTRUM,
     DISPLAY_REFERENCE_SPECTRUM,
-    DISPLAY_CUREENT_SPECTRUM_LP,
-    DISPLAY_REFERENCE_SPECTRUM_LP,
-    DISPLAY_CORRELATION_MAP,
+    DISPLAY_CURRENT_ACM,
+    DISPLAY_REFERENCE_ACM,
+    DISPLAY_CURRENT_ACM_POLAR,
+    DISPLAY_REFERENCE_ACM_POLAR,
+    DISPLAY_CURRENT_ACM_POLAR_COUNTER,
+    DISPLAY_REFERENCE_ACM_POLAR_COUNTER,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -37,9 +42,10 @@ protected:
   struct Frame {
     cv::Mat1f image;
     cv::Mat1b mask;
-    cv::Mat1f imageSpec; // Magnitude in cartesian
-    cv::Mat1f imageSpecLogPolar; // Magnitude in log polar
-    cv::Mat1f imageSpecLogPolarSpec; // CCS
+    cv::Mat1f spec; // CCS
+    cv::Mat1f acm;
+    cv::Mat1f acmPolar;
+    cv::Mat1f acmPolarMask;
     cv::Size validSize;
     cv::Point cropOffset;
   };
@@ -63,15 +69,13 @@ protected:
 protected:
   Frame referenceFrame;
   Frame currentFrame;
-  cv::Mat1f vlap1, vlap2;
-  cv::Mat1f bp1, bp2;
+  cv::Mat1f vlap;
+  cv::Mat1f bp;
 
-  double _downscale_factor = 1;
-  double _gsimga1 = 3;
-  double _gsimga2 = 3;
-  const int numRadii = 256;
+  double _gsimga = 2;
   int _numAngles = 256;
-  DISPLAY _display = DISPLAY_CORRELATION_MAP;
+  DISPLAY _display = DISPLAY_CURRENT_ACM;
+  bool _maxPooling = false;
   bool _updateReference = true;
 
 };

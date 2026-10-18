@@ -272,7 +272,7 @@ void c_polar_phase_correlate::generateBandpassFilter1()
   if( _aalpha > 0 ) {
     const cv::Size apodizationSize((_fftSize.width + 1) / 2, (_fftSize.height + 1) / 2);
     if( _apodizationWindow.size() != apodizationSize ) {
-      generateTukeyApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
+      fftCreateTukeyApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
     }
   }
 }
@@ -427,26 +427,41 @@ bool c_polar_phase_correlate::setReferenceImage(cv::InputArray referenceImage, c
   return setupInputFrame(referenceImage, referenceMask, &_referenceFrame);
 }
 
-bool c_polar_phase_correlate::estimatePolarPeakY(const cv::Mat1f & correlationMap, double * outPeakY, double * outPeakVal)
+bool c_polar_phase_correlate::estimatePolarPeak(const cv::Mat1f & correlationMap,
+    cv::Point2f & outPeakPos, double & outPeakVal) const
 {
   const int rows = correlationMap.rows;
   const int cols = correlationMap.cols;
 
-  cv::Point maxPos;
-  double measuredPeakValue = 0;
-  cv::minMaxLoc(correlationMap, nullptr, &measuredPeakValue, nullptr, &maxPos);
-
-  const int x0 = maxPos.x;
-  const int y0 = maxPos.y;
-
   const int R = (_gsigma2 > 0) ? int(3 * _gsigma2) + 1 : 10;
 
+  const int search_half_width = 3 * R;
+  int roi_x = (cols / 2) - search_half_width;
+  int roi_w = 2 * search_half_width + 1;
+
+  if (roi_x < 0) {
+    roi_x = 0;
+  }
+  if (roi_x + roi_w > cols) {
+    roi_w = cols - roi_x;
+  }
+
+  const cv::Rect searchROI(roi_x, 0, roi_w, rows);
+
+  cv::Point maxPosInROI;
+  double measuredPeakValue = 0;
+  cv::minMaxLoc(correlationMap(searchROI), nullptr, &measuredPeakValue, nullptr, &maxPosInROI);
+
+  const int x0 = maxPosInROI.x + roi_x;
+  const int y0 = maxPosInROI.y;
+
   if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
-    CF_DEBUG("Bad maxPos in polar correlation: x=%d y=%d", maxPos.x, maxPos.y);
+    CF_DEBUG("Bad maxPos in polar correlation: x=%d y=%d", x0, y0);
     return false;
   }
 
   double sw = 0;
+  double sx = 0;
   double sy = 0;
 
   const double RSCALE = -3. / (double)(R * R);
@@ -462,6 +477,7 @@ bool c_polar_phase_correlate::estimatePolarPeakY(const cv::Mat1f & correlationMa
         const double v = intens - threshold;
         const double w = v * std::exp(((double)dx * dx + (double)dy * dy) * RSCALE);
         sw += w;
+        sx += w * dx;
         sy += w * dy;
       }
     }
@@ -472,10 +488,65 @@ bool c_polar_phase_correlate::estimatePolarPeakY(const cv::Mat1f & correlationMa
     return false;
   }
 
-  *outPeakY = y0 + (sy / sw);
-  *outPeakVal = measuredPeakValue;
+  outPeakPos.x = float(x0 + (sx / sw));
+  outPeakPos.y = float(y0 + (sy / sw));
+  outPeakVal = measuredPeakValue;
   return true;
 }
+
+//bool c_polar_phase_correlate::estimatePolarPeak(const cv::Mat1f & correlationMap,
+//    cv::Point2f & outPeakPos, double & outPeakVal) const
+//{
+//  const int rows = correlationMap.rows;
+//  const int cols = correlationMap.cols;
+//
+//  cv::Point maxPos;
+//  double measuredPeakValue = 0;
+//  cv::minMaxLoc(correlationMap, nullptr, &measuredPeakValue, nullptr, &maxPos);
+//
+//  const int x0 = maxPos.x;
+//  const int y0 = maxPos.y;
+//
+//  const int R = (_gsigma2 > 0) ? int(3 * _gsigma2) + 1 : 10;
+//
+//  if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
+//    CF_DEBUG("Bad maxPos in polar correlation: x=%d y=%d", maxPos.x, maxPos.y);
+//    return false;
+//  }
+//
+//  double sw = 0;
+//  double sx = 0;
+//  double sy = 0;
+//
+//  const double RSCALE = -3. / (double)(R * R);
+//  const size_t cmap_stride = correlationMap.step;
+//  const uint8_t * cmap_base = correlationMap.ptr(y0);
+//  const double threshold = std::sqrt(1.0 / correlationMap.total());
+//
+//  for (int dy = -R; dy <= R; ++dy) {
+//    const float * srcp = (const float *)(cmap_base + dy * cmap_stride);
+//    for (int dx = -R; dx <= R; ++dx) {
+//      const double intens = srcp[x0 + dx];
+//      if (intens > threshold) {
+//        const double v = intens - threshold;
+//        const double w = v * std::exp(((double)dx * dx + (double)dy * dy) * RSCALE);
+//        sw += w;
+//        sx += w * dx;
+//        sy += w * dy;
+//      }
+//    }
+//  }
+//
+//  if (sw <= std::numeric_limits<double>::min()) {
+//    CF_DEBUG("Bad sw in polar spot estimation = %g", sw);
+//    return false;
+//  }
+//
+//  outPeakPos.x = float(y0 + (sx / sw));
+//  outPeakPos.y = float(y0 + (sy / sw));
+//  outPeakVal = measuredPeakValue;
+//  return true;
+//}
 
 double c_polar_phase_correlate::compute()
 {
@@ -483,24 +554,6 @@ double c_polar_phase_correlate::compute()
     CF_ERROR("c_polar_phase_correlate: Frames are not initialized. Call setReferenceImage() and setCurrentImage() first.");
     return 0;
   }
-
-//  const cv::Size polarSize = _currentFrame.acmp.size();
-//  const int rows = polarSize.height;
-
-//  if (_vlap2.size() != polarSize || _bp2.size() != polarSize) {
-//    _vlap2 = fftGenerateDiscreteLaplacianFilter(polarSize, false);
-//    generateBandpassFilter2(polarSize);
-//  }
-
-//  if (!fftPPSDecompositionCCS(_currentFrame.acmp, _vlap2, _currentFrame.polarSpec, cv::noArray())) {
-//    CF_ERROR("fftPPSDecompositionCCS() failed for current polar frame");
-//    return 0;
-//  }
-//
-//  if (!fftPPSDecompositionCCS(_referenceFrame.acmp, _vlap2, _referenceFrame.polarSpec, cv::noArray())) {
-//    CF_ERROR("fftPPSDecompositionCCS() failed for reference polar frame");
-//    return 0;
-//  }
 
   double crossEnergy = 1.0;
 
@@ -521,9 +574,9 @@ double c_polar_phase_correlate::compute()
   cv::idft(_crossSpectrumPolar, _correlationMapPolar,
       cv::DFT_REAL_OUTPUT);
 
-  double peakY = 0;
+  cv::Point2f peakPos;
   double peakVal = 0;
-  if (!estimatePolarPeakY(_correlationMapPolar, &peakY, &peakVal)) {
+  if (!estimatePolarPeak(_correlationMapPolar, peakPos, peakVal)) {
     CF_ERROR("estimatePolarPeakY() failed to localize valid correlation spot");
     return 0;
   }
@@ -535,12 +588,11 @@ double c_polar_phase_correlate::compute()
     _correlationScore = peakVal / std::sqrt(crossEnergy);
   }
 
-  double delta_pixels = peakY;
-  if (delta_pixels > (double)(_currentFrame.acmp.rows / 2)) {
-    delta_pixels -= (double)(_currentFrame.acmp.rows);
-  }
+  const double delta_pixels = peakPos.y - _currentFrame.acmp.rows / 2;
+  const double delta_angle = delta_pixels * 0.5;
 
-  double delta_angle = delta_pixels * 0.5;
+  CF_DEBUG("peak: X=%g Y=%g Val=%g delta: %g px => %g deg", peakPos.x, peakPos.y, peakVal,
+      delta_pixels, delta_angle);
 
   return delta_angle;
 }

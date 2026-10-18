@@ -98,7 +98,7 @@ protected: // internal helpers
   void generateBandpassFilter1();
   void generateBandpassFilter2(const cv::Size & polarSize);
   bool setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame);
-  bool estimatePolarPeakY(const cv::Mat1f & correlationMap, double * outPeakY, double * outPeakVal);
+  bool estimatePolarPeak(const cv::Mat1f & correlationMap, cv::Point2f & outPeakPos, double & outPeakVal) const;
 
 protected: // internal data
   cv::Size _fftSize;

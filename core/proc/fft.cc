@@ -2296,7 +2296,7 @@ cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edg
  * @param alpha Window shape parameter in the range [0.0, 1.0].
  * @return cv::Mat1f Matrix of type CV_32FC1 with window coefficients ranging from 0.0 to 1.0.
 **/
-void generateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& targetFrameSize, double alpha)
+void fftCreateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& targetFrameSize, double alpha)
 {
   const int N_x = targetFrameSize.width;
   const int N_y = targetFrameSize.height;
@@ -2358,112 +2358,6 @@ void generateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& target
         }
       });
 }
-
-/**
- * CV_32FC1 CCS input -> CV_32FC2 Complex output
- * */
-//bool fftUnpackCCSSpectrum(cv::InputArray _ccsSpectrum, cv::OutputArray _complexSpectrum)
-//{
-//  if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
-//    CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
-//    return false;
-//  }
-//  if ( _complexSpectrum.fixedType() && _complexSpectrum.type() != CV_32FC2 ) {
-//    CF_ERROR("CV_32FC2 unpacked complex output spectrum destination expected");
-//    return false;
-//  }
-//
-//  const int rows = _ccsSpectrum.rows(); // M
-//  const int cols = _ccsSpectrum.cols(); // N
-//  const int half_rows = (rows + 1) / 2;
-//  const int half_cols = (cols + 1) / 2;
-//  const bool has_even_rows = (rows & 1) == 0;
-//  const bool has_even_cols = (cols & 1) == 0;
-//
-//  const cv::Mat1f ccsSpectrum = _ccsSpectrum.getMat();
-//  const uint8_t * ccs_base = ccsSpectrum.ptr();
-//  const size_t ccs_stride = ccsSpectrum.step;
-//
-//  cv::Mat2f complexSpectrum = createOutOfPlace(_ccsSpectrum, _complexSpectrum, rows, cols, CV_32FC2);
-//  uint8_t * cmplx_base = complexSpectrum.ptr();
-//  const size_t cmplx_stride = complexSpectrum.step;
-//
-//  parallel_for(0, rows, [=](const auto & range) {
-//    for (int y = rbegin(range); y < rend(range); ++y) {
-//      cv::Vec2f * __restrict cmplxp = (cv::Vec2f*)(cmplx_base + y * cmplx_stride);
-//
-//      // DC (X = 0) Packed vertically by IPL table rows
-//      if (y == 0) {
-//        const float * ccs_re = (const float *)(ccs_base + 0 * ccs_stride);
-//        cmplxp[0][0] = ccs_re[0]; // ReY_0,0 (DC)
-//        cmplxp[0][1] = 0.0f;    // ImY_0,0 always 0
-//      }
-//      else if (has_even_rows && y == rows / 2) {
-//        const float * ccs_re = (const float *)(ccs_base + (rows - 1) * ccs_stride);
-//        cmplxp[0][0] = ccs_re[0]; // ReY_M/2,0 Vertical Nyquist
-//        cmplxp[0][1] = 0.0f;            // ImY_M/2,0 always 0
-//      }
-//      else if (y < half_rows) {
-//        const float * ccs_re = (const float *)(ccs_base + (2 * y - 1) * ccs_stride);
-//        const float * ccs_im = (const float *)(ccs_base + (2 * y) * ccs_stride);
-//        cmplxp[0][0] = ccs_re[0]; // ReY_y,0
-//        cmplxp[0][1] = ccs_im[0];// ImY_y,0
-//      }
-//      else { // y > rows / 2 Lower conjugation half-plane
-//        const int sym_y = rows - y;
-//        const float * ccs_re = (const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride);
-//        const float * ccs_im = (const float *)(ccs_base + (2 * sym_y) * ccs_stride);
-//        cmplxp[0][0] = ccs_re[0];  // ReY_y,0 = ReY_sym_y,0
-//        cmplxp[0][1] = -ccs_im[0]; // ImY_y,0 = -ImY_sym_y,0
-//      }
-//
-//      // Inner columns iterate up to (cols + 1) / 2 exclusive,
-//      // so the Nyquist frequency (cols / 2) is not included when cols is even.
-//      // The left half from the current CCS row, right half from symmetric CCS row
-//      const float * ccsp = (const float * )(ccs_base + y * ccs_stride);
-//      const float * ccsp_sym = (const float *)(ccs_base + (y ? (rows - y) : 0 ) * ccs_stride);
-//      for (int x = 1; x < half_cols; ++x) {
-//        const int sym_x = cols - x;
-//        cmplxp[x][0] = ccsp[2 * x - 1]; // Re
-//        cmplxp[x][1] = ccsp[2 * x];     // Im
-//        cmplxp[sym_x][0] = ccsp_sym[2 * x - 1];  // Re the same as symmetric element
-//        cmplxp[sym_x][1] = -ccsp_sym[2 * x];     // Im conjugation
-//      }
-//
-//      // Nyquist column X = N/2 packed vertically in the last column N-1
-//      if (has_even_cols) {
-//        const int last_ccs_col = cols - 1;
-//        if (y == 0) {
-//          const float * ccs_re = (const float *)(ccs_base + 0 * ccs_stride);
-//          cmplxp[cols / 2][0] = ccs_re[last_ccs_col]; // ReY_0,N/2
-//          cmplxp[cols / 2][1] = 0.0f;
-//        }
-//        else if (has_even_rows && y == rows / 2) {
-//          const float * ccs_re = (const float *)(ccs_base + (rows - 1) * ccs_stride);
-//          cmplxp[cols / 2][0] = ccs_re[last_ccs_col]; // ReY_M/2,N/2
-//          cmplxp[cols / 2][1] = 0.0f;
-//        }
-//        else if (y < half_rows) {
-//          const float * ccs_re = (const float *)(ccs_base + (2 * y - 1) * ccs_stride);
-//          const float * ccs_im = (const float *)(ccs_base + (2 * y) * ccs_stride);
-//          cmplxp[cols / 2][0] = ccs_re[last_ccs_col]; // ReY_y,N/2
-//          cmplxp[cols / 2][1] = ccs_im[last_ccs_col]; // ImY_y,N/2
-//        }
-//        else {
-//          const int sym_y = rows - y;
-//          const float * ccs_re = (const float *)(ccs_base + (2 * sym_y - 1) * ccs_stride);
-//          const float * ccs_im = (const float *)(ccs_base + (2 * sym_y) * ccs_stride);
-//          cmplxp[cols / 2][0] = ccs_re[last_ccs_col];  // ReY_y,N/2
-//          cmplxp[cols / 2][1] = -ccs_im[last_ccs_col]; // ImY_y,N/2 complex conjugation
-//        }
-//      }
-//
-//    }
-//  });
-//
-//  assignOutOfPlace(_complexSpectrum, complexSpectrum);
-//  return true;
-//}
 
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output with optional DC centering

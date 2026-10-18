@@ -404,7 +404,7 @@ void c_phase_correlate::generateFilters()
   }
 
   if ( _aalpha > 0 &&  _apodizationWindow.size() != _fftSize ) {
-    generateTukeyApodizationWindow(_apodizationWindow, _fftSize, _aalpha);
+    fftCreateTukeyApodizationWindow(_apodizationWindow, _fftSize, _aalpha);
   }
 }
 

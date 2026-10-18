@@ -418,7 +418,7 @@ bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
  * Input:  CV_32FC1 CCS Packed Spectrum
  * Output: CV_32FC1 Polar Spectrum Magnitude
  * */
-bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _outputMagnitude, bool centerDC)
+bool fftSpectrumMagnitudeCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _outputMagnitude, bool centerDC)
 {
   if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
     CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
@@ -579,7 +579,7 @@ bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _outpu
  * Input:  CV_32FC1 CCS Packed Spectrum
  * Output: CV_32FC1 Spectrum Power
  * */
-bool fftCCSSpectrumPower(cv::InputArray _ccsSpectrum, cv::OutputArray _outputPower, bool centerDC)
+bool fftSpectrumPowerCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _outputPower, bool centerDC)
 {
   if( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
     CF_ERROR("CV_32FC1 CCS packed input spectrum expected");
@@ -847,7 +847,7 @@ bool fftSpectrumToPolar(cv::InputArray _cart, cv::OutputArray _polar)
  * Input:  CV_32FC1 CCS Packed Spectrum
  * Output: CV_32FC2 Polar Spectrum (Channel 0: Magnitude, Channel 1: Phase)
  * */
-bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum, bool centerDC)
+bool fftSpectrumToPolarCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum, bool centerDC)
 {
   if ( _ccsSpectrum.empty() || _ccsSpectrum.type() != CV_32FC1 ) {
     CF_ERROR("CV_32FC1 CCS packed input spectrum expected");

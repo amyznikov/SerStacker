@@ -90,7 +90,6 @@ public:
   // Compute phase correlation and return correlation score and translation vector
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
-  double computeCorrelationMap();
   double compute(cv::Vec2f & outputTranslation);
 
   // valid after compute()
@@ -171,6 +170,7 @@ public: // public access for debug & visualization purposes
 
 protected: // internal helpers
   void generateFilters();
+  double computeCorrelationMap();
 
   bool setupInputImage(cv::InputArray srcImage, cv::InputArray srcMask,
       cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,

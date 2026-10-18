@@ -116,7 +116,7 @@ protected:
 
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);
-  bool setCurrentImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
+  bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
 
 protected:

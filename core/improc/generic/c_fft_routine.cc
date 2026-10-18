@@ -157,7 +157,7 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
           fftSpectrumMagnitude(channels[c], channels[c], _centerDC);
         }
         else {
-          fftCCSSpectrumMagnitude(channels[c], channels[c], _centerDC);
+          fftSpectrumMagnitudeCCS(channels[c], channels[c], _centerDC);
         }
       }
       break;
@@ -168,7 +168,7 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
           fftSpectrumPower(channels[c], channels[c], _centerDC);
         }
         else {
-          fftCCSSpectrumPower(channels[c], channels[c], _centerDC);
+          fftSpectrumPowerCCS(channels[c], channels[c], _centerDC);
         }
       }
       break;
@@ -177,7 +177,7 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
     case DisplayPolar:
       for( int c = 0; c < cn; ++c ) {
         if ( channels[c].channels() == 1 ) {
-          fftCCSSpectrumToPolar(channels[c], channels[c], _centerDC);
+          fftSpectrumToPolarCCS(channels[c], channels[c], _centerDC);
         }
         else {
           fftSpectrumToPolar(channels[c], channels[c]);
@@ -212,7 +212,7 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
           fftSpectrumMagnitude(channels[c], channels[c], true);
         }
         else {
-          fftCCSSpectrumMagnitude(channels[c], channels[c], true);
+          fftSpectrumMagnitudeCCS(channels[c], channels[c], true);
         }
 
         if ( polarReamp.size() != channels[c].size() ) {

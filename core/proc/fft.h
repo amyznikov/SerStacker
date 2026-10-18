@@ -37,19 +37,19 @@ bool fftSpectrumMagnitude(cv::InputArray cmplxSpectrum,
     cv::OutputArray outputSpectrumMagnitude,
     bool swapQuadrants = false);
 
-/* Power = Re^2 + Im^2 */
-bool fftSpectrumPower(cv::InputArray cmplxSpectrum,
-    cv::OutputArray outputSpectrumPower,
-    bool swapQuadrants = false);
-
 /**
  * CV_32FC1 CCS input -> CV_32FC1 Polar Magnitude output
  * Single-Pass CCS Unpack + Polar Magnitude Conversion
  * Input:  CV_32FC1 CCS Packed Spectrum
  * Output: CV_32FC1 Polar Spectrum Magnitude
  * */
-bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _polarMagnitude,
+bool fftSpectrumMagnitudeCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarMagnitude,
     bool centerDC = false);
+
+/* Power = Re^2 + Im^2 */
+bool fftSpectrumPower(cv::InputArray cmplxSpectrum,
+    cv::OutputArray outputSpectrumPower,
+    bool swapQuadrants = false);
 
 /**
  * CV_32FC1 CCS input -> CV_32FC1 Power output
@@ -57,7 +57,7 @@ bool fftCCSSpectrumMagnitude(cv::InputArray _ccsSpectrum, cv::OutputArray _polar
  * Input:  CV_32FC1 CCS Packed Spectrum
  * Output: CV_32FC1 Spectrum Power
  * */
-bool fftCCSSpectrumPower(cv::InputArray _ccsSpectrum, cv::OutputArray _polarPower,
+bool fftSpectrumPowerCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarPower,
     bool centerDC = false);
 
 bool fftSpectrumPhase(cv::InputArray src,
@@ -90,7 +90,7 @@ bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPol
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Polar (mag/phase) output
  * */
-bool fftCCSSpectrumToPolar(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
+bool fftSpectrumToPolarCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
     bool centerDC = false);
 
 

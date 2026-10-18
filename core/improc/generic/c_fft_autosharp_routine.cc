@@ -67,7 +67,7 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     case FFT_AUTOSHARP_DISPLAY_S_SPECTRUM:
     case FFT_AUTOSHARP_DISPLAY_P_SPECTRUM:
     case FFT_AUTOSHARP_DISPLAY_RESTORED_SPECTRUM:
-      fftCCSSpectrumToPolar(image, image, _centerDC);
+      fftSpectrumToPolarCCS(image, image, _centerDC);
       break;
     case FFT_AUTOSHARP_DISPLAY_INVERSE_FILTER:
       if ( _centerDC ) {

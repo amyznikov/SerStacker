@@ -83,7 +83,7 @@ bool c_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
 
 bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask)
 {
-  INSTRUMENT_REGION("c_phase_correlate_routine");
+  INSTRUMENT_REGION("");
   if ( currentImage.empty() ) {
     CF_ERROR("currentImage is empty");
     return false;
@@ -115,7 +115,7 @@ bool c_phase_correlate_routine::setCurrentImage(cv::InputArray currentImage, cv:
 
 bool c_phase_correlate_routine::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
-  INSTRUMENT_REGION("c_phase_correlate_routine");
+  INSTRUMENT_REGION("");
   if ( referenceImage.empty() ) {
     CF_ERROR("referenceImage is empty");
     return false;
@@ -157,7 +157,7 @@ static void shiftImage(cv::InputArray src, cv::OutputArray dst, const cv::Vec2f&
 
 bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  INSTRUMENT_REGION("c_phase_correlate_routine");
+  INSTRUMENT_REGION("");
 
   if ( (!_initialized || _updateReferenceImage) )  {
     if ( !reinitialize(image.size())) {

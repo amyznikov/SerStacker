@@ -10,6 +10,7 @@
 #define __c_fft_polar_phase_correlate_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/image_registration/c_polar_phase_correlate.h>
 
 class c_fft_polar_phase_correlate_routine :
     public c_image_processor_routine
@@ -27,9 +28,64 @@ public:
     DISPLAY_REFERENCE_ACM,
     DISPLAY_CURRENT_ACM_POLAR,
     DISPLAY_REFERENCE_ACM_POLAR,
-    DISPLAY_CURRENT_ACM_POLAR_COUNTER,
-    DISPLAY_REFERENCE_ACM_POLAR_COUNTER,
+    DISPLAY_CURRENT_ACM_POLAR_SPEC,
+    DISPLAY_REFERENCE_ACM_POLAR_SPEC,
+    DISPLAY_FINAL_CROSS_SPECTRUM,
+    DISPLAY_FINAL_CORRELATION_MAP,
   };
+
+  void set_gsigma(double v)
+  {
+    opts.gsigma1 = v;
+    _initialized = false;
+  }
+  double gsigma() const
+  {
+    return opts.gsigma1;
+  }
+
+  void set_gsigma2(double v)
+  {
+    opts.gsigma2 = v;
+    _initialized = false;
+  }
+  double gsigma2() const
+  {
+    return opts.gsigma2;
+  }
+
+  void set_apodization(double v)
+  {
+    opts.apodization = v;
+    _initialized = false;
+  }
+
+  double apodization() const
+  {
+    return opts.apodization;
+  }
+
+  void set_whitenSpecs(bool v)
+  {
+    opts.whitenSpecs = v;
+    _initialized = false;
+  }
+
+  bool whitenSpecs() const
+  {
+    return opts.whitenSpecs;
+  }
+
+  void set_maxPooling(bool v)
+  {
+    opts.maxPooling = v;
+    _initialized = false;
+  }
+
+  bool maxPooling() const
+  {
+    return opts.maxPooling;
+  }
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -39,45 +95,22 @@ public:
       double downscaleFactor);
 
 protected:
-  struct Frame {
-    cv::Mat1f image;
-    cv::Mat1b mask;
-    cv::Mat1f spec; // CCS
-    cv::Mat1f acm;
-    cv::Mat1f acmPolar;
-    cv::Mat1f acmPolarMask;
-    cv::Size validSize;
-    cv::Point cropOffset;
-  };
-
-  bool setupInputImage(cv::InputArray srcImage, cv::InputArray srcMask,const cv::Mat1f & VLAP,
-      cv::Mat1f & outScaledImage, cv::Mat1b & outScaledMask,
-      cv::Size & outValidSize, cv::Point & outCropOffset,
-      cv::Mat1f & outSingleSpectrum) const;
-
-  bool setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask,
-      Frame * frame) const;
-
-  static void generateBandpassFilter1(cv::Mat1f & outputFilter,
-      const cv::Size & fftSize,
-      double gsigma);
-
-  static void generateBandpassFilter2(cv::Mat1f & outputFilter,
-      const cv::Size & fftSize,
-      double gsigma);
+  bool reinitialize(const cv::Size & expectedFrameSize);
+  bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
+  bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
 
 protected:
-  Frame referenceFrame;
-  Frame currentFrame;
-  cv::Mat1f vlap;
-  cv::Mat1f bp;
+  c_polar_phase_correlate_options opts;
+  c_polar_phase_correlate pc;
 
-  double _gsimga = 2;
-  int _numAngles = 256;
+  cv::Mat _currentImage, _referenceImage;
+  cv::Mat _currentMask, _referenceMask;
+  bool _initialized = false;
+
   DISPLAY _display = DISPLAY_CURRENT_ACM;
-  bool _maxPooling = false;
+  bool _printScores = false;
+  bool _printDiagnostics = false;
   bool _updateReference = true;
-
 };
 
 #endif /* __c_fft_polar_phase_correlate_routine_h__ */

@@ -2230,13 +2230,14 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
   return mask;
 }
 
-cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edgeSize)
+void fftCreateEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size & size, double edgeSize)
 {
-  cv::Mat1f W(size);
+  _dst.create(size, CV_32FC1);
 
+  cv::Mat1f W = _dst.getMatRef();
   if (edgeSize <= 0.0) {
     W.setTo(1.0f);
-    return W;
+    return;
   }
 
   const float cx = (size.width - 1) / 2.0f;
@@ -2287,7 +2288,75 @@ cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edg
     }
   });
 
-  return W;
+}
+
+void fftCreateSuperEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size & size, double edgeSize)
+{
+  _dst.create(size, CV_32FC1);
+
+  cv::Mat1f W = _dst.getMatRef();
+  if (edgeSize <= 0.0) {
+    W.setTo(1.0f);
+    return;
+  }
+
+  const float cx = (size.width - 1) / 2.0f;
+  const float cy = (size.height - 1) / 2.0f;
+
+  const float A = size.width / 2.0f;
+  const float B = size.height / 2.0f;
+
+  const float inv_A2 = 1.0f / (A * A);
+  const float inv_B2 = 1.0f / (B * B);
+
+  const float CV_PI_F = 3.1415926535f;
+  const float inv_edgeSize = 1.0f / static_cast<float>(edgeSize);
+
+  uint8_t * w_base = W.data;
+  const size_t w_stride = W.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict wp = reinterpret_cast<float *>(w_base + y * w_stride);
+
+      const float dy = y - cy;
+      const float dy2 = dy * dy;
+      const float norm_y2 = dy2 * inv_B2;
+      const float norm_y4 = norm_y2 * norm_y2; // (y/B)^4
+
+      for ( int x = 0; x < size.width; ++x ) {
+        const float dx = x - cx;
+        const float dx2 = dx * dx;
+        const float norm_x2 = dx2 * inv_A2;
+        const float norm_x4 = norm_x2 * norm_x2; // (x/A)^4
+
+        // r_super4 takes the value 1.0 strictly on the boundary of the superellipse
+        const float r_super4 = norm_x4 + norm_y4;
+        if (r_super4 >= 1.0f) {
+          wp[x] = 0.0f;
+          continue;
+        }
+
+        const float R = std::sqrt(dx2 + dy2);
+
+        // Geometric distance to the boundary of a superellipse
+        // Equivalent to taking the 4th root: r_super = sqrt(sqrt(r_super4))
+        const float r_super = std::sqrt(std::sqrt(r_super4));
+        const float R_ext = R / (r_super + 1e-6f);
+
+        const float R_int = std::max(0.0f, R_ext - static_cast<float>(edgeSize));
+
+        if ( R <= R_int ) {
+          wp[x] = 1.0f;
+        }
+        else {
+          const float d_pixels = R - R_int;
+          const float arg = d_pixels * inv_edgeSize * CV_PI_F;
+          wp[x] = 0.5f * (1.0f + std::cos(arg));
+        }
+      }
+    }
+  });
 }
 
 

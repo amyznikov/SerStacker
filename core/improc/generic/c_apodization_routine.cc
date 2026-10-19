@@ -27,12 +27,10 @@ void c_apodization_routine::getcontrols(c_control_list & ctls, const ctlbind_con
 
 }
 
-extern cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edgeSize);
-
 bool c_apodization_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if ( apodizationWindow.size() != image.size() || edgeSize != oldEdgeSize ) {
-    apodizationWindow = fftCreateEllipticalApodizationWindow(image.size(), oldEdgeSize = edgeSize);
+    fftCreateSuperEllipticalApodizationWindow(apodizationWindow, image.size(), oldEdgeSize = edgeSize);
   }
 
   if ( zeroMean ) {
@@ -45,7 +43,7 @@ bool c_apodization_routine::process(cv::InputOutputArray image, cv::InputOutputA
         cv::compare(mask, 0, msk, cv::CMP_GT);
       }
     }
-    cv::subtract(image, cv::mean(image), msk);
+    cv::subtract(image, cv::mean(image, msk), image);
   }
 
   multiplyImages(image, apodizationWindow, image);

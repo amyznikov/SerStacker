@@ -287,7 +287,7 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     // Check if apodization suppresses spectral rays: CONFIRMED
     // Keep rays visible for debug purposes.
     if ( APW.size() != img.size() ) {
-      APW = fftCreateEllipticalApodizationWindow(img.size(), 100);
+      fftCreateEllipticalApodizationWindow(APW, img.size(), 100);
     }
     cv::multiply(img, APW, img);
   }

@@ -141,9 +141,8 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size);
  * @return cv::Mat1f Matrix of type CV_32FC1 with window coefficients ranging from 0.0 to 1.0.
 **/
 void fftCreateTukeyApodizationWindow(cv::OutputArray _dst, const cv::Size& targetFrameSize, double alpha);
-
-
-cv::Mat1f fftCreateEllipticalApodizationWindow(const cv::Size & size, double edgeSize);
+void fftCreateSuperEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size & size, double edgeSize);
+void fftCreateEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size & size, double edgeSize);
 
 /**
  * @brief Generates an inverse frequency-domain cross-shaped filter to suppress rectangular window artifacts.

@@ -30,8 +30,13 @@ public:
     DISPLAY_REFERENCE_ACM_POLAR,
     DISPLAY_CURRENT_ACM_POLAR_SPEC,
     DISPLAY_REFERENCE_ACM_POLAR_SPEC,
-    DISPLAY_FINAL_CROSS_SPECTRUM,
-    DISPLAY_FINAL_CORRELATION_MAP,
+    DISPLAY_POLAR_CROSS_SPECTRUM,
+    DISPLAY_POLAR_CORRELATION_MAP,
+
+    DISPLAY_rotatedCurrentImage,
+    DISPLAY_rotatedCurrentSpec,
+    DISPLAY_crossSpectrum,
+    DISPLAY_correlationMap,
   };
 
   void set_gsigma(double v)
@@ -65,15 +70,26 @@ public:
     return opts.apodization;
   }
 
-  void set_whitenSpecs(bool v)
+  void set_whitenPolarSpecs(bool v)
   {
-    opts.whitenSpecs = v;
+    opts.whitenPolarSpecs = v;
     _initialized = false;
   }
 
-  bool whitenSpecs() const
+  bool whitenPolarSpecs() const
   {
-    return opts.whitenSpecs;
+    return opts.whitenPolarSpecs;
+  }
+
+  void set_whitenTransSpecs(bool v)
+  {
+    opts.whitenTransSpecs = v;
+    _initialized = false;
+  }
+
+  bool whitenTransSpecs() const
+  {
+    return opts.whitenTransSpecs;
   }
 
   void set_maxPooling(bool v)

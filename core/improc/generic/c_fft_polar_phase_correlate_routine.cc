@@ -26,18 +26,24 @@ template<>
 const c_enum_member* members_of<c_fft_polar_phase_correlate_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
-      { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_IMAGE, "REFERENCE_IMAGE" },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM, "CURRENT_SPECTRUM", },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_rotatedCurrentImage, "rotatedCurrentImage" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_SPECTRUM, "REFERENCE_SPECTRUM" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM, "CURRENT_SPECTRUM", },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_rotatedCurrentSpec, "rotatedCurrentSpec" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM, "CURRENT_ACM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_ACM, "REFERENCE_ACM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM_POLAR, "CURRENT_ACM_POLAR" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_ACM_POLAR, "REFERENCE_ACM_POLAR" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM_POLAR_SPEC, "CURRENT_ACM_POLAR_SPEC" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_ACM_POLAR_SPEC, "REFERENCE_ACM_POLAR_SPEC" },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_FINAL_CROSS_SPECTRUM, "FINAL_CROSS_SPECTRUM" },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_FINAL_CORRELATION_MAP, "FINAL_CORRELATION_MAP" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_POLAR_CROSS_SPECTRUM, "POLAR_CROSS_SPECTRUM" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_POLAR_CORRELATION_MAP, "POLAR_CORRELATION_MAP" },
+
+      { c_fft_polar_phase_correlate_routine::DISPLAY_crossSpectrum, "crossSpectrum" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_correlationMap, "correlationMap" },
+
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM, },
   };
   return members;
@@ -131,7 +137,8 @@ void c_fft_polar_phase_correlate_routine::getcontrols(c_control_list & ctls, con
   ctlbind(ctls, "gsigma1", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
   ctlbind(ctls, "gsigma2", ctx,  &this_class::gsigma2, &this_class::set_gsigma2, "");
   ctlbind(ctls, "apodization", ctx,  &this_class::apodization, &this_class::set_apodization, "");
-  ctlbind(ctls, "whitenSpecs", ctx,  &this_class::whitenSpecs, &this_class::set_whitenSpecs, "");
+  ctlbind(ctls, "whitenPolarSpecs", ctx,  &this_class::whitenPolarSpecs, &this_class::set_whitenPolarSpecs, "");
+  ctlbind(ctls, "whitenTransSpecs", ctx,  &this_class::whitenTransSpecs, &this_class::set_whitenTransSpecs, "");
   ctlbind(ctls, "maxPooling", ctx,  &this_class::maxPooling, &this_class::set_maxPooling, "");
   ctlbind(ctls, "updateReference", ctx(&this_class::_updateReference), "updateReference");
 }
@@ -207,12 +214,28 @@ bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv
       fftSpectrumMagnitudeCCS(pc.referenceFrame().polarSpec, image, true);
       mask.release();
       break;
-    case DISPLAY_FINAL_CROSS_SPECTRUM:
+    case DISPLAY_POLAR_CROSS_SPECTRUM:
       fftSpectrumMagnitudeCCS(pc.crossSpectrumPolar(), image, true);
       mask.release();
       break;
-    case DISPLAY_FINAL_CORRELATION_MAP:
+    case DISPLAY_POLAR_CORRELATION_MAP:
       pc.correlationMapPolar().copyTo(image);
+      mask.release();
+      break;
+    case DISPLAY_rotatedCurrentImage:
+      pc.rotatedCurrentImage().copyTo(image);
+      mask.release();
+      break;
+    case DISPLAY_rotatedCurrentSpec:
+      pc.rotatedCurrentSpec().copyTo(image);
+      mask.release();
+      break;
+    case DISPLAY_crossSpectrum:
+      fftSpectrumMagnitudeCCS(pc.crossSpectrum(), image, true);
+      mask.release();
+      break;
+    case DISPLAY_correlationMap:
+      pc.correlationMap().copyTo(image);
       mask.release();
       break;
   }

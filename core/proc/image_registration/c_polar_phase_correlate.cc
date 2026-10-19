@@ -113,18 +113,21 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
   const float cx = acmSize.width / 2;
   const float cy = acmSize.height / 2;
 
-  const int rmin = (int) (nAngles / (2 * CV_PI));
+  const int rmin = (int) (2 * nAngles / (3 * CV_PI));
   const int rmax = std::max(acmSize.width, acmSize.height) / 2;
-  const int mscale = rmax / 4;
+
+  const float diff_sqrt = std::sqrt(float(rmax)) - std::sqrt(float(rmin));
+  const float mscale = (diff_sqrt > 0.01f) ? ((float(rmax) * rmax) / (4.f * diff_sqrt * diff_sqrt)) : 1.f;
+
   const int sqrt_rmin = std::sqrt(rmin * mscale);
   const int sqrt_rmax = std::sqrt(rmax * mscale);
   const int sqrt_range = sqrt_rmax - sqrt_rmin;
   const int nRadii = getOptimalFFTSizeDown((int)sqrt_range);
-  CF_DEBUG("rmin=%d rmax=%d sqrt_rmin = %d sqrt_rmax = %d sqrt_range = %d nRadii=%d",
-      rmin, rmax, sqrt_rmin, sqrt_rmax, sqrt_range, nRadii);
 
-  const float rscale = float (nRadii - 1) / (sqrt_rmax - sqrt_rmin);
   const float tscale = float((nAngles) / (CV_PI));
+  const float rscale = float (nRadii - 1) / (sqrt_rmax - sqrt_rmin);
+  const float rscale2 = rscale * std::sqrt(mscale);
+  const float rmin_offset = sqrt_rmin * rscale;
 
   const cv::Size lpSize(nRadii, nAngles);
 
@@ -154,7 +157,7 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
       const float dx = x - cx;
       const float dx2 = dx * dx;
       const float r = std::sqrt(dx2 + dy2);
-      const float rf = (std::sqrt(r * mscale) - sqrt_rmin) * rscale;
+      const float rf = std::sqrt(r) * rscale2 - rmin_offset;
       if ( rf < 0.f || rf >= float(nRadii - 1) ) {
         continue;
       }
@@ -194,6 +197,7 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
   divideImages(padded_acmplr, padded_cntr, padded_acmplr);
   acmplr = padded_acmplr(cv::Rect(0, 1, nRadii, nAngles));
 }
+
 #endif
 
 static bool packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Mat1f & outImage,
@@ -522,8 +526,8 @@ bool c_polar_phase_correlate::estimatePolarPeak(const cv::Mat1f & correlationMap
 
   const int R = (_gsigma2 > 0) ? int(3 * _gsigma2) + 1 : 5;
 
-  const int search_half_width = 2 * R;
-  int roi_x = (cols / 2) - search_half_width;
+  const int search_half_width = R;
+  int roi_x = cols / 2 - search_half_width;
   int roi_w = 2 * search_half_width + 1;
 
   if (roi_x < 0) {

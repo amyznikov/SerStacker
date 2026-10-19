@@ -200,6 +200,36 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
 
 #endif
 
+static cv::Scalar estimateMedian(cv::InputArray image)
+{
+  const cv::Mat1f src = image.getMat();
+
+  const int stepX = std::max(1, src.cols / 64);
+  const int stepY = std::max(1, src.rows / 64);
+
+  std::vector<float> backgroundPixels;
+  backgroundPixels.reserve(4096); // 64 * 64
+
+  for( int y = 0; y < src.rows; y += stepY ) {
+    const float * row = src[y];
+    for( int x = 0; x < src.cols; x += stepX ) {
+      backgroundPixels.push_back(row[x]);
+    }
+  }
+
+  if( backgroundPixels.empty() ) {
+    return cv::Scalar(0);
+  }
+
+  const size_t median_idx = backgroundPixels.size() / 2;
+  std::nth_element(backgroundPixels.begin(),
+      backgroundPixels.begin() + median_idx,
+      backgroundPixels.end());
+
+  return cv::Scalar(backgroundPixels[median_idx]);
+}
+
+
 static bool packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Mat1f & outImage,
     const cv::Size & fftSize,
     cv::Rect & outputValidROI,
@@ -294,7 +324,6 @@ void c_polar_phase_correlate::release()
 //  _referenceSpectrum.release();
 //  _crossSpectrum.release();
 //  _correlationMap.release();
-  _vlap1.release();
   _apodizationWindow.release();
   _initialized = false;
 }
@@ -356,10 +385,6 @@ void c_polar_phase_correlate::generateBandpassFilter1()
   }
 
   cv::multiply(_bp1, 1. / cv::norm(_bp1, cv::NORM_L1), _bp1);
-
-  if ( _vlap1.size() != _fftSize ) {
-    _vlap1 = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
-  }
 
   if( _aalpha > 0 ) {
     //const cv::Size apodizationSize((_fftSize.width + 1) / 2, (_fftSize.height + 1) / 2);
@@ -423,7 +448,7 @@ void c_polar_phase_correlate::generateBandpassFilter2(const cv::Size & polarSize
 
 bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame)
 {
-  const cv::Size fftSize = _vlap1.size();
+  const cv::Size fftSize = _fftSize;
   if( fftSize.empty() ) {
     CF_ERROR("fftSize is empty");
     return false;
@@ -463,7 +488,8 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
     cv::resize(smallImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
   }
 
-  cv::subtract(smallImage, cv::mean(smallImage), smallImage);
+  // cv::subtract(smallImage, cv::mean(smallImage), smallImage);
+  cv::subtract(smallImage, estimateMedian(smallImage), smallImage);
 
   packScaledImageForPhaseCorreation(smallImage,
       frame->image, _fftSize,
@@ -475,11 +501,8 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
     cv::multiply(frame->image(roi), _apodizationWindow, frame->image(roi));
   }
 
-  // Call DFT with Virginie Moizan Periodic + Smooth decomposition in OpenCV CCS format
-  if( !fftPPSDecompositionCCS(frame->image, _vlap1, frame->spec, cv::noArray()) ) {
-    CF_ERROR("fftPPSDecompositionCCS(frame->image) fails");
-    return false;
-  }
+  // Output is CCS packed spectrum
+  cv::dft(frame->image, frame->spec, cv::DFT_REAL_OUTPUT);
 
   // Compute auto cross spectrum in CCS
   if ( fftAutoCrossSpectrumWeightedCCS(frame->spec, _bp1, frame->autospec) <= 0 ) {
@@ -654,10 +677,8 @@ bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::P
     _currentFrame.image.copyTo(_rotatedCurrentImage);
   }
 
-  if( !fftPPSDecompositionCCS(_rotatedCurrentImage, _vlap1, _rotatedCurrentSpec, cv::noArray()) ) {
-    CF_ERROR("fftPPSDecompositionCCS() failed in computeTranslation");
-    return false;
-  }
+  // Output is CCS packed spectrum
+  cv::dft(_rotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
 
   if( _whitenTransSpecs ) {
     if( !fftPhaseCorrelateWeightedCCS(_rotatedCurrentSpec, _referenceFrame.spec, _bp1, _crossSpectrum) ) {

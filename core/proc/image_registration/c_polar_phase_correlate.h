@@ -134,7 +134,6 @@ protected: // Cached data
   Frame _referenceFrame;
   Frame _currentFrame;
   cv::Mat1f _apodizationWindow;
-  cv::Mat1f _vlap1;
   cv::Mat1f _vlap2;
   cv::Mat1f _bp1;
   cv::Mat1f _bp2;

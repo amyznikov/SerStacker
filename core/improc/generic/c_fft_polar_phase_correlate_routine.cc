@@ -53,6 +53,11 @@ const c_enum_member* members_of<c_fft_polar_phase_correlate_routine::DISPLAY>()
   return members;
 }
 
+void c_fft_polar_phase_correlate_routine::parameter_changed()
+{
+  _initialized = false;
+}
+
 bool c_fft_polar_phase_correlate_routine::reinitialize(const cv::Size & expectedFrameSize)
 {
   return (_initialized = pc.setup(expectedFrameSize, opts));
@@ -138,14 +143,7 @@ bool c_fft_polar_phase_correlate_routine::serialize(c_config_setting settings, b
 void c_fft_polar_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", ctx(&this_class::_display), "display");
-  ctlbind(ctls, "gsigma1", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
-  ctlbind(ctls, "gsigma2", ctx,  &this_class::gsigma2, &this_class::set_gsigma2, "");
-  ctlbind(ctls, "apodization", ctx,  &this_class::apodization, &this_class::set_apodization, "");
-  ctlbind(ctls, "whitenPolarSpecs", ctx,  &this_class::whitenPolarSpecs, &this_class::set_whitenPolarSpecs, "");
-  ctlbind(ctls, "whitenTransSpecs", ctx,  &this_class::whitenTransSpecs, &this_class::set_whitenTransSpecs, "");
-  ctlbind(ctls, "maxPooling", ctx,  &this_class::maxPooling, &this_class::set_maxPooling, "");
-  ctlbind(ctls, "estimateRotation", ctx,  &this_class::estimateRotation, &this_class::set_estimateRotation, "");
-  ctlbind(ctls, "estimateTranslation", ctx,  &this_class::estimateTranslation, &this_class::set_estimateTranslation, "");
+  ctlbind(ctls, CTL_CONTEXT(ctx, opts));
   ctlbind(ctls, "updateReference", ctx(&this_class::_updateReference), "updateReference");
 }
 

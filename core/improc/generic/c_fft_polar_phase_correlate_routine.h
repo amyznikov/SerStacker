@@ -41,92 +41,6 @@ public:
     DISPLAY_alignedImage,
   };
 
-  void set_gsigma(double v)
-  {
-    opts.gsigma1 = v;
-    _initialized = false;
-  }
-  double gsigma() const
-  {
-    return opts.gsigma1;
-  }
-
-  void set_gsigma2(double v)
-  {
-    opts.gsigma2 = v;
-    _initialized = false;
-  }
-  double gsigma2() const
-  {
-    return opts.gsigma2;
-  }
-
-  void set_apodization(double v)
-  {
-    opts.apodization = v;
-    _initialized = false;
-  }
-
-  double apodization() const
-  {
-    return opts.apodization;
-  }
-
-  void set_whitenPolarSpecs(bool v)
-  {
-    opts.whitenPolarSpecs = v;
-    _initialized = false;
-  }
-
-  bool whitenPolarSpecs() const
-  {
-    return opts.whitenPolarSpecs;
-  }
-
-  void set_whitenTransSpecs(bool v)
-  {
-    opts.whitenTransSpecs = v;
-    _initialized = false;
-  }
-
-  bool whitenTransSpecs() const
-  {
-    return opts.whitenTransSpecs;
-  }
-
-  void set_maxPooling(bool v)
-  {
-    opts.maxPooling = v;
-    _initialized = false;
-  }
-
-  bool maxPooling() const
-  {
-    return opts.maxPooling;
-  }
-
-  void set_estimateRotation(bool v)
-  {
-    opts.estimateRotation = v;
-    _initialized = false;
-  }
-
-  bool estimateRotation() const
-  {
-    return opts.estimateRotation;
-  }
-
-  void set_estimateTranslation(bool v)
-  {
-    opts.estimateTranslation = v;
-    _initialized = false;
-  }
-
-  bool estimateTranslation() const
-  {
-    return opts.estimateTranslation;
-  }
-
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
@@ -135,6 +49,7 @@ public:
       double downscaleFactor);
 
 protected:
+  void parameter_changed() final;
   bool reinitialize(const cv::Size & expectedFrameSize);
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);

@@ -16,7 +16,8 @@
 struct c_polar_phase_correlate_options
 {
   double gsigma1 = 2;
-  double gsigma2 = 3;
+  double gsigma2 = 2;
+  double gsigma3 = 2;
   double apodization = 0;
   bool maxPooling = false;
   bool whitenPolarSpecs = true;
@@ -43,14 +44,32 @@ template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_polar_phase_correlate_options> & ctx)
 {
   using S = c_polar_phase_correlate_options;
-  ctlbind(ctls, "gsigma1  [px]:", ctx(&S::gsigma1),  "Bandpass filter radius in space domain [px]. Defines the target texture characteristic size");
-  ctlbind(ctls, "gsigma2 [px]:", ctx(&S::gsigma2),  "Bandpass filter radius in polar ACM domain [px]");
-  ctlbind(ctls, "apodization:", ctx(&S::apodization),  "Optional Apodization window parameter [0..1]");
-  ctlbind(ctls, "maxPooling:", ctx(&S:: maxPooling),  "Set true for max pooling");
-  ctlbind(ctls, "whitenPolarSpecs:", ctx(&S:: whitenPolarSpecs),  "Set true to apply pure phase correlation for rotation estimation");
-  ctlbind(ctls, "whitenTransSpecs:", ctx(&S:: whitenTransSpecs),  "Set true to apply pure phase correlation for translation estimation");
-  ctlbind(ctls, "EstimateRotation:", ctx(&S::estimateRotation), "Enable rotation estimation");
-  ctlbind(ctls, "EstimateTranslation:", ctx(&S::estimateTranslation), "Enable translation estimation");
+  ctlbind(ctls, "gsigma1 [px]:", ctx(&S::gsigma1),
+      "Rotation Estimate: Bandpass filter used to compute image AUTO correlation map before polar conversion");
+
+  ctlbind(ctls, "gsigma2 [px]:", ctx(&S::gsigma2),
+      "Rotation Estimate: Bandpass filter used to compute CROSS correlation of Polar maps");
+
+  ctlbind(ctls, "gsigma3 [px]:", ctx(&S::gsigma3),
+      "Translation Estimate: Bandpass filter used to compute CROSS correlation of reference and current derotated image");
+
+  ctlbind(ctls, "apodization:", ctx(&S::apodization),
+      "Optional Apodization window parameter [0..1]");
+
+  ctlbind(ctls, "maxPooling:", ctx(&S:: maxPooling),
+      "Set true for max pooling - useful for low-contrast deep fields to prevent loss of faint stars");
+
+  ctlbind(ctls, "whitenPolarSpecs:", ctx(&S:: whitenPolarSpecs),
+      "Set true to apply pure phase correlation for rotation estimation");
+
+  ctlbind(ctls, "whitenTransSpecs:", ctx(&S:: whitenTransSpecs),
+      "Set true to apply pure phase correlation for translation estimation");
+
+  ctlbind(ctls, "EstimateRotation:", ctx(&S::estimateRotation),
+      "Enable rotation estimation");
+
+  ctlbind(ctls, "EstimateTranslation:", ctx(&S::estimateTranslation),
+      "Enable translation estimation");
 }
 
 class c_polar_phase_correlate
@@ -68,6 +87,8 @@ public:
     cv::Point cropOffset;
     cv::Mat1f polarSpec;
   };
+
+  static constexpr int numAngles = 320;
 
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_polar_phase_correlate_options & opts);
@@ -116,18 +137,28 @@ public:
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize);
 
 protected: // internal helpers
-  void generateBandpassFilter1();
-  void generateBandpassFilter2(const cv::Size & polarSize);
+  void generateBandpassFilter(cv::Mat1f & filter, const cv::Size & size, double sigma, bool squared) const;
   bool setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame);
-  double computeOrientation();
-  bool computeTranslation(double orientation_angle, cv::Vec2f & outTranslation);
-  bool estimatePolarPeak(const cv::Mat1f & correlationMap, cv::Point2f & outPeakPos, double & outPeakVal) const;
+  bool computeOrientation(double & outAngleRadian);
+  bool computeTranslation(double orientationAngleRadian, cv::Vec2f & outTranslation);
+
+  bool estimateRotationPeak(const cv::Mat1f & correlationMap, double crossEnergyScale,
+      cv::Point2f & outPeakPos, double & outPeakVal) const;
+
+  bool estimateTranslationPeak(const cv::Mat1f & correlationMap, double crossEnergyScale,
+      cv::Point2f & outPeakPos, double & outPeakVal) const;
+
+  bool estimatePeakLocation(const cv::Mat1f & correlationMap,double crossEnergyScale,
+      double threshold, double gsigma,
+      cv::Point2f & outPeakPos, double & outPeakVal,
+      const cv::Rect & searchROI = cv::Rect()) const;
 
 protected: // internal data
   cv::Size _fftSize;
   cv::Size _expectedFrameSize;
   double _gsigma1 = 2;
   double _gsigma2 = 2;
+  double _gsigma3 = 2;
   double _aalpha = 0.2;
   double _correlationScore = 0;
   bool _maxPooling = false;
@@ -144,6 +175,7 @@ protected: // Cached data
   cv::Mat1f _vlap2;
   cv::Mat1f _bp1;
   cv::Mat1f _bp2;
+  cv::Mat1f _bp3;
   cv::Mat1f _crossSpectrumPolar;
   cv::Mat1f _correlationMapPolar;
   cv::Mat1f _rotatedCurrentImage;

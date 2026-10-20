@@ -37,6 +37,8 @@ public:
     DISPLAY_rotatedCurrentSpec,
     DISPLAY_crossSpectrum,
     DISPLAY_correlationMap,
+
+    DISPLAY_alignedImage,
   };
 
   void set_gsigma(double v)
@@ -101,6 +103,28 @@ public:
   bool maxPooling() const
   {
     return opts.maxPooling;
+  }
+
+  void set_estimateRotation(bool v)
+  {
+    opts.estimateRotation = v;
+    _initialized = false;
+  }
+
+  bool estimateRotation() const
+  {
+    return opts.estimateRotation;
+  }
+
+  void set_estimateTranslation(bool v)
+  {
+    opts.estimateTranslation = v;
+    _initialized = false;
+  }
+
+  bool estimateTranslation() const
+  {
+    return opts.estimateTranslation;
   }
 
   bool serialize(c_config_setting settings, bool save) final;

@@ -293,6 +293,8 @@ bool c_polar_phase_correlate::setup(const cv::Size & expectedFrameSize, c_polar_
   _maxPooling = opts.maxPooling;
   _whitenPolarSpecs = opts.whitenPolarSpecs;
   _whitenTransSpecs = opts.whitenTransSpecs;
+  _estimateRotation = opts.estimateRotation;
+  _estimateTranslation = opts.estimateTranslation;
 
   if ( opts.gsigma2 != _gsigma2 ) {
     _gsigma2 = opts.gsigma2;
@@ -648,16 +650,16 @@ double c_polar_phase_correlate::computeOrientation()
     _correlationScore = peakVal / std::sqrt(crossEnergy);
   }
 
-  const double delta_pixels = peakPos.y - _currentFrame.acmp.rows / 2;
-  const double delta_angle = delta_pixels * 0.5;
+  const double deltaPixels = peakPos.y - _currentFrame.acmp.rows / 2;
+  const double deltaAngle = deltaPixels * 0.5;
 
   CF_DEBUG("peak: X=%g Y=%g Val=%g delta: %g px => %g deg", peakPos.x, peakPos.y, peakVal,
-      delta_pixels, delta_angle);
+      deltaPixels, deltaAngle);
 
-  return delta_angle;
+  return deltaAngle;
 }
 
-bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::Point2f & outTranslation)
+bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::Vec2f & outTranslation)
 {
   if( _currentFrame.image.empty() || _referenceFrame.image.empty() ) {
     CF_ERROR("c_polar_phase_correlate: Frames are not initialized.");
@@ -666,18 +668,16 @@ bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::P
 
   const int cols = _currentFrame.image.cols;
   const int rows = _currentFrame.image.rows;
-  const cv::Point2f center(cols / 2, rows / 2);
 
   if( std::abs(orientation_angle) > 1e-5 ) {
-    const cv::Mat rotM = cv::getRotationMatrix2D(center, orientation_angle, 1.0);
-    cv::warpAffine(_currentFrame.image, _rotatedCurrentImage, rotM, _currentFrame.image.size(),
+    const cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(cols / 2.f, rows / 2.f), orientation_angle, 1.0);
+    cv::warpAffine(_currentFrame.image, _rotatedCurrentImage, M, _currentFrame.image.size(),
         cv::INTER_LINEAR | cv::WARP_INVERSE_MAP, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
   else {
     _currentFrame.image.copyTo(_rotatedCurrentImage);
   }
 
-  // Output is CCS packed spectrum
   cv::dft(_rotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
 
   if( _whitenTransSpecs ) {
@@ -702,6 +702,7 @@ bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::P
 
   const int R = 2;
   double sw = 0, sx = 0, sy = 0;
+
   if( maxPos.x < R || maxPos.x >= cols - R || maxPos.y < R || maxPos.y >= rows - R ) {
     sx = maxPos.x;
     sy = maxPos.y;
@@ -723,26 +724,39 @@ bool c_polar_phase_correlate::computeTranslation(double orientation_angle, cv::P
 
   const float pkX = (sw > 0) ? float(sx / sw) : float(maxPos.x);
   const float pkY = (sw > 0) ? float(sy / sw) : float(maxPos.y);
+  const float delta_x = pkX - (cols / 2.f);
+  const float delta_y = pkY - (rows / 2.f);
 
-  const float dx_rot = pkX - center.x;
-  const float dy_rot = pkY - center.y;
+  outTranslation[0] = 2 * (delta_x + (_currentFrame.cropOffset.x - _currentFrame.validROI.x)
+          - (_referenceFrame.cropOffset.x - _referenceFrame.validROI.x));
 
-  const double rad = orientation_angle * CV_PI / 180.0;
-  const double cosA = std::cos(rad);
-  const double sinA = std::sin(rad);
+  outTranslation[1] = 2 * (delta_y + (_currentFrame.cropOffset.y - _currentFrame.validROI.y)
+          - (_referenceFrame.cropOffset.y - _referenceFrame.validROI.y));
 
-  outTranslation.x = float(dx_rot * cosA - dy_rot * sinA);
-  outTranslation.y = float(dx_rot * sinA + dy_rot * cosA);
-
-  CF_DEBUG("Translation localized: dX=%g, dY=%g (peak val=%g)", outTranslation.x, outTranslation.y, maxVal);
+  CF_DEBUG("Translation localized (Full Scale): dX=%g, dY=%g (peak val=%g)", outTranslation[0], outTranslation[1], maxVal);
   return true;
 }
 
-bool c_polar_phase_correlate::compute()
+bool c_polar_phase_correlate::compute(double & outputEstimatedRotation, cv::Vec2f & outputEstimatedTranslation)
 {
-  double angle = computeOrientation();
-  cv::Point2f Translation;
-  return computeTranslation(angle, Translation );
+  outputEstimatedRotation = 0.0;
+  outputEstimatedTranslation = cv::Vec2f(0.f, 0.f);
+
+  double angleDeg = 0.0;
+
+  if (_estimateRotation) {
+    angleDeg = computeOrientation();
+    outputEstimatedRotation = angleDeg * CV_PI / 180.0;
+  }
+
+  if (_estimateTranslation) {
+    if (!computeTranslation(angleDeg, outputEstimatedTranslation)) {
+      CF_ERROR("computeTranslation() failed");
+      return false;
+    }
+  }
+
+  return true;
 }
 
 
@@ -754,5 +768,7 @@ bool serialize_polar_phase_correlate_options(c_config_setting section, bool save
   SERIALIZE_OPTION(section, save, opts, maxPooling);
   SERIALIZE_OPTION(section, save, opts, whitenPolarSpecs);
   SERIALIZE_OPTION(section, save, opts, whitenTransSpecs);
+  SERIALIZE_OPTION(section, save, opts, estimateRotation);
+  SERIALIZE_OPTION(section, save, opts, estimateTranslation);
   return true;
 }

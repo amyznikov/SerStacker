@@ -21,6 +21,8 @@ struct c_polar_phase_correlate_options
   bool maxPooling = false;
   bool whitenPolarSpecs = true;
   bool whitenTransSpecs = true;
+  bool estimateRotation = false;
+  bool estimateTranslation = true;
 };
 
 bool serialize_polar_phase_correlate_options(c_config_setting section, bool save,
@@ -47,6 +49,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "maxPooling:", ctx(&S:: maxPooling),  "Set true for max pooling");
   ctlbind(ctls, "whitenPolarSpecs:", ctx(&S:: whitenPolarSpecs),  "Set true to apply pure phase correlation for rotation estimation");
   ctlbind(ctls, "whitenTransSpecs:", ctx(&S:: whitenTransSpecs),  "Set true to apply pure phase correlation for translation estimation");
+  ctlbind(ctls, "EstimateRotation:", ctx(&S::estimateRotation), "Enable rotation estimation");
+  ctlbind(ctls, "EstimateTranslation:", ctx(&S::estimateTranslation), "Enable translation estimation");
 }
 
 class c_polar_phase_correlate
@@ -73,7 +77,8 @@ public:
 
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
-  bool compute();
+  bool compute(double & outputEstimatedRotation, cv::Vec2f & outputEstimatedTranslation);
+
 
   const Frame & referenceFrame() const
   {
@@ -115,7 +120,7 @@ protected: // internal helpers
   void generateBandpassFilter2(const cv::Size & polarSize);
   bool setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame);
   double computeOrientation();
-  bool computeTranslation(double orientation_angle, cv::Point2f & outTranslation);
+  bool computeTranslation(double orientation_angle, cv::Vec2f & outTranslation);
   bool estimatePolarPeak(const cv::Mat1f & correlationMap, cv::Point2f & outPeakPos, double & outPeakVal) const;
 
 protected: // internal data
@@ -128,6 +133,8 @@ protected: // internal data
   bool _maxPooling = false;
   bool _whitenPolarSpecs = true;
   bool _whitenTransSpecs = true;
+  bool _estimateRotation = false;
+  bool _estimateTranslation = true;
   bool _initialized = false;
 
 protected: // Cached data

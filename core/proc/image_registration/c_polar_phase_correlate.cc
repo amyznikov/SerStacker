@@ -564,8 +564,8 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
     return false;
   }
 
-  const int cols = _currentFrame.image.cols;
-  const int rows = _currentFrame.image.rows;
+  const int cols = _referenceFrame.image.cols;
+  const int rows = _referenceFrame.image.rows;
 
   static constexpr double max_pixel_shift_threshold = 1.0;
   const double half_w = cols / 2.0;
@@ -575,18 +575,18 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
   const bool need_warp = max_shift_px >= max_pixel_shift_threshold;
 
   if( !need_warp ) {
-    _currentFrame.image.copyTo(_rotatedCurrentImage);
+    _currentFrame.image.copyTo(_derotatedCurrentImage);
   }
   else {
     const cv::Mat M =
         cv::getRotationMatrix2D(cv::Point2f(cols / 2.f, rows / 2.f),
             orientationAngleRadian * 180 / CV_PI, 1.0);
 
-    cv::warpAffine(_currentFrame.image, _rotatedCurrentImage, M, _currentFrame.image.size(),
+    cv::warpAffine(_currentFrame.image, _derotatedCurrentImage, M, _referenceFrame.image.size(),
         cv::INTER_LINEAR | cv::WARP_INVERSE_MAP, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
 
-  cv::dft(_rotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
+  cv::dft(_derotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
 
   if ( _bp3.size() != _fftSize ) {
     generateBandpassFilter(_bp3, _fftSize, _gsigma3, true);
@@ -639,13 +639,28 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
   const float delta_x = pkX - (cols / 2.f);
   const float delta_y = pkY - (rows / 2.f);
 
-  outTranslation[0] = 2 * (delta_x + (_currentFrame.cropOffset.x - _currentFrame.validROI.x)
-          - (_referenceFrame.cropOffset.x - _referenceFrame.validROI.x));
+  const float tx_ref = 2 * (delta_x + (_currentFrame.cropOffset.x - _currentFrame.validROI.x)
+           - (_referenceFrame.cropOffset.x - _referenceFrame.validROI.x));
 
-  outTranslation[1] = 2 * (delta_y + (_currentFrame.cropOffset.y - _currentFrame.validROI.y)
-          - (_referenceFrame.cropOffset.y - _referenceFrame.validROI.y));
+   const float ty_ref = 2 * (delta_y + (_currentFrame.cropOffset.y - _currentFrame.validROI.y)
+           - (_referenceFrame.cropOffset.y - _referenceFrame.validROI.y));
 
-  CF_DEBUG("Translation: dX=%g, dY=%g (peak val=%g)", outTranslation[0], outTranslation[1], maxVal);
+   if ( !need_warp ) {
+     outTranslation[0] = -tx_ref;
+     outTranslation[1] = -ty_ref;
+   }
+   else {
+     // Rotate final translation vector into the coordinate system of the CURRENT frame
+     // to simplify callers remap() step
+     const double ca = std::cos(-orientationAngleRadian);
+     const double sa = std::sin(-orientationAngleRadian);
+     outTranslation[0] = -float(tx_ref * ca - ty_ref * sa);
+     outTranslation[1] = -float(tx_ref * sa + ty_ref * ca);
+   }
+
+   CF_DEBUG("Translation (CUR system): dX=%g, dY=%g (REF system: dX=%g, dY=%g, peak val=%g)",
+       outTranslation[0], outTranslation[1], tx_ref, ty_ref, maxVal);
+
   return true;
 }
 

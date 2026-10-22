@@ -2208,6 +2208,10 @@ bool c_ecclm_inverse_compositional::align()
 
       /* Compute function for newparams */
       newerr = compute_rhs(newparams);
+//      if ( newerr < FLT_EPSILON ) {
+//        step_accepted = true;
+//        break;
+//      }
 
       /* Check for increments in parameters  */
       if( (eps = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
@@ -2229,8 +2233,11 @@ bool c_ecclm_inverse_compositional::align()
 //          params(0, 0), params(0, 1), params(0, 2));
 
       if( newerr >= err ) {
-        // TODO : check also for huge lambda ==> no convergence
-        lambda *= 5; /** Try increase lambda ==> gradient descend */
+        /** Try increase lambda ==> gradient descend */
+        if( (lambda *= 5) > 1e6 ) {
+          _failed = true;
+          break;
+        }
         continue;
       }
 
@@ -2250,6 +2257,10 @@ bool c_ecclm_inverse_compositional::align()
       break;
 
     } while (_num_iterations < _max_iterations);
+
+    if ( _failed ) {
+      break;
+    }
 
     if( step_accepted ) {
       /* Accept new params */

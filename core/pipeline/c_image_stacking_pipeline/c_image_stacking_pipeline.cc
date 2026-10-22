@@ -1179,10 +1179,13 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           _frame_registration->register_frame(current_frame,
               current_mask);
 
+      CF_DEBUG("[F %d] registered=%d", input_sequence->current_pos() - 1, registered);
+
       if( canceled() ) {
         set_status_msg("canceled");
         break;
       }
+
 
       if ( !save_feature_video(input_sequence->current_pos() - 1) )  {
         CF_ERROR("save_feature_video() fails");
@@ -1297,6 +1300,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               cv::noArray(), cv::noArray(),
               ECC_INTER_LINEAR,
               ECC_BORDER_CONSTANT);
+          CF_DEBUG("H");
         }
 
         if( !save_aligned_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {

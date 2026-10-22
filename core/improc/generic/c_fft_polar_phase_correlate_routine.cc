@@ -147,48 +147,24 @@ void c_fft_polar_phase_correlate_routine::getcontrols(c_control_list & ctls, con
   ctlbind(ctls, "updateReference", ctx(&this_class::_updateReference), "updateReference");
 }
 
-static void remapImage(cv::InputArray src, cv::OutputArray dst, const cv::Size & dstSize,
-    double rotationRadians, const cv::Vec2f & estimatedTranslation)
+static void remapImage(cv::InputArray currentImage, cv::OutputArray alignedCurrentImage,
+    const cv::Size & referenceImageSize,
+    const cv::Vec2f & estimatedTranslation,
+    double estimatedRotation)
 {
-  if (src.empty()) {
+  if (currentImage.empty()) {
     return;
   }
 
-  const cv::Vec2f C_ref(dstSize.width / 2.f, dstSize.height / 2.f);
-  const cv::Vec2f T_src(src.cols() / 2.f, src.rows() / 2.f);
-  const cv::Vec2f C_mosaic = C_ref - estimatedTranslation;
+  const cv::Size srcSize = currentImage.size();
+  const cv::Size dstSize = referenceImageSize;
+  const cv::Vec2f currentCenter(srcSize.width / 2.f, srcSize.height / 2.f);
+  const cv::Vec2f referenceCenter(dstSize.width / 2.f, dstSize.height / 2.f);
+  const cv::Vec2f T = currentCenter - estimatedTranslation;
 
-  c_euclidean_image_transform transform(C_mosaic, T_src, -rotationRadians, 1.0f);
-  ((c_image_transform&)transform).remap(src, cv::noArray(), dstSize, dst, cv::noArray());
-}
-
-static void warpImage(cv::InputArray src, cv::OutputArray dst, const cv::Size & dstSize,
-    double rotationRadians, const cv::Vec2f & estimatedTranslation)
-{
-  if (src.empty()) {
-    return;
-  }
-
-  const cv::Vec2f C_ref(dstSize.width / 2.f, dstSize.height / 2.f);
-  const cv::Vec2f T_src(src.cols() / 2.f, src.rows() / 2.f);
-  const cv::Vec2f C_mosaic = C_ref - estimatedTranslation;
-
-  const double alpha = -rotationRadians;
-  const double ca = std::cos(alpha);
-  const double sa = std::sin(alpha);
-
-  // (dst -> src)
-  cv::Matx23d M;
-  M(0, 0) = ca;
-  M(0, 1) = -sa;
-  M(0, 2) = T_src[0] - ca * C_mosaic[0] + sa * C_mosaic[1];
-  M(1, 0) = sa;
-  M(1, 1) = ca;
-  M(1, 2) = T_src[1] - sa * C_mosaic[0] - ca * C_mosaic[1];
-
-  cv::warpAffine(src, dst, M, dstSize,
-      cv::INTER_LINEAR | cv::WARP_INVERSE_MAP,
-      cv::BORDER_CONSTANT, cv::Scalar::all(0));
+  c_euclidean_image_transform transform(T, -estimatedRotation, 1.0, referenceCenter);
+  ((c_image_transform&)transform).remap(currentImage, cv::noArray(), dstSize,
+      alignedCurrentImage, cv::noArray());
 }
 
 bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -280,8 +256,7 @@ bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv
       mask.release();
       break;
     case DISPLAY_alignedImage:
-      // remapImage(_currentImage, image, _referenceImage.size(), estimatedRotation, estimatedTranslation);
-      warpImage(_currentImage, image, _referenceImage.size(), estimatedRotation, estimatedTranslation);
+      remapImage(_currentImage, image, _referenceImage.size(), estimatedTranslation, estimatedRotation);
       mask.release();
       break;
 

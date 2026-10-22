@@ -38,7 +38,13 @@ typedef cv::Matx<float, 2, 4> Matx24f;
 }
 #endif
 
-
+/**
+ * Image transform relative to center [Cx, Cy] given in reference (destination)
+ * coordinate system ref designed mainly for generating backward remaps:
+ *
+ *  x_cur = func_x(x_ref - Cx_ref, x_ref - Cx_ref, params)
+ *  y_cur = func_y(x_ref - Cx_ref, x_ref - Cx_ref, params)
+ */
 class c_image_transform
 {
 public:
@@ -46,19 +52,34 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
+  c_image_transform() = default;
+
+  c_image_transform(const cv::Vec2f & C) : _C(C)
+  {
+  }
+
   virtual ~c_image_transform() = default;
 
   virtual void reset() = 0;
   virtual bool set_parameters(const cv::Mat1f & p) = 0;
   virtual void scale_transfrom(double factor) = 0;
   virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const = 0;
-  virtual bool create_remap_fixed(const cv::Mat1f & params, const cv::Size & size, cv::Mat & map1, cv::Mat & map2) const;
   virtual bool remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const = 0;
   virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
   virtual double eps(const cv::Mat1f & dp, const cv::Size & image_size) = 0;
 
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
+
+  virtual void set_reference_point(const cv::Vec2f & C)
+  {
+    _C = C;
+  }
+
+  const cv::Vec2f & reference_point() const
+  {
+    return _C;
+  }
 
   inline bool set_parameters(const std::vector<float> & v)
   {
@@ -78,11 +99,6 @@ public:
   bool create_remap(const cv::Size & size, cv::Mat2f & map) const
   {
     return create_remap(parameters(), size, map);
-  }
-
-  bool create_remap_fixed(const cv::Size & size, cv::Mat & map1, cv::Mat & map2) const
-  {
-    return create_remap_fixed(parameters(), size, map1, map2);
   }
 
   bool remap(const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
@@ -119,14 +135,13 @@ public:
 
 protected:
   cv::Mat1f _parameters;
+  cv::Vec2f _C; // reference point
 };
 
-
-
 /**
- * Translation transform
- *  x' = x + tx
- *  y' = y + ty
+ * Translation transform:
+ *  x_cur = (x_ref - Cx_ref) + Tx
+ *  y_cur = (y_ref - Cy_ref) + Ty
  */
 class c_translation_image_transform:
     public c_image_transform
@@ -140,6 +155,7 @@ public:
   c_translation_image_transform(float Tx = 0, float Ty = 0);
   c_translation_image_transform(const cv::Vec2f & T);
   void reset() final;
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_translation(float x, float y);
   void set_translation(const cv::Vec2f & v) final;
@@ -151,7 +167,6 @@ public:
 
   bool create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & map) const;
   bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const final;
-  bool create_remap_fixed(const cv::Mat1f & params, const cv::Size & size, cv::Mat & map1, cv::Mat & map2) const final;
   bool remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
   bool remap(const cv::Mat1f & , const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
@@ -174,10 +189,17 @@ public:
 
 
 /**
- * Euclidean image transform relative to center [Cx, Cy] with optional translation, rotation and scale:
+ * Euclidean image transform relative to center [Cx, Cy] given in reference (destination)
+ * coordinate system ref with optional translation, rotation and scale:
  *
- *  x' =  s * (cos(angle) * (x-Cx) - sin(angle) * (y-Cy)) + tx
- *  y' =  s * (sin(angle) * (x-Cx) + cos(angle) * (y-Cy)) + ty
+ *  ca = cos(angle)
+ *  sa = sin(angle)
+ *
+ *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Tx_cur
+ *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Ty_cur
+ *
+ *  The translation vector [Tx_cur, Ty_cur] may include also implicitly omitted
+ *  frame center [Cx_cur, Cy_cur] if required
  *
  *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -191,11 +213,11 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1);
-  c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1);
-  c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1);
+  c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1, const cv::Vec2f & C = cv::Vec2f());
+  c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1, const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
@@ -219,11 +241,11 @@ public:
   bool fix_scale() const;
 
   int num_adjustable_parameters() const;
-  void set_parameters(float Tx, float Ty, float angle, float scale, float Cx, float Cy);
+  void set_parameters(float Tx, float Ty, float angle, float scale);
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
   double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
-  bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale, float * Cx, float * Cy) const;
+  bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale) const;
 
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
@@ -242,7 +264,6 @@ protected:
 
 protected:
   cv::Vec2f _T;
-  cv::Vec2f _C;
   float _angle = 0;
   float _scale = 1;
   bool _fix_translation = false;
@@ -262,8 +283,8 @@ inline cv::Matx23f create_euclidean_transform(const cv::Vec2f & C, const cv::Vec
 
 /**
  * Image affine transform:
- *  x' =  a00 * x + a01 * y + a02
- *  y' =  a10 * x + a11 * y + a12
+ *  x_cur =  a00 * (x_ref-Cx_ref) + a01 * (y_ref-Cy_ref) + a02
+ *  y_cur =  a10 * (x_ref-Cx_ref) + a11 * (y_ref-Cy_ref) + a12
  *
  *  For the signs of angles see opencv doc
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -277,11 +298,14 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  c_affine_image_transform();
-  c_affine_image_transform(const float a[2][3]);
-  c_affine_image_transform(const cv::Matx23f & a);
-  c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12);
+  c_affine_image_transform(const cv::Vec2f & C = cv::Vec2f());
+  c_affine_image_transform(const float a[2][3], const cv::Vec2f & C = cv::Vec2f());
+  c_affine_image_transform(const cv::Matx23f & a, const cv::Vec2f & C = cv::Vec2f());
+  c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12,
+      const cv::Vec2f & C = cv::Vec2f());
+
   void reset() final;
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx23f & a);
   cv::Matx23f matrix() const;
@@ -296,7 +320,6 @@ public:
 
   bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool create_remap_fixed(const cv::Mat1f & params, const cv::Size & size, cv::Mat & map1, cv::Mat & map2) const final;
   bool remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
@@ -306,30 +329,17 @@ public:
     return true;
   }
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final
-  {
-    cv::Matx23f a;
-    cv::invertAffineTransform(matrix(p), a);
-    return cv::Mat1f(a, true).reshape(1, 6);
-  }
-
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
-  {
-    cv::Matx23f a;
-    cv::invertAffineTransform(matrix(p), a);
-    cv::invertAffineTransform(a + matrix(dp), a);
-    return cv::Mat1f(a, true).reshape(1, 6);
-  }
-
+  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 };
 
 
-
 /**
- * Image homography transform:
- * w  =  (x * a20 + y * a21 + a22)
- * x' =  (x * a00 + y * a01 + a02) / w
- * y' =  (x * a10 + y * a11 + a12) / w
+ * Image homography transform relative to reference point [Cx_ref, Cy_ref]:
+ *
+ * w  =  (x_ref-Cx_ref) * a20 + (y_ref-Cy_ref) * a21 + a22
+ * x_cur =  ((x_ref-Cx_ref) * a00 + (y_ref-Cy_ref) * a01 + a02) / w
+ * y_cur =  ((x_ref-Cx_ref) * a10 + (y_ref-Cy_ref) * a11 + a12) / w
  */
 class c_homography_image_transform :
     public c_image_transform
@@ -340,15 +350,18 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  c_homography_image_transform();
-  c_homography_image_transform(const float a[3][3]);
-  c_homography_image_transform(const cv::Matx33f & a);
-  c_homography_image_transform(const cv::Mat1f & a);
+  c_homography_image_transform(const cv::Vec2f & C = cv::Vec2f());
+  c_homography_image_transform(const float a[3][3], const cv::Vec2f & C = cv::Vec2f());
+  c_homography_image_transform(const cv::Matx33f & a, const cv::Vec2f & C = cv::Vec2f());
+  c_homography_image_transform(const cv::Mat1f & a, const cv::Vec2f & C = cv::Vec2f());
   c_homography_image_transform(float a00, float a01, float a02,
       float a10, float a11, float a12,
-      float a20, float a21, float a22);
+      float a20, float a21, float a22,
+      const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
+
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx33f & a);
   const cv::Matx33f & matrix() const;
@@ -364,7 +377,6 @@ public:
 
   bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool create_remap_fixed(const cv::Mat1f & params, const cv::Size & size, cv::Mat & map1, cv::Mat & map2) const final;
   bool remap(const cv::Matx33f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
@@ -374,19 +386,8 @@ public:
     return true;
   }
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final
-  {
-    cv::Matx33f aii = matrix(p).inv();
-    aii = aii * (1.0f / aii(2, 2));
-    return cv::Mat1f(aii, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
-  }
-
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
-  {
-    cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
-    aii = aii * (1.0f / aii(2, 2));
-    return cv::Mat1f(aii, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
-  }
+  cv::Mat1f invert(const cv::Mat1f & p) const;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
 
 protected:
   void update_parameters();
@@ -394,8 +395,6 @@ protected:
 protected:
   cv::Matx33f _matrix;
 };
-
-
 
 /*
  * Semi-quadratic image transform, 2x4 = 8 parameters are estimated
@@ -411,19 +410,20 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  c_semi_quadratic_image_transform();
-  c_semi_quadratic_image_transform(const float a[2][4]);
-  c_semi_quadratic_image_transform(const cv::Matx24f & a);
+  c_semi_quadratic_image_transform(const cv::Vec2f & C = cv::Vec2f());
+  c_semi_quadratic_image_transform(const float a[2][4], const cv::Vec2f & C = cv::Vec2f());
+  c_semi_quadratic_image_transform(const cv::Matx24f & a, const cv::Vec2f & C = cv::Vec2f());
   c_semi_quadratic_image_transform(float a00, float a01, float a02, float a03,
-      float a10, float a11, float a12, float a13);
+      float a10, float a11, float a12, float a13,
+      const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx24f & a);
   void set_matrix(const cv::Mat1f & a);
   cv::Matx24f matrix() const;
   cv::Matx24f matrix(const cv::Mat1f & p) const;
-
 
   void set_affine_matrix(const cv::Matx23f & a);
   cv::Matx23f affine_matrix() const;
@@ -456,13 +456,15 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  c_quadratic_image_transform();
-  c_quadratic_image_transform(const float a[2][6]);
-  c_quadratic_image_transform(const cv::Matx26f & a);
+  c_quadratic_image_transform(const cv::Vec2f & C = cv::Vec2f());
+  c_quadratic_image_transform(const float a[2][6], const cv::Vec2f & C = cv::Vec2f());
+  c_quadratic_image_transform(const cv::Matx26f & a, const cv::Vec2f & C = cv::Vec2f());
   c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
-      float a10, float a11, float a12, float a13, float a14, float a15);
+      float a10, float a11, float a12, float a13, float a14, float a15,
+      const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
+  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx26f & a);
   void set_matrix(const cv::Mat1f & a);

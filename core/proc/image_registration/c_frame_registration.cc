@@ -783,50 +783,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_ecc_mask = ecc_mask;
     }
 
-//    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_eps > 0 ) {
-//      ecc_normalize(current_ecc_image, current_ecc_mask, current_ecc_image,
-//          _options.ecc.normalization_scale,
-//          _options.ecc.normalization_eps);
-//    }
-
-
-//    const bool estimate_translation_first =
-//        _options.motion_type != IMAGE_MOTION_TRANSLATION &&
-//        _options.ecc.ecch_estimate_translation_first &&
-//        _options.ecc.ecch.maxlevel != 0 ;
-
-//    if( estimate_translation_first ) {
-//
-//      c_translation_image_transform transform(_image_transform->translation());
-//      _ecch.set_image_transform(&transform);
-//
-//      if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
-//
-//        CF_ERROR("ERROR: _ecch.align() fails for translation estimate: "
-//            "eps=%g/%g iterations=%d/%d",
-//            _ecch.eps(), _ecch.max_eps(),
-//            _ecch.num_iterations(), _ecch.max_iterations()
-//            );
-//
-//        _ecch.set_image_transform(_image_transform.get());
-//
-//        return false;
-//      }
-//
-//      rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
-//          _ecch.reference_image(), _ecch.reference_mask(),
-//          _ecch.create_remap());
-//
-//      if( rho < 0.5 * _options.ecc.min_rho ) {
-//        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
-//        _ecch.set_image_transform(_image_transform.get());
-//        return false;
-//      }
-//
-//      _image_transform->set_translation(transform.translation());
-//      _ecch.set_image_transform(_image_transform.get());
-//    }
-
     if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
 
       CF_ERROR("_ecch.align() fails: eps=%g/%g iterations=%d/%d",
@@ -839,6 +795,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
         _ecch.reference_image(), _ecch.reference_mask(),
         _ecch.create_remap());
+
+    CF_ERROR("image correlation: rho = %g / %g", rho, _options.ecc.min_rho);
 
     if( rho < _options.ecc.min_rho ) {
       CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);

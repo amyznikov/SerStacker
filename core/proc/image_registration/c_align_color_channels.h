@@ -29,7 +29,6 @@ struct c_align_color_channels_options
   int max_iterations = 30;
   int max_level = 2;
   int normalization_level = 3;
-  bool use_fixed_remap = false;
 };
 
 
@@ -62,7 +61,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
   ctlbind(ctls, "max_level", ctx(&S::max_level), "");
   ctlbind(ctls, "normalization_level", ctx(&S::normalization_level), "");
-  ctlbind(ctls, "fixed_remap", ctx(&S::use_fixed_remap), "");
 }
 
 
@@ -98,7 +96,6 @@ protected:
 protected:
   std::vector<c_image_transform::sptr> _image_transforms;
   mutable std::vector<cv::Mat2f> _remaps;
-  mutable std::vector<cv::Mat> _fixed_remaps[2];
   mutable cv::Mat1b _precomputed_frame_mask;
   mutable cv::Mat1b _dynamic_dummy;
 

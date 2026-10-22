@@ -32,8 +32,6 @@ bool c_align_color_channels::setImageTransform(IMAGE_MOTION_TYPE motionType,
   _estimated_motion_type = motionType;
 
   _remaps.clear(), _remaps.resize(4);
-  _fixed_remaps[0].clear(), _fixed_remaps[0].resize(4);
-  _fixed_remaps[1].clear(), _fixed_remaps[1].resize(4);
   _image_transforms.clear(), _image_transforms.resize(4);
   for( int i = 0; i < 4; ++i ) {
     if( !parameters[i].empty() ) {
@@ -50,18 +48,10 @@ void c_align_color_channels::remap(cv::InputArray src, cv::OutputArray dst,
     int channel, int interpolation, int borderMode,
     const cv::Scalar & borderValue) const
 {
-  if( opts.use_fixed_remap ) {
-    cv::remap(src, dst, _fixed_remaps[0][channel], _fixed_remaps[1][channel],
-        interpolation,
-        borderMode,
-        borderValue);
-  }
-  else {
-    cv::remap(src, dst, _remaps[channel], cv::noArray(),
-        interpolation,
-        borderMode,
-        borderValue);
-  }
+  cv::remap(src, dst, _remaps[channel], cv::noArray(),
+      interpolation,
+      borderMode,
+      borderValue);
 }
 
 bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcmask,
@@ -118,16 +108,11 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
   }
 
   _estimated_motion_type = opts.motion_type;
-  _remaps.clear(), _fixed_remaps[0].clear(), _fixed_remaps[1].clear();
-  _image_transforms.clear(), _image_transforms.resize(4);
+  _remaps.clear();
+  _image_transforms.clear();
+  _image_transforms.resize(4);
 
-  if ( !opts.use_fixed_remap ) {
-    _remaps.resize(4);
-  }
-  else {
-    _fixed_remaps[0].resize(4);
-    _fixed_remaps[1].resize(4);
-  }
+  _remaps.resize(4);
 
   for( int i = 0; i < 4; ++i ) {
     if ( i == reference_channel_index ) {
@@ -135,7 +120,6 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
     }
     else {
       _image_transforms[i] = create_image_transform(opts.motion_type);
-      _image_transforms[i]->reset();
     }
   }
 
@@ -181,29 +165,14 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
   const int mask_depth = _srcmask.empty() ? CV_8U : _srcmask.depth();
   std::vector<cv::Mat> channels;
 
-  if( opts.use_fixed_remap ) {
-    if( _fixed_remaps[0].size() != 4 ) {
-      _fixed_remaps[0].clear(), _fixed_remaps[0].resize(4);
-      _fixed_remaps[1].clear(), _fixed_remaps[1].resize(4);
-    }
-
-    for( int i = 0; i < cn; ++i ) {
-      if( _image_transforms[i] && _fixed_remaps[0][i].size() != imageSize ) {
-        _image_transforms[i]->create_remap_fixed(imageSize, _fixed_remaps[0][i], _fixed_remaps[1][i]);
-      }
+  if( _remaps.size() != 4 ) {
+    _remaps.clear(), _remaps.resize(4);
+  }
+  for( int i = 0; i < cn; ++i ) {
+    if( _image_transforms[i] && _remaps[i].size() != imageSize ) {
+      _image_transforms[i]->create_remap(imageSize, _remaps[i]);
     }
   }
-  else {
-    if( _remaps.size() != 4 ) {
-      _remaps.clear(), _remaps.resize(4);
-    }
-    for( int i = 0; i < cn; ++i ) {
-      if( _image_transforms[i] && _remaps[i].size() != imageSize ) {
-        _image_transforms[i]->create_remap(imageSize, _remaps[i]);
-      }
-    }
-  }
-
 
   cv::split(_src, channels);
 
@@ -373,6 +342,5 @@ bool serialize_align_color_channels_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, max_level);
   SERIALIZE_OPTION(section, save, opts, update_step_scale);
   SERIALIZE_OPTION(section, save, opts, normalization_level);
-  SERIALIZE_OPTION(section, save, opts, use_fixed_remap);
   return true;
 }

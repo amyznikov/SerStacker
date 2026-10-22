@@ -1331,7 +1331,7 @@ bool c_ecch::align()
       const cv::Mat1f & cimg = _pyramid[lvl]->current_image();
       const cv::Vec2f T = alignMatchTemplateZNCC(rimg, cimg, 2);
       _pyramid[lvl]->image_transform()->set_translation(T);
-//       CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
+      CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
       fOK = true;
     }
     else {
@@ -1343,8 +1343,8 @@ bool c_ecch::align()
       const double eps = _pyramid[lvl]->eps();
       const double maxeps = _pyramid[lvl]->max_eps();
       const cv::Vec2f T = _pyramid[lvl]->image_transform()->translation();
-//      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
-//          iterations, eps, maxeps, T[0], T[1]);
+      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
+          iterations, eps, maxeps, T[0], T[1]);
     }
 
     if( fOK && lvl > 0 ) {
@@ -2224,13 +2224,13 @@ bool c_ecclm_inverse_compositional::align()
       const double dS = deltap.dot(temp_d);
       const double rho = (err - newerr) / (std::abs(dS) > 0 ? dS : 1);
 
-//      CF_DEBUG(">> [it %d] eps=%g/%g newerr=%g olderr=%g dS=%g rho=%g lambda=%g deltap: {%g %g %g} params={%g %g %g}", _num_iterations,
-//          eps, _max_eps,
-//          newerr, err,
-//          dS, rho,
-//          lambda,
-//          deltap(0, 0), deltap(0, 1), deltap(0, 2),
-//          params(0, 0), params(0, 1), params(0, 2));
+      CF_DEBUG(">> [it %d] eps=%g/%g newerr=%g olderr=%g dS=%g rho=%g lambda=%g deltap: {%g %g %g} params={%g %g %g}", _num_iterations,
+          eps, _max_eps,
+          newerr, err,
+          dS, rho,
+          lambda,
+          deltap(0, 0), deltap(0, 1), deltap(0, 2),
+          params(0, 0), params(0, 1), params(0, 2));
 
       if( newerr >= err ) {
         /** Try increase lambda ==> gradient descend */

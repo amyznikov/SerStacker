@@ -233,7 +233,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if ( !_missing_pixel_mask.empty() && !output_mask.empty() && input_options.inpaint_missing_pixels ) {
-    average_pyramid_inpaint(output_image, output_mask, output_image, output_mask, 32);
+    average_pyramid_inpaint(output_image, output_mask, output_image, cv::noArray(), 32);
   }
 
   if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {

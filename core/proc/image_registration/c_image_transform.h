@@ -39,11 +39,11 @@ typedef cv::Matx<float, 2, 4> Matx24f;
 #endif
 
 /**
- * Image transform relative to center [Cx, Cy] given in reference (destination)
- * coordinate system ref designed mainly for generating backward remaps:
+ * Image transform relative to center [Cx_ref, Cy_ref] given in reference (destination)
+ * coordinate system designed mainly for generating backward remaps:
  *
- *  x_cur = func_x(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cx_ref
- *  y_cur = func_y(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cy_ref
+ *  x_cur = Wx(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cx_cur
+ *  y_cur = Wy(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cy_cur
  */
 class c_image_transform
 {
@@ -54,7 +54,7 @@ public:
 
   c_image_transform() = default;
 
-  c_image_transform(const cv::Vec2f & C) : _C(C)
+  c_image_transform(const cv::Vec2f & C) : _Cr(C), _Cc(C)
   {
   }
 
@@ -71,14 +71,34 @@ public:
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
-  virtual void set_reference_point(const cv::Vec2f & C)
+  virtual void set_reference_points(const cv::Vec2f & Cr, const cv::Vec2f & Cc)
   {
-    _C = C;
+    _Cr = Cr;
+    _Cc = Cc;
   }
 
+  // set reference point on reference (destination) image Cref
+  virtual void set_reference_point(const cv::Vec2f & Cr)
+  {
+    _Cr = Cr;
+  }
+
+  // get reference point on reference (destination) image Cref
   const cv::Vec2f & reference_point() const
   {
-    return _C;
+    return _Cr;
+  }
+
+  // set reference point on current (source) image Ccur
+  virtual void set_source_reference_point(const cv::Vec2f & Cc)
+  {
+    _Cc = Cc;
+  }
+
+  // set reference point on current (destination) image Ccur
+  const cv::Vec2f & source_reference_point() const
+  {
+    return _Cc;
   }
 
   inline bool set_parameters(const std::vector<float> & v)
@@ -135,7 +155,8 @@ public:
 
 protected:
   cv::Mat1f _parameters;
-  cv::Vec2f _C; // reference point
+  cv::Vec2f _Cr; // reference point on reference (destination) image
+  cv::Vec2f _Cc; // reference point on current (source) image
 };
 
 /**

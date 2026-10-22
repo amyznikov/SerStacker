@@ -26,27 +26,27 @@ static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _
   const int cn = _src_image.channels();
 
   if( _src_accumulator.size() != size ) {
-    CF_DEBUG("Image and accumulator sizes not match");
+    CF_ERROR("Image and accumulator sizes not match");
     return false;
   }
 
   if( _weights_accumulator.size() != size ) {
-    CF_DEBUG("Image and weights accumulator sizes not match");
+    CF_ERROR("Image and weights accumulator sizes not match");
     return false;
   }
 
   if( _weights_accumulator.type() != CV_32FC1 ) {
-    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
+    CF_ERROR("Bad weights_accumulator type. Must be CV_32FC1");
     return false;
   }
 
   if( _src_accumulator.depth() != CV_32F ) {
-    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
+    CF_ERROR("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
     return false;
   }
 
   if( _src_accumulator.channels() != cn ) {
-    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
+    CF_ERROR("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
     return false;
   }
 
@@ -781,7 +781,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
           const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
 
           for( int x = 0; x < cols; ++x ) {
-            const cv::Vec2f & p = rmp[x];
+            const cv::Vec2f p = rmp[x];
             // Boundaries of the target pixel (x, y) in the source frame
             // Find the sx range where drops guaranteed to intersect the target pixel along the X-axis.
             // Intersection condition: (sx + 0.5 - half_drop < target_x_max) AND (sx + 0.5 + half_drop > target_x_min)
@@ -841,7 +841,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
 
           for( int x = 0; x < cols; ++x ) {
             if ( wp[x] ) {
-              const cv::Vec2f & p = rmp[x];
+              const cv::Vec2f p = rmp[x];
               // Boundaries of the target pixel (x, y) in the source frame
               // Find the sx range where drops guaranteed to intersect the target pixel along the X-axis.
               // Intersection condition: (sx + 0.5 - half_drop < target_x_max) AND (sx + 0.5 + half_drop > target_x_min)
@@ -901,7 +901,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
           const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
           for( int x = 0; x < cols; ++x ) {
             if ( wp[x] ) {
-              const cv::Vec2f & p = rmp[x];
+              const cv::Vec2f p = rmp[x];
               const float target_x_min = p[0] - 0.5f;
               const float target_x_max = p[0] + 0.5f;
               const float target_y_min = p[1] - 0.5f;
@@ -1030,7 +1030,7 @@ bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
 bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
   if( _accumulated_frames < 1 ) {
-    CF_DEBUG("no frames");
+    CF_ERROR("no frames");
     return false;
   }
 

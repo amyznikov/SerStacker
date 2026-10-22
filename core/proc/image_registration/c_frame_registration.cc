@@ -371,9 +371,6 @@ bool c_frame_registration::has_valid_reference_timestamp() const
 bool c_frame_registration::create_image_transfrom()
 {
   if( !_image_transform ) {
-
-    _ecch.set_image_transform(nullptr);
-
     if( !(_image_transform = ::create_image_transform(_options.motion_type)) ) {
 
       CF_ERROR("create_image_transform(type=%s (%d)) fails",
@@ -384,12 +381,7 @@ bool c_frame_registration::create_image_transfrom()
     }
 
     _image_transform->parameters().copyTo(_image_transform_defaut_parameters);
-
-    if( _options.enable_ecc_registration && _options.ecc.image_scale > 0 ) {
-      _ecch.set_image_transform(_image_transform.get());
-    }
   }
-
 
   return true;
 }
@@ -688,13 +680,21 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   start_time = get_realtime_ms();
 
-
   if( !create_image_transfrom() ) {
     CF_ERROR("create_image_transfrom() fails");
     return false;
   }
 
+  CF_DEBUG("RESET IMAGE TRANSFORM");
   _image_transform->set_parameters(_image_transform_defaut_parameters);
+  _image_transform->set_reference_point(cv::Vec2f(_reference_frame_size.width / 2, _reference_frame_size.height / 2));
+
+  if ( !_options.enable_ecc_registration || _options.ecc.image_scale <= 0 ) {
+    _ecch.set_image_transform(nullptr);
+  }
+  else {
+    _ecch.set_image_transform(_image_transform.get());
+  }
 
   _current_frame_size = current_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));

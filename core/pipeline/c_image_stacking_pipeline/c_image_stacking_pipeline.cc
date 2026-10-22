@@ -585,12 +585,10 @@ bool c_image_stacking_pipeline::run_image_stacking()
       if ( true ) {
         lock_guard lock(mutex());
 
-        CF_DEBUG("call _frame_accumulation->compute()");
         if( !_frame_accumulation->compute(accumulated_image, accumulated_mask) ) {
           CF_ERROR("ERROR: frame_accumulation_->compute() fails");
           return false;
         }
-        CF_DEBUG("_frame_accumulation->compute() OK");
         if( _output_options.save_acc ) {
           if( (acc = _frame_accumulation->get_accumulator()).empty() ) {
             CF_ERROR("frame_accumulation->get_accumulator() returned empty acc image");
@@ -943,12 +941,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
         return false;
       }
 
-      CF_DEBUG("call _frame_accumulation->compute()");
       if( !_frame_accumulation->compute(reference_frame, reference_mask) ) {
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
-      CF_DEBUG("_frame_accumulation->compute() OK");
 
       linear_interpolation_inpaint(reference_frame,
           reference_mask,
@@ -1029,11 +1025,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   _accumulated_frames = 0;
 
 
-  CF_DEBUG("total_frames_=%d", _total_frames);
+  CF_DEBUG("TOTAL_FRAMES=%d", _total_frames);
 
   for ( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
-    CF_DEBUG("_generating_master_frame=%d", _generating_master_frame);
+    CF_DEBUG("GENERATING_MASTER_FRAME=%d", _generating_master_frame);
 
     if ( canceled() ) {
       set_status_msg("canceled");
@@ -1071,8 +1067,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       CF_ERROR("[F %d] select_image_roi() fails", input_sequence->current_pos() - 1);
       continue;
     }
-
-    // CF_DEBUG("R")
 
     if ( canceled() ) {
       set_status_msg("canceled");
@@ -1268,7 +1262,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
 
       if ( is_bayer_accumulate ) {
-        CF_DEBUG("REMAP ONLY WEIGHTS");
         if( !current_weights.empty() ) {
           _frame_registration->custom_remap(current_remap,
               current_weights, current_weights,
@@ -1300,7 +1293,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               cv::noArray(), cv::noArray(),
               ECC_INTER_LINEAR,
               ECC_BORDER_CONSTANT);
-          CF_DEBUG("H");
         }
 
         if( !save_aligned_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {
@@ -1556,7 +1548,9 @@ bool c_image_stacking_pipeline::weights_required(const c_frame_accumulation_opti
   return opts.sharpness_measure.kradius > 0;
 }
 
-void c_image_stacking_pipeline::compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
+void c_image_stacking_pipeline::compute_weights(const c_frame_accumulation_options & opts,
+    const cv::Mat & src, const cv::Mat & srcmask,
+    cv::Mat & dst) const
 {
   compute_local_variance_map(src, opts.sharpness_measure, dst);
   if ( !srcmask.empty() ) {
@@ -2057,59 +2051,59 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
           ctlbind(ctls, "display_type", CTL_CONTEXT(cctx, default_display_type), "display_type");
           ctlbind_browse_for_directory(ctls, "output_directory",CTL_CONTEXT(cctx, output_directory), "output_directory");
           ctlbind_browse_for_existing_file(ctls, "output_file_name",CTL_CONTEXT(cctx, output_file_name), "output_file_name");
+          ctlbind(ctls, "Save Preprocessed Frames",CTL_CONTEXT(cctx, save_preprocessed_frames), "");
+          ctlbind(ctls, "Save Feature Frames",CTL_CONTEXT(cctx, save_feature_frames), "save_feature_frames");
+          ctlbind(ctls, "Save ECC Frames",CTL_CONTEXT(cctx, save_ecc_frames), "save_ecc_frames");
+          ctlbind(ctls, "Save Aligned Frames",CTL_CONTEXT(cctx, save_aligned_frames), "");
+          ctlbind(ctls, "Save ACC",CTL_CONTEXT(cctx, save_acc), "");
+          ctlbind(ctls, "Save ACCM",CTL_CONTEXT(cctx, save_accm), "");
+          ctlbind(ctls, "Save ACCW",CTL_CONTEXT(cctx, save_accw), "");
+          ctlbind(ctls, "Save Incremental Frames",CTL_CONTEXT(cctx, save_incremental_frames), "");
+          ctlbind(ctls, "Save eccflow maps",CTL_CONTEXT(cctx, save_eccflow_frames), "");
+          ctlbind(ctls, "Save sparse matches video",CTL_CONTEXT(cctx, save_sparse_matches_video), "");
+          ctlbind(ctls, "Save sparse matches blend",CTL_CONTEXT(cctx, save_sparse_match_blend_frames), "");
 
           ctlbind_expandable_group(ctls, "Save Preprocessed Frames", "");
-            ctlbind(ctls, "save_preprocessed_frames",CTL_CONTEXT(cctx, save_preprocessed_frames), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_preprocessed_video_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save Feature Frames", "");
-            ctlbind(ctls, "save_feature_frames",CTL_CONTEXT(cctx, save_feature_frames), "save_feature_frames");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_feature_video_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save ECC Frames", "");
-            ctlbind(ctls, "save_ecc_frames",CTL_CONTEXT(cctx, save_ecc_frames), "save_ecc_frames");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_ecc_video_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
-            ctlbind(ctls, "save_aligned_frames",CTL_CONTEXT(cctx, save_aligned_frames), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_aligned_video_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save ACC", "");
-            ctlbind(ctls, "save_acc",CTL_CONTEXT(cctx, save_acc), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_acc_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save ACCM", "");
-            ctlbind(ctls, "save_acc",CTL_CONTEXT(cctx, save_accm), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_accm_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save ACCW", "");
-            ctlbind(ctls, "save_acc",CTL_CONTEXT(cctx, save_accw), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_accw_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save Incremental Frames", "");
-            ctlbind(ctls, "save_incremental_frames",CTL_CONTEXT(cctx, save_incremental_frames), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_incremental_video_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save eccflow maps", "");
-            ctlbind(ctls, "save_eccflow_maps",CTL_CONTEXT(cctx, save_eccflow_frames), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_eccflow_options));
           ctlbind_end_group(ctls);
 
           ctlbind_expandable_group(ctls, "Save sparse matches video", "");
-            ctlbind(ctls, "save_sparse_matches_video",CTL_CONTEXT(cctx, save_sparse_matches_video), "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_sparse_matches_video_options));
           ctlbind_end_group(ctls);
 
-          ctlbind_expandable_group(ctls, "Save sparse match blends", "");
-            ctlbind(ctls, "save sparse match blends",CTL_CONTEXT(cctx, save_sparse_match_blend_frames), "");
+          ctlbind_expandable_group(ctls, "Save sparse matches blend", "");
             ctlbind(ctls,CTL_CONTEXT(cctx, output_sparse_match_blend_options));
           ctlbind_end_group(ctls);
       });

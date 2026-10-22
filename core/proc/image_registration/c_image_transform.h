@@ -42,8 +42,8 @@ typedef cv::Matx<float, 2, 4> Matx24f;
  * Image transform relative to center [Cx, Cy] given in reference (destination)
  * coordinate system ref designed mainly for generating backward remaps:
  *
- *  x_cur = func_x(x_ref - Cx_ref, x_ref - Cx_ref, params)
- *  y_cur = func_y(x_ref - Cx_ref, x_ref - Cx_ref, params)
+ *  x_cur = func_x(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cx_ref
+ *  y_cur = func_y(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cy_ref
  */
 class c_image_transform
 {
@@ -140,8 +140,8 @@ protected:
 
 /**
  * Translation transform:
- *  x_cur = (x_ref - Cx_ref) + Tx
- *  y_cur = (y_ref - Cy_ref) + Ty
+ *  x_cur = (x_ref - Cx_ref) + Tx + Cx_ref = x_ref + Tx
+ *  y_cur = (y_ref - Cy_ref) + Ty + Cy_ref = y_ref + Ty
  */
 class c_translation_image_transform:
     public c_image_transform
@@ -151,9 +151,11 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
-  c_translation_image_transform(float Tx = 0, float Ty = 0);
-  c_translation_image_transform(const cv::Vec2f & T);
+  c_translation_image_transform(float Tx = 0, float Ty = 0, const cv::Vec2f & C = cv::Vec2f());
+  c_translation_image_transform(const cv::Vec2f & T, const cv::Vec2f & C = cv::Vec2f());
   void reset() final;
   void set_reference_point(const cv::Vec2f & C) final;
 
@@ -189,17 +191,14 @@ public:
 
 
 /**
- * Euclidean image transform relative to center [Cx, Cy] given in reference (destination)
+ * Euclidean image transform relative to center [Cx_ref, Cy_ref] given in reference (destination)
  * coordinate system ref with optional translation, rotation and scale:
  *
  *  ca = cos(angle)
  *  sa = sin(angle)
  *
- *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Tx_cur
- *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Ty_cur
- *
- *  The translation vector [Tx_cur, Ty_cur] may include also implicitly omitted
- *  frame center [Cx_cur, Cy_cur] if required
+ *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Cx_ref + Tx
+ *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Cy_ref + Ty
  *
  *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -212,6 +211,8 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
   c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1, const cv::Vec2f & C = cv::Vec2f());
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1, const cv::Vec2f & C = cv::Vec2f());
@@ -283,8 +284,8 @@ inline cv::Matx23f create_euclidean_transform(const cv::Vec2f & C, const cv::Vec
 
 /**
  * Image affine transform:
- *  x_cur =  a00 * (x_ref-Cx_ref) + a01 * (y_ref-Cy_ref) + a02
- *  y_cur =  a10 * (x_ref-Cx_ref) + a11 * (y_ref-Cy_ref) + a12
+ *  x_cur =  a00 * (x_ref-Cx_ref) + a01 * (y_ref-Cy_ref) + a02 + Cx_ref
+ *  y_cur =  a10 * (x_ref-Cx_ref) + a11 * (y_ref-Cy_ref) + a12 + Cx_ref
  *
  *  For the signs of angles see opencv doc
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -297,6 +298,8 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
   c_affine_image_transform(const cv::Vec2f & C = cv::Vec2f());
   c_affine_image_transform(const float a[2][3], const cv::Vec2f & C = cv::Vec2f());
@@ -338,8 +341,8 @@ public:
  * Image homography transform relative to reference point [Cx_ref, Cy_ref]:
  *
  * w  =  (x_ref-Cx_ref) * a20 + (y_ref-Cy_ref) * a21 + a22
- * x_cur =  ((x_ref-Cx_ref) * a00 + (y_ref-Cy_ref) * a01 + a02) / w
- * y_cur =  ((x_ref-Cx_ref) * a10 + (y_ref-Cy_ref) * a11 + a12) / w
+ * x_cur =  ((x_ref-Cx_ref) * a00 + (y_ref-Cy_ref) * a01 + a02) / w + Cx_ref
+ * y_cur =  ((x_ref-Cx_ref) * a10 + (y_ref-Cy_ref) * a11 + a12) / w + Cy_ref
  */
 class c_homography_image_transform :
     public c_image_transform
@@ -349,6 +352,8 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
   c_homography_image_transform(const cv::Vec2f & C = cv::Vec2f());
   c_homography_image_transform(const float a[3][3], const cv::Vec2f & C = cv::Vec2f());
@@ -398,8 +403,10 @@ protected:
 
 /*
  * Semi-quadratic image transform, 2x4 = 8 parameters are estimated
- *   x' =  a00 * x + a01 * y + a02 + a03 * x * y
- *   y' =  a10 * x + a11 * y + a12 + a13 * x * y
+ *   xx = x_ref - Cx
+ *   yy = y_ref - Cy
+ *   x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Cx
+ *   y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Cy
  */
 class c_semi_quadratic_image_transform :
     public c_image_transform
@@ -409,6 +416,8 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
   c_semi_quadratic_image_transform(const cv::Vec2f & C = cv::Vec2f());
   c_semi_quadratic_image_transform(const float a[2][4], const cv::Vec2f & C = cv::Vec2f());
@@ -443,9 +452,11 @@ public:
 };
 
 /*
- * Image quadratic transform, 12 parameters are estimated
- *   x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
- *   y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
+ * Image full quadratic transform, 12 parameters are estimated
+ *   xx = x_ref - Cx
+ *   yy = y_ref - Cy
+ *   x_cur =  a00 * xx + a01 * yy + a02 + a03 * xx * yy + a04 * xx * xx + a05 * yy * yy + Cx
+ *   y_cur =  a10 * xx + a11 * yy + a12 + a13 * xx * yy + a14 * xx * xx + a15 * yy * yy + Cy
  */
 class c_quadratic_image_transform :
     public c_image_transform
@@ -455,6 +466,8 @@ public:
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
+  using base::create_steepest_descent_images;
+  using base::remap;
 
   c_quadratic_image_transform(const cv::Vec2f & C = cv::Vec2f());
   c_quadratic_image_transform(const float a[2][6], const cv::Vec2f & C = cv::Vec2f());

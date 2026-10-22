@@ -156,15 +156,11 @@ static void remapImage(cv::InputArray currentImage, cv::OutputArray alignedCurre
     return;
   }
 
-  const cv::Size srcSize = currentImage.size();
   const cv::Size dstSize = referenceImageSize;
-  const cv::Vec2f currentCenter(srcSize.width / 2.f, srcSize.height / 2.f);
   const cv::Vec2f referenceCenter(dstSize.width / 2.f, dstSize.height / 2.f);
-  const cv::Vec2f T = currentCenter - estimatedTranslation;
 
-  c_euclidean_image_transform transform(T, -estimatedRotation, 1.0, referenceCenter);
-  ((c_image_transform&)transform).remap(currentImage, cv::noArray(), dstSize,
-      alignedCurrentImage, cv::noArray());
+  c_euclidean_image_transform transform(-estimatedTranslation, -estimatedRotation, 1.0, referenceCenter);
+  transform.remap(currentImage, cv::noArray(), dstSize, alignedCurrentImage, cv::noArray());
 }
 
 bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

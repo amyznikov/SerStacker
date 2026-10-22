@@ -2203,7 +2203,7 @@ bool c_ecclm_inverse_compositional::align()
       }
 
       /* Solve system to define delta and define new value of params */
-      cv::solve(H, v, deltap, cv::DECOMP_CHOLESKY);
+      cv::solve(H,   v, deltap, cv::DECOMP_CHOLESKY);
       newparams = _transform->invert_and_compose(params, _update_step_scale * deltap);
 
       /* Compute function for newparams */

@@ -1032,20 +1032,29 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f& /
   const float Cx = _Cr[0];
   const float Cy = _Cr[1];
 
-  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+  const uint8_t * gx_base = gx.ptr();
+  const size_t gx_stride = gx.step;
+
+  const uint8_t * gy_base = gy.ptr();
+  const size_t gy_stride = gy.step;
+
+  parallel_for(0, size.height, [=, &J](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      // Derivatives are computed in a local coordinate system
+      const float * gxp = (const float *)(gx_base + gx_stride * y);
+      const float * gyp = (const float *)(gy_base + gy_stride * y);
       const float yy = y - Cy;
       for( int x = 0; x < size.width; ++x ) {
         const float xx = x - Cx;
+        const float ggx = gxp[x];
+        const float ggy = gyp[x];
 
-        J[0][y][x] = gx[y][x] * xx;  // dWx / da00
-        J[1][y][x] = gx[y][x] * yy;  // dWx / da01
-        J[2][y][x] = gx[y][x];       // dWx / da02
+        J[0][y][x] = ggx * xx;  // dWx / da00
+        J[1][y][x] = ggx * yy;  // dWx / da01
+        J[2][y][x] = ggx;       // dWx / da02
 
-        J[3][y][x] = gy[y][x] * xx;  // dWy / da10
-        J[4][y][x] = gy[y][x] * yy;  // dWy / da11
-        J[5][y][x] = gy[y][x];       // dWy / da12
+        J[3][y][x] = ggy * xx;  // dWy / da10
+        J[4][y][x] = ggy * yy;  // dWy / da11
+        J[5][y][x] = ggy;       // dWy / da12
       }
     }
   });
@@ -1089,7 +1098,6 @@ void c_homography_image_transform::reset()
   set_matrix(cv::Matx33f::eye());
 }
 
-#if 1
 cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
 {
   constexpr float safe_min = std::numeric_limits<float>::min();
@@ -1128,45 +1136,6 @@ cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
   return cv::Mat1f(minv, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
 }
 
-#else
-
-cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
-{
-  constexpr float safe_min = std::numeric_limits<float>::min();
-
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
-
-  const cv::Matx33f m = matrix(p);
-
-  // H = TC * m * TC^(-1)
-  const cv::Matx33f TC(
-    1.0f, 0.0f, Cx,
-    0.0f, 1.0f, Cy,
-    0.0f, 0.0f, 1.0f
-  );
-
-  const cv::Matx33f TCinv(
-    1.0f, 0.0f, -Cx,
-    0.0f, 1.0f, -Cy,
-    0.0f, 0.0f, 1.0f
-  );
-
-  const cv::Matx33f H = TC * m * TCinv;
-  const cv::Matx33f Hinv = H.inv();
-
-  // minv = T_C_inv * Hinv * T_C
-  cv::Matx33f minv = TCinv * Hinv * TC;
-
-  const float scale = minv(2, 2);
-  if (std::abs(scale) >= safe_min) {
-    minv /= scale;
-  }
-
-  return cv::Mat1f(minv, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
-}
-#endif
-
 cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
   // M_new = M * dM^(-1)
@@ -1194,24 +1163,6 @@ cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, 
 
   return cv::Mat1f(mres, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
 }
-
-//cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
-//{
-//  // M_new = M * dM^(-1)
-//  constexpr float safe_min = std::numeric_limits<float>::min();
-//
-//  const cv::Matx33f m = matrix(p);
-//  const cv::Matx33f dm = matrix(dp);
-//
-//  cv::Matx33f mres = m * dm.inv();
-//
-//  const float scale = mres(2, 2);
-//  if (std::abs(scale) >= safe_min) {
-//    mres /= scale;
-//  }
-//
-//  return cv::Mat1f(mres, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
-//}
 
 void c_homography_image_transform::update_parameters()
 {
@@ -1324,10 +1275,12 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
   const float Ccx = _Cc[0];
   const float Ccy = _Cc[1];
 
-  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
-    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      cv::Vec2f * __restrict mp = rmap[y];
+  const uint8_t * rmap_base = rmap.ptr();
+  const size_t rmap_stride = rmap.step;
 
+  parallel_for(0, rmap.rows, [=](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      float * __restrict mp = (float * )(rmap_base + rmap_stride * y);
       const float yy = y - Cry;
 
       // invariant parts for the current row yy
@@ -1335,12 +1288,12 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
       const float intermediate_num_x = a(0, 1) * yy + a(0, 2);
       const float intermediate_num_y = a(1, 1) * yy + a(1, 2);
 
-      for ( int x = 0; x < rmap.cols; ++x ) {
+      for ( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
         const float xx = x - Crx;
         const float den = a(2, 0) * xx + intermediate_w;
         const float w = (std::abs(den) > safe_min) ? (1.0f / den) : 0.0f;
-        mp[x][0] = (a(0, 0) * xx + intermediate_num_x) * w + Ccx;
-        mp[x][1] = (a(1, 0) * xx + intermediate_num_y) * w + Ccy;
+        mp[0] = (a(0, 0) * xx + intermediate_num_x) * w + Ccx;
+        mp[1] = (a(1, 0) * xx + intermediate_num_y) * w + Ccy;
       }
     }
   });
@@ -1414,8 +1367,26 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
   const float Crx = _Cr[0];
   const float Cry = _Cr[1];
 
-  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+  const uint8_t * gx_base = gx.ptr();
+  const size_t gx_stride = gx.step;
+
+  const uint8_t * gy_base = gy.ptr();
+  const size_t gy_stride = gy.step;
+
+  parallel_for(0, size.height, [=, &J](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+
+      const float * gxp = (const float *)(gx_base + gx_stride * y);
+      const float * gyp = (const float *)(gy_base + gy_stride * y);
+
+      float * __restrict J0 = (float *)J[0][y];
+      float * __restrict J1 = (float *)J[1][y];
+      float * __restrict J2 = (float *)J[2][y];
+      float * __restrict J3 = (float *)J[3][y];
+      float * __restrict J4 = (float *)J[4][y];
+      float * __restrict J5 = (float *)J[5][y];
+      float * __restrict J6 = (float *)J[6][y];
+      float * __restrict J7 = (float *)J[7][y];
 
       const float yy = y - Cry;
 
@@ -1429,25 +1400,24 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
         const float hatX = (xx * a(0,0) + yy * a(0,1) + a(0,2)) * w;
         const float hatY = (xx * a(1,0) + yy * a(1,1) + a(1,2)) * w;
 
-        const float ggx = gx[y][x] * w;
-        const float ggy = gy[y][x] * w;
-
+        const float ggx = gxp[x] * w;
+        const float ggy = gyp[x] * w;
         const float gg = -hatX * ggx - hatY * ggy;
 
         // Derivatives for X (a00, a01, a02)
-        J[0][y][x] = ggx * xx;
-        J[1][y][x] = ggx * yy;
-        J[2][y][x] = ggx;
+        J0[x] = ggx * xx;
+        J1[x] = ggx * yy;
+        J2[x] = ggx;
 
         // Derivatives for Y (a10, a11, a12)
-        J[3][y][x] = ggy * xx;
-        J[4][y][x] = ggy * yy;
-        J[5][y][x] = ggy;
+        J3[x] = ggy * xx;
+        J4[x] = ggy * yy;
+        J5[x] = ggy;
 
         // The derivatives of the denominator (a20, a21)
         // weighted to the local xx and yy
-        J[6][y][x] = gg * xx;
-        J[7][y][x] = gg * yy;
+        J6[x] = gg * xx;
+        J7[x] = gg * yy;
       }
     }
   });
@@ -1632,11 +1602,14 @@ bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const
   const float Ccx = _Cc[0];
   const float Ccy = _Cc[1];
 
-  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+  const uint8_t * rmap_base = rmap.ptr();
+  const size_t rmap_stride = rmap.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      float * __restrict mp = (float * )rmap[y];
+      float * __restrict mp = (float * )(rmap_base + rmap_stride* y);
       const float yy = y - Cry;
-      for ( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+      for ( int x = 0; x < size.width; ++x, mp += 2 ) {
         const float xx = x - Crx;
         mp[0] = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + Ccx;
         mp[1] = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + Ccy;
@@ -1691,8 +1664,10 @@ bool c_semi_quadratic_image_transform::remap(const cv::Mat1f & p, const std::vec
 bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
     cv::Mat1f J[]) const
 {
-  // x' =  a00 * x + a01 * y + a02 + a03 * x * y
-  // y' =  a10 * x + a11 * y + a12 + a13 * x * y
+  // xx = x_ref - Crx
+  // yy = y_ref - Cry
+  // x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Ccx
+  // y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Ccy
 
   const cv::Size size = gx.size();
 
@@ -1703,24 +1678,43 @@ bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::
   const float Crx = _Cr[0];
   const float Cry = _Cr[1];
 
-  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+  const uint8_t * gx_base = gx.ptr();
+  const size_t gx_stride = gx.step;
+
+  const uint8_t * gy_base = gy.ptr();
+  const size_t gy_stride = gy.step;
+
+  parallel_for(0, size.height, [=, &J](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+
+      const float * gxp = (const float *)(gx_base + gx_stride * y);
+      const float * gyp = (const float *)(gy_base + gy_stride * y);
+
+      float * __restrict J0 = (float *)J[0][y];
+      float * __restrict J1 = (float *)J[1][y];
+      float * __restrict J2 = (float *)J[2][y];
+      float * __restrict J3 = (float *)J[3][y];
+      float * __restrict J4 = (float *)J[4][y];
+      float * __restrict J5 = (float *)J[5][y];
+      float * __restrict J6 = (float *)J[6][y];
+      float * __restrict J7 = (float *)J[7][y];
+
       const float yy = y - Cry;
+
       for ( int x = 0; x < size.width; ++x ) {
         const float xx = x - Crx;
+        const float ggx = gxp[x];
+        const float ggy = gyp[x];
 
-        const float g_x = gx[y][x];
-        const float g_y = gy[y][x];
+        J0[x] = ggx * xx;      // a00
+        J1[x] = ggx * yy;      // a01
+        J2[x] = ggx;           // a02
+        J3[x] = ggx * xx * yy; // a03
 
-        J[0][y][x] = g_x * xx;      // a00
-        J[1][y][x] = g_x * yy;      // a01
-        J[2][y][x] = g_x;           // a02
-        J[3][y][x] = g_x * xx * yy; // a03
-
-        J[4][y][x] = g_y * xx;      // a10
-        J[5][y][x] = g_y * yy;      // a11
-        J[6][y][x] = g_y;           // a12
-        J[7][y][x] = g_y * xx * yy; // a13
+        J4[x] = ggy * xx;      // a10
+        J5[x] = ggy * yy;      // a11
+        J6[x] = ggy;           // a12
+        J7[x] = ggy * xx * yy; // a13
       }
     }
   });
@@ -1728,43 +1722,55 @@ bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::
   return true;
 }
 
-// First-order approximation of Pseudo-Inverse (linear inversion of deformations).
 cv::Mat1f c_semi_quadratic_image_transform::invert(const cv::Mat1f & p) const
 {
+  constexpr float safe_min = std::numeric_limits<float>::min();
+
   if (p.rows != 8 || p.cols != 1) {
     CF_ERROR("c_semi_quadratic_image_transform::invert: Invalid parameters size");
     return cv::Mat1f();
   }
 
-  // Current parameters p
-  const float a00 = p(0, 0); // Scale / rotation along X
-  const float a01 = p(1, 0); // Affine shift along X
-  const float a02 = p(2, 0); // Translation Tx
-  const float a03 = p(3, 0); // Quadratic XY term for X
+  const float a00 = p(0, 0);
+  const float a01 = p(1, 0);
+  const float a02 = p(2, 0); // Tx
+  const float a03 = p(3, 0); // XY_x
 
-  const float a10 = p(4, 0); // Affine shift along Y
-  const float a11 = p(5, 0); // Scale / rotation along Y
-  const float a12 = p(6, 0); // Translation Ty
-  const float a13 = p(7, 0); // Quadratic XY term for Y
+  const float a10 = p(4, 0);
+  const float a11 = p(5, 0);
+  const float a12 = p(6, 0); // Ty
+  const float a13 = p(7, 0); // XY_y
+
+  const cv::Matx22f A(a00, a01,
+      a10, a11);
+
+  const float det = cv::determinant(A);
+  if( !(std::abs(det) >= safe_min) ) {
+    CF_ERROR("c_semi_quadratic_image_transform::invert: Linear part is singular!");
+    return cv::Mat1f();
+  }
+
+  cv::Matx22f Ainv = A.inv();
+  const float b00 = Ainv(0, 0);
+  const float b01 = Ainv(0, 1);
+  const float b10 = Ainv(1, 0);
+  const float b11 = Ainv(1, 1);
+
+  const float kx = (b00 * a03 + b01 * a13);
+  const float ky = (b10 * a03 + b11 * a13);
+  const float xL = -(b00 * a02 + b01 * a12);
+  const float yL = -(b10 * a02 + b11 * a12);
+  const float cross_term = (b00 * b11 + b01 * b10);
 
   cv::Mat1f res_p(8, 1);
-
-  // For linear dimensionless coefficients and quadratic bending terms,
-  // the inversion consists of changing the sign of the increment.
-  res_p(0, 0) = -a00; // Inversion of scale/rotation along X
-  res_p(1, 0) = -a01; // Inversion of affine shift along X
-  res_p(3, 0) = -a03; // Inversion of quadratic term for X
-
-  res_p(4, 0) = -a10; // Inversion of affine shift along Y
-  res_p(5, 0) = -a11; // Inversion of scale/rotation along Y
-  res_p(7, 0) = -a13; // Inversion of quadratic term for Y
-
-  // For the translational component (Tx, Ty), it is necessary to account for the sign
-  // and compensate for the displacement caused by the linear deformation components
-  // relative to the reference center _Cr.
-  // Mathematically, this is equivalent to inverting the transformation matrix centered at that point.
-  res_p(2, 0) = -a02; // Inversion of the Tx shift
-  res_p(6, 0) = -a12; // Inversion of the Ty shift
+  res_p(0, 0) = b00 - kx * (b00 * yL + b10 * xL);
+  res_p(1, 0) = b01 - kx * (b01 * yL + b11 * xL);
+  res_p(4, 0) = b10 - ky * (b00 * yL + b10 * xL);
+  res_p(5, 0) = b11 - ky * (b01 * yL + b11 * xL);
+  res_p(2, 0) = xL - kx * (xL * yL);
+  res_p(6, 0) = yL - ky * (xL * yL);
+  res_p(3, 0) = -kx * cross_term;
+  res_p(7, 0) = -ky * cross_term;
 
   return res_p;
 }

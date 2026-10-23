@@ -13,30 +13,27 @@ static void serialize_transfrom_parameters(c_config_setting settings, bool save,
 {
   if ( save ) {
     c_config_setting section3 = settings.add_list("transforms");
+
     const auto & transforms = _algorithm.computed_transforms();
     for ( int i = 0, n = transforms.size(); i < n; ++i ) {
-
-      std::vector<float> values;
-
-      const auto & transform = transforms[i];
-      if ( transform ) {
-        transform->parameters().copyTo(values);
+      c_image_transform_params opts;
+      if ( transforms[i] ) {
+        get_image_transform_params(transforms[i], opts);
       }
-
-      save_settings(section3.add_element(CONFIG_TYPE_LIST), values);
+      serialize_image_transform_opts(section3.add_element(CONFIG_TYPE_GROUP), save, opts);
     }
   }
   else {
     c_config_setting section3 = settings["transforms"];
     if ( section3.isList() ) {
 
-      std::vector<float> parameters[4];
+      c_image_transform_params opts[4];
 
       for ( int i = 0, n = section3.length(); i < n; ++i ) {
-        load_settings(section3[i], &parameters[i]);
+        serialize_image_transform_opts(section3[i], save, opts[i]);
       }
 
-      _algorithm.setImageTransform(motion_type, parameters);
+      _algorithm.setImageTransforms(motion_type, opts);
     }
   }
 }
@@ -63,9 +60,9 @@ void c_align_color_channels_routine::getcontrols(c_control_list & ctls, const ct
   ctlbind_end_group(ctls);
 
   ctlbind_menu_button(ctls, "Transform...", ctx);
-  ctlbind_item(ctls, "Copy transfrom parameters to clipboard", ctx, &this_class::
+  ctlbind_item(ctls, "Copy transform parameters to clipboard", ctx, &this_class::
       copy_transfrom_parameters_to_clipboard);
-  ctlbind_item(ctls, "Paste transfrom parameters from clipboard", ctx, &this_class::
+  ctlbind_item(ctls, "Paste transform parameters from clipboard", ctx, &this_class::
       paste_transfrom_parameters_from_clipboard);
 
 }
@@ -75,12 +72,8 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings, bool s
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, referenceChannel);
     SERIALIZE_OPTION(settings, save, *this, reEstimate);
-
     serialize_align_color_channels_options(settings, save, _opts);
-    if ( auto grp = SERIALIZE_GROUP(settings, save, "transfrom") ) {
-      serialize_transfrom_parameters(grp, save, _algorithm, _opts.motion_type);
-    }
-
+    serialize_transfrom_parameters(settings, save, _algorithm, _opts.motion_type);
     return true;
   }
   return false;

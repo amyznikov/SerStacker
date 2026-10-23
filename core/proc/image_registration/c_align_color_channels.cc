@@ -26,18 +26,16 @@ IMAGE_MOTION_TYPE c_align_color_channels::estimated_motion_type() const
   return _estimated_motion_type;
 }
 
-bool c_align_color_channels::setImageTransform(IMAGE_MOTION_TYPE motionType,
-    const std::vector<float> parameters[4])
+bool c_align_color_channels::setImageTransforms(IMAGE_MOTION_TYPE motionType,
+    const c_image_transform_params opts[4])
 {
   _estimated_motion_type = motionType;
 
   _remaps.clear(), _remaps.resize(4);
   _image_transforms.clear(), _image_transforms.resize(4);
   for( int i = 0; i < 4; ++i ) {
-    if( !parameters[i].empty() ) {
-      _image_transforms[i] = create_image_transform(motionType);
-      _image_transforms[i]->set_parameters(parameters[i]);
-      // FIXME: MUST set also reference points here!!!!
+    if( opts[i].motionType == motionType && !opts[i].params.empty() ) {
+      _image_transforms[i] = create_image_transform(opts[i]);
     }
   }
 
@@ -115,7 +113,7 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
 
   _remaps.resize(4);
 
-  // const cv::Vec2f Cref(reference_channel.cols / 2, reference_channel.rows / 2);
+  const cv::Vec2f Cref(reference_channel.cols / 2, reference_channel.rows / 2);
 
   for( int i = 0; i < 4; ++i ) {
     if ( i == reference_channel_index ) {
@@ -123,7 +121,7 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
     }
     else {
       _image_transforms[i] = create_image_transform(opts.motion_type);
-      // _image_transforms[i]->set_reference_point(Cref);
+      _image_transforms[i]->set_reference_point(Cref);
     }
   }
 

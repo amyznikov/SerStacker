@@ -14,8 +14,6 @@
 # include <opencv2/geometry.hpp>
 #endif
 
-#include <core/debug.h>
-
 // OpenCV version macro
 #ifndef CV_VERSION_INT
 # define CV_VERSION_INT(a,b,c) (((a)<<16)|((b)<<8)|(c))
@@ -39,11 +37,11 @@ typedef cv::Matx<float, 2, 4> Matx24f;
 #endif
 
 /**
- * Image transform relative to center [Cx_ref, Cy_ref] given in reference (destination)
+ * Image transform relative to center [Crx, Cry] given in reference (destination)
  * coordinate system designed mainly for generating backward remaps:
  *
- *  x_cur = Wx(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cx_cur
- *  y_cur = Wy(x_ref - Cx_ref, x_ref - Cx_ref, params) + Cy_cur
+ *  x_cur = Wx(x_ref - Crx, y_ref - Cry, params) + Ccx
+ *  y_cur = Wy(x_ref - Crx, y_ref - Cry, params) + Ccy
  */
 class c_image_transform
 {
@@ -169,8 +167,8 @@ protected:
 
 /**
  * Translation transform:
- *  x_cur = (x_ref - Cx_ref) + Tx + Cx_ref = x_ref + Tx
- *  y_cur = (y_ref - Cy_ref) + Ty + Cy_ref = y_ref + Ty
+ *  x_cur = x_ref - Crx + Tx + Ccx
+ *  y_cur = y_ref - Cry + Ty + Ccy
  */
 class c_translation_image_transform:
     public c_image_transform
@@ -220,14 +218,16 @@ public:
 
 
 /**
- * Euclidean image transform relative to center [Cx_ref, Cy_ref] given in reference (destination)
- * coordinate system ref with optional translation, rotation and scale:
+ * Euclidean image transform relative to center [Crx, Cry] given in reference (destination)
+ * coordinate system with optional translation, rotation and scale:
+ *  xx = x_ref - Crx
+ *  yy = y_ref - Cry
  *
- *  ca = cos(angle)
- *  sa = sin(angle)
+ *  sca = s * cos(angle)
+ *  ssa = s * sin(angle)
  *
- *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Cx_cur + Tx
- *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Cy_cur + Ty
+ *  x_cur = sca * xx - ssa * yy + Tx + Ccx
+ *  y_cur = ssa * xx + sca * yy + Ty + Ccy
  *
  *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -311,8 +311,11 @@ inline cv::Matx23f create_euclidean_transform(const cv::Vec2f & C, const cv::Vec
 
 /**
  * Image affine transform:
- *  x_cur =  a00 * (x_ref-Cx_ref) + a01 * (y_ref-Cy_ref) + a02 + Cx_ref
- *  y_cur =  a10 * (x_ref-Cx_ref) + a11 * (y_ref-Cy_ref) + a12 + Cx_ref
+ *  xx = x_ref - Crx
+ *  yy = y_ref - Cry
+ *
+ *  x_cur =  a00 * xx + a01 * yy + a02 + Ccx
+ *  y_cur =  a10 * xx + a11 * yy + a12 + Ccy
  *
  *  For the signs of angles see opencv doc
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -364,11 +367,13 @@ public:
 
 
 /**
- * Image homography transform relative to reference point [Cx_ref, Cy_ref]:
+ * Image homography transform relative to reference point [Crx, Cry]:
+ *  xx = x_ref - Crx
+ *  yy = y_ref - Cry
  *
- * w  =  (x_ref-Cx_ref) * a20 + (y_ref-Cy_ref) * a21 + a22
- * x_cur =  ((x_ref-Cx_ref) * a00 + (y_ref-Cy_ref) * a01 + a02) / w + Cx_ref
- * y_cur =  ((x_ref-Cx_ref) * a10 + (y_ref-Cy_ref) * a11 + a12) / w + Cy_ref
+ *  w  =  a20 * xx + a21 * yy + a22
+ *  x_cur =  (a00 * xx + a01 * yy + a02) / w + Ccx
+ *  y_cur =  (a10 * xx + a11 * yy + a12) / w + Ccy
  */
 class c_homography_image_transform :
     public c_image_transform
@@ -631,6 +636,5 @@ protected:
   cv::Matx33f _K;
   cv::Vec3f _A;
 };
-
 
 #endif /* __c_image_transform_h__ */

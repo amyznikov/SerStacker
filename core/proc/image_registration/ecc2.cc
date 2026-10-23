@@ -1331,7 +1331,7 @@ bool c_ecch::align()
       const cv::Mat1f & cimg = _pyramid[lvl]->current_image();
       const cv::Vec2f T = alignMatchTemplateZNCC(rimg, cimg, 2);
       _pyramid[lvl]->image_transform()->set_translation(T);
-      CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
+//      CF_DEBUG("[lvl=%d %dx%d] Small image: dx=%g dy=%g", lvl, rimg.cols, rimg.rows, T(0), T(1));
       fOK = true;
     }
     else {
@@ -1343,8 +1343,8 @@ bool c_ecch::align()
       const double eps = _pyramid[lvl]->eps();
       const double maxeps = _pyramid[lvl]->max_eps();
       const cv::Vec2f T = _pyramid[lvl]->image_transform()->translation();
-      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
-          iterations, eps, maxeps, T[0], T[1]);
+//      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
+//          iterations, eps, maxeps, T[0], T[1]);
     }
 
     if( fOK && lvl > 0 ) {

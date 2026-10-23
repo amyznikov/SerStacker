@@ -25,6 +25,18 @@ enum IMAGE_MOTION_TYPE {
   IMAGE_MOTION_PRH,
 };
 
+struct c_image_transform_params
+{
+  enum IMAGE_MOTION_TYPE motionType = IMAGE_MOTION_UNKNOWN;
+  cv::Vec2f Cr, Cc;
+  std::vector<float> params;
+};
+
 c_image_transform::sptr create_image_transform(IMAGE_MOTION_TYPE type);
+c_image_transform::sptr create_image_transform(const c_image_transform_params & opts);
+bool get_image_transform_params(const c_image_transform::sptr & transform, c_image_transform_params & opts);
+bool serialize_image_transform_opts(c_config_setting settings, bool save, c_image_transform_params & opts);
+
+
 
 #endif /* __image_transform_h__ */

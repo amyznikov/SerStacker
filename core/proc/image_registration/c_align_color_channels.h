@@ -84,8 +84,8 @@ public:
       const c_align_color_channels_options & opts,
       cv::OutputArray dst, cv::OutputArray dstmask) const;
 
-  bool setImageTransform(IMAGE_MOTION_TYPE motionType,
-      const std::vector<float> parameters[4]);
+  bool setImageTransforms(IMAGE_MOTION_TYPE motionType,
+      const c_image_transform_params opts[4]);
 
 protected:
   void remap(cv::InputArray src, cv::OutputArray dst,

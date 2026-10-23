@@ -71,32 +71,41 @@ public:
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
-  virtual void set_reference_points(const cv::Vec2f & Cr, const cv::Vec2f & Cc)
+
+  // Set both reference points on source and destination images
+  inline void set_reference_points(const cv::Vec2f & Cr, const cv::Vec2f & Cc)
   {
     _Cr = Cr;
     _Cc = Cc;
   }
 
-  // set reference point on reference (destination) image Cref
-  virtual void set_reference_point(const cv::Vec2f & Cr)
+  // Set both reference points on source and destination images
+  inline void set_reference_point(const cv::Vec2f & C)
+  {
+    _Cr = C;
+    _Cc = C;
+  }
+
+  // Set reference point on reference (destination) image Cr
+  inline void set_destination_reference_point(const cv::Vec2f & Cr)
   {
     _Cr = Cr;
   }
 
-  // get reference point on reference (destination) image Cref
-  const cv::Vec2f & reference_point() const
+  // Get reference point on destination image Cr
+  inline const cv::Vec2f & destination_reference_point() const
   {
     return _Cr;
   }
 
-  // set reference point on current (source) image Ccur
-  virtual void set_source_reference_point(const cv::Vec2f & Cc)
+  // Set reference point on source image Cc
+  inline void set_source_reference_point(const cv::Vec2f & Cc)
   {
     _Cc = Cc;
   }
 
-  // set reference point on current (destination) image Ccur
-  const cv::Vec2f & source_reference_point() const
+  // Get reference point on source image Cc
+  inline const cv::Vec2f & source_reference_point() const
   {
     return _Cc;
   }
@@ -106,27 +115,27 @@ public:
     return set_parameters(cv::Mat1f(int(v.size()), 1, (float*)(v.data())));
   }
 
-  const cv::Mat1f & parameters() const
+  inline const cv::Mat1f & parameters() const
   {
     return _parameters;
   }
 
-  cv::Mat1f clone_parameters() const
+  inline cv::Mat1f clone_parameters() const
   {
     return _parameters.clone();
   }
 
-  bool create_remap(const cv::Size & size, cv::Mat2f & map) const
+  inline bool create_remap(const cv::Size & size, cv::Mat2f & map) const
   {
     return create_remap(parameters(), size, map);
   }
 
-  bool remap(const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+  inline bool remap(const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
   {
     return remap(parameters(), rpts, cpts) ;
   }
 
-  bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+  inline bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
   {
     return create_steepest_descent_images(parameters(), gx, gy, J);
   }
@@ -137,12 +146,6 @@ public:
       cv::BorderTypes borderMode = cv::BORDER_CONSTANT,
       const cv::Scalar & borderValue = cv::Scalar()) const;
 
-
-  virtual bool invertible() const
-  {
-    return false;
-  }
-
   virtual cv::Mat1f invert_and_compose(const cv::Mat1f & /*p*/, const cv::Mat1f & /*dp*/) const
   {
     return cv::Mat1f();
@@ -151,6 +154,11 @@ public:
   virtual cv::Mat1f invert(const cv::Mat1f & /*p*/) const
   {
     return cv::Mat1f();
+  }
+
+  virtual bool invertible() const
+  {
+    return false;
   }
 
 protected:
@@ -178,7 +186,6 @@ public:
   c_translation_image_transform(float Tx = 0, float Ty = 0, const cv::Vec2f & C = cv::Vec2f());
   c_translation_image_transform(const cv::Vec2f & T, const cv::Vec2f & C = cv::Vec2f());
   void reset() final;
-  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_translation(float x, float y);
   void set_translation(const cv::Vec2f & v) final;
@@ -194,20 +201,21 @@ public:
   bool remap(const cv::Mat1f & , const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  bool invertible() const final
-  {
-    return true;
-  }
-
   cv::Mat1f invert(const cv::Mat1f & p) const final
   {
     return -p;
   }
 
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
   {
     return p - dp;
   }
+
+  bool invertible() const final
+  {
+    return true;
+  }
+
 };
 
 
@@ -218,8 +226,8 @@ public:
  *  ca = cos(angle)
  *  sa = sin(angle)
  *
- *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Cx_ref + Tx
- *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Cy_ref + Ty
+ *  x_cur = s * ((x_ref - Cx_ref) * ca - (y_ref - Cy_ref) * sa) + Cx_cur + Tx
+ *  y_cur = s * ((x_ref - Cx_ref) * sa + (y_ref - Cy_ref) * ca) + Cy_cur + Ty
  *
  *  For the signs of angles see opencv doc for estimateAffinePartial2D()
  *    <https://docs.opencv.org/master/dd/d52/tutorial_js_geometric_transformations.html>
@@ -239,7 +247,6 @@ public:
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1, const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
-  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
@@ -273,13 +280,12 @@ public:
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
+  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
   bool invertible() const final
   {
     return true;
   }
-
-  cv::Mat1f invert(const cv::Mat1f & p) const final;
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
 
 protected:
   void update_parameters();
@@ -329,7 +335,6 @@ public:
       const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
-  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx23f & a);
   cv::Matx23f matrix() const;
@@ -348,13 +353,13 @@ public:
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
+  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
   bool invertible() const final
   {
     return true;
   }
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final;
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 };
 
 
@@ -387,8 +392,6 @@ public:
 
   void reset() final;
 
-  void set_reference_point(const cv::Vec2f & C) final;
-
   void set_matrix(const cv::Matx33f & a);
   const cv::Matx33f & matrix() const;
   cv::Matx33f matrix(const cv::Mat1f & p) const;
@@ -407,13 +410,12 @@ public:
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
+  cv::Mat1f invert(const cv::Mat1f & p) const;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
   bool invertible() const final
   {
     return true;
   }
-
-  cv::Mat1f invert(const cv::Mat1f & p) const;
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
 
 protected:
   void update_parameters();
@@ -424,10 +426,10 @@ protected:
 
 /*
  * Semi-quadratic image transform, 2x4 = 8 parameters are estimated
- *   xx = x_ref - Cx
- *   yy = y_ref - Cy
- *   x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Cx
- *   y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Cy
+ *   xx = x_ref - Crx
+ *   yy = y_ref - Cry
+ *   x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Ccx
+ *   y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Ccy
  */
 class c_semi_quadratic_image_transform :
     public c_image_transform
@@ -448,7 +450,6 @@ public:
       const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
-  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx24f & a);
   void set_matrix(const cv::Mat1f & a);
@@ -470,14 +471,23 @@ public:
   bool remap(const cv::Matx24f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const ;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+
+  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
+
+  bool invertible() const final
+  {
+    return true;
+  }
+
 };
 
 /*
  * Image full quadratic transform, 12 parameters are estimated
- *   xx = x_ref - Cx
- *   yy = y_ref - Cy
- *   x_cur =  a00 * xx + a01 * yy + a02 + a03 * xx * yy + a04 * xx * xx + a05 * yy * yy + Cx
- *   y_cur =  a10 * xx + a11 * yy + a12 + a13 * xx * yy + a14 * xx * xx + a15 * yy * yy + Cy
+ *   xx = x_ref - Crx
+ *   yy = y_ref - Cry
+ *   x_cur =  a00 * xx + a01 * yy + a02 + a03 * xx * yy + a04 * xx * xx + a05 * yy * yy + Ccx
+ *   y_cur =  a10 * xx + a11 * yy + a12 + a13 * xx * yy + a14 * xx * xx + a15 * yy * yy + Ccy
  */
 class c_quadratic_image_transform :
     public c_image_transform
@@ -498,7 +508,6 @@ public:
       const cv::Vec2f & C = cv::Vec2f());
 
   void reset() final;
-  void set_reference_point(const cv::Vec2f & C) final;
 
   void set_matrix(const cv::Matx26f & a);
   void set_matrix(const cv::Mat1f & a);

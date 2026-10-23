@@ -680,14 +680,19 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   start_time = get_realtime_ms();
 
+  _current_frame_size = current_image.size();
+
   if( !create_image_transfrom() ) {
     CF_ERROR("create_image_transfrom() fails");
     return false;
   }
 
   CF_DEBUG("RESET IMAGE TRANSFORM");
+
+  _image_transform->set_reference_points(cv::Vec2f(_reference_frame_size.width / 2, _reference_frame_size.height / 2),
+      cv::Vec2f(_current_frame_size.width / 2, _current_frame_size.height / 2));
+
   _image_transform->set_parameters(_image_transform_defaut_parameters);
-  _image_transform->set_reference_point(cv::Vec2f(_reference_frame_size.width / 2, _reference_frame_size.height / 2));
 
   if ( !_options.enable_ecc_registration || _options.ecc.image_scale <= 0 ) {
     _ecch.set_image_transform(nullptr);
@@ -696,7 +701,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     _ecch.set_image_transform(_image_transform.get());
   }
 
-  _current_frame_size = current_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
   if( !_current_mask.empty() ) {

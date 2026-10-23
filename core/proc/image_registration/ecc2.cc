@@ -2224,13 +2224,13 @@ bool c_ecclm_inverse_compositional::align()
       const double dS = deltap.dot(temp_d);
       const double rho = (err - newerr) / (std::abs(dS) > 0 ? dS : 1);
 
-      CF_DEBUG(">> [it %d] eps=%g/%g newerr=%g olderr=%g dS=%g rho=%g lambda=%g deltap: {%g %g %g} params={%g %g %g}", _num_iterations,
-          eps, _max_eps,
-          newerr, err,
-          dS, rho,
-          lambda,
-          deltap(0, 0), deltap(0, 1), deltap(0, 2),
-          params(0, 0), params(0, 1), params(0, 2));
+//      CF_DEBUG(">> [it %d] eps=%g/%g newerr=%g olderr=%g dS=%g rho=%g lambda=%g deltap: {%g %g %g} params={%g %g %g}", _num_iterations,
+//          eps, _max_eps,
+//          newerr, err,
+//          dS, rho,
+//          lambda,
+//          deltap(0, 0), deltap(0, 1), deltap(0, 2),
+//          params(0, 0), params(0, 1), params(0, 2));
 
       if( newerr >= err ) {
         /** Try increase lambda ==> gradient descend */

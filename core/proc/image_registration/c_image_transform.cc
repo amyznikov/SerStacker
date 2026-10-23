@@ -77,15 +77,6 @@ void c_translation_image_transform::reset()
   set_translation(cv::Vec2f(0, 0));
 }
 
-void c_translation_image_transform::set_reference_point(const cv::Vec2f & C)
-{
-  // x_cur = x_ref - _Cx + Tx + _Cx = x_ref + Tx
-  // y_cur = y_ref - _Cy + Ty + _Cy = y_ref + Ty
-  if( C != _Cr ) {
-    _Cr = C;
-  }
-}
-
 void c_translation_image_transform::set_translation(const cv::Vec2f & T)
 {
   if ( _parameters.rows != 2 || _parameters.cols != 1 ) {
@@ -149,8 +140,8 @@ bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::
 bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap) const
 {
   INSTRUMENT_REGION("");
-  //  x_cur = x_ref - Crx + Tx + Ccx
-  //  y_cur = y_ref - Cry + Ty + Ccx
+  //  x_cur = x_ref - Crx + Ccx + Tx
+  //  y_cur = y_ref - Cry + Ccy + Ty
 
   rmap.create(size);
 
@@ -230,34 +221,13 @@ void c_euclidean_image_transform::reset()
   set_parameters(0, 0, 0, 1);
 }
 
-// This should update current translation component when reference point C is changed
-void c_euclidean_image_transform::set_reference_point(const cv::Vec2f & C)
-{
-  // ca = cos(angle)
-  // sa = sin(angle)
-  // x_cur = s * ((x_ref - Crx) * ca - (y_ref - Cry) * sa) + Ccx + Tx
-  // y_cur = s * ((x_ref - Crx) * sa + (y_ref - Cry) * ca) + Ccy + Ty
-  // dx = Cxnew - Cxold, dy = Cynew - Cyold
-  if( C != _Cr ) {
-    const float dx = C[0] - _Cr[0];
-    const float dy = C[1] - _Cr[1];
-    const float sca = _scale * std::cos(_angle);
-    const float ssa = _scale * std::sin(_angle);
-    _T[0] = _T[0] + dx * sca - dy * ssa - dx;
-    _T[1] = _T[1] + dx * ssa + dy * sca - dy;
-
-    _Cr = C;
-    update_parameters();
-  }
-}
-
 // scale full transform for image pyramids
 void c_euclidean_image_transform::scale_transfrom(double factor)
 {
   // ca = cos(angle)
   // sa = sin(angle)
-  // x_cur = s * ((x_ref - Crx) * ca - (y_ref - Cy) * sa) + Ccx + Tx
-  // y_cur = s * ((x_ref - Crx) * sa + (y_ref - Cy) * ca) + Ccy + Ty
+  // x_cur = s * ((x_ref - Crx) * ca - (y_ref - Cry) * sa) + Ccx + Tx
+  // y_cur = s * ((x_ref - Crx) * sa + (y_ref - Cry) * ca) + Ccy + Ty
   _T *= factor;
   _Cr *= factor;
   _Cc *= factor;
@@ -499,8 +469,8 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
   // sca = s * cos(angle)
   // ssa = s * sin(angle)
   //
-  // x_cur = (x_ref - Cx) * sca - (y_ref - Cy) * ssa + Cx + Tx
-  // y_cur = (x_ref - Cx) * ssa + (y_ref - Cy) * sca + Cy + Ty
+  // x_cur = (x_ref - Crx) * sca - (y_ref - Cry) * ssa + Ccx + Tx
+  // y_cur = (x_ref - Crx) * ssa + (y_ref - Cry) * sca + Ccy + Ty
 
   float Tx, Ty, a, s;
   if( !get_parameters(p, &Tx, &Ty, &a, &s) ) {
@@ -514,8 +484,8 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
   const float sca = s * std::cos(a);
   const float Cx = _Cr[0];
   const float Cy = _Cr[1];
-  const float tx = Tx + _Cr[0];
-  const float ty = Ty + _Cr[1];
+  const float tx = Tx + _Cc[0];
+  const float ty = Ty + _Cc[1];
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
@@ -554,8 +524,8 @@ bool c_euclidean_image_transform::remap(const cv::Mat1f & p, const std::vector<c
   const float sca = s * std::cos(a);
   const float Cx = _Cr[0];
   const float Cy = _Cr[1];
-  const float tx = Tx + Cx;
-  const float ty = Ty + Cy;
+  const float tx = Tx + _Cc[0];
+  const float ty = Ty + _Cc[1];
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
@@ -657,6 +627,66 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
   return true;
 }
 
+#if 1
+cv::Mat1f c_euclidean_image_transform::invert(const cv::Mat1f & p) const
+{
+  // Current parameters p
+  //  ca = cos(angle)
+  //  sa = sin(angle)
+  //  x_cur = s * ((x_ref - Crx) * ca - (y_ref - Cry) * sa) + Ccx + Tx
+  //  y_cur = s * ((x_ref - Crx) * sa + (y_ref - Cry) * ca) + Ccy + Ty
+
+  float Tx, Ty, a, s;
+  if( !get_parameters(p, &Tx, &Ty, &a, &s) ) {
+    CF_ERROR("invert: get_parameters(p) failed");
+    return cv::Mat1f();
+  }
+
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
+
+  const float ca = s * std::cos(a);
+  const float sa = s * std::sin(a);
+
+  const cv::Matx33f M(
+      ca, -sa, Tx + Ccx - ca * Crx + sa * Cry,
+      sa,  ca, Ty + Ccy - sa * Crx - ca * Cry,
+      0.0f, 0.0f, 1.0f);
+
+  const cv::Matx33f MM = M.inv();
+
+  const float m00 = MM(0, 0);
+  const float m10 = MM(1, 0);
+
+  const float res_s  = _fix_scale    ? s  : std::sqrt(m00 * m00 + m10 * m10);
+  const float res_a  = _fix_rotation ? a  : std::atan2(m10, m00);
+
+  const float res_ca = res_s * std::cos(res_a);
+  const float res_sa = res_s * std::sin(res_a);
+
+  const float res_Tx = _fix_translation ? Tx : MM(0, 2) - Crx + res_ca * Ccx - res_sa * Ccy;
+  const float res_Ty = _fix_translation ? Ty : MM(1, 2) - Cry + res_sa * Ccx + res_ca * Ccy;
+
+  const int np = num_adjustable_parameters();
+  cv::Mat1f res_p(np, 1);
+  int ip = 0;
+
+  if( !_fix_translation ) {
+    res_p(ip++, 0) = res_Tx;
+    res_p(ip++, 0) = res_Ty;
+  }
+  if( !_fix_rotation ) {
+    res_p(ip++, 0) = res_a;
+  }
+  if( !_fix_scale ) {
+    res_p(ip++, 0) = res_s;
+  }
+
+  return res_p;
+}
+#else
 cv::Mat1f c_euclidean_image_transform::invert(const cv::Mat1f & p) const
 {
   // Current parameters p
@@ -712,6 +742,7 @@ cv::Mat1f c_euclidean_image_transform::invert(const cv::Mat1f & p) const
 
   return res_p;
 }
+#endif
 
 cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
@@ -822,28 +853,31 @@ void c_affine_image_transform::reset()
 }
 
 
-// This should update current translation component when reference point C is changed
-void c_affine_image_transform::set_reference_point(const cv::Vec2f & C)
+#if 1
+cv::Mat1f c_affine_image_transform::invert(const cv::Mat1f & p) const
 {
-  // x_cur = a00 * (x_ref-Cx) + a01 * (y_ref-Cy) + a02 + Cx
-  // y_cur = a10 * (x_ref-Cx) + a11 * (y_ref-Cy) + a12 + Cy
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
-  if( C != _Cr ) {
-    const float dx = C[0] - _Cr[0];
-    const float dy = C[1] - _Cr[1];
-    const float a00 = _parameters(0, 0);
-    const float a01 = _parameters(1, 0);
-    const float a02 = _parameters(2, 0);
-    const float a10 = _parameters(3, 0);
-    const float a11 = _parameters(4, 0);
-    const float a12 = _parameters(5, 0);
-    _parameters(2, 0) = a02 + a00 * dx + a01 * dy - dx;
-    _parameters(5, 0) = a12 + a10 * dx + a11 * dy - dy;
-    _Cr = C;
-  }
+  const cv::Matx23f m = this->matrix(p);
+
+  const cv::Matx33f M(
+      m(0, 0), m(0, 1), m(0, 2) + Ccx - m(0, 0) * Crx - m(0, 1) * Cry,
+      m(1, 0), m(1, 1), m(1, 2) + Ccy - m(1, 0) * Crx - m(1, 1) * Cry,
+      0.0f, 0.0f, 1.0f);
+
+  const cv::Matx33f Minv = M.inv();
+
+  const cv::Matx23f minv(
+      Minv(0, 0), Minv(0, 1), Minv(0, 2) - Crx + Minv(0, 0) * Ccx + Minv(0, 1) * Ccy,
+      Minv(1, 0), Minv(1, 1), Minv(1, 2) - Cry + Minv(1, 0) * Ccx + Minv(1, 1) * Ccy);
+
+  return cv::Mat1f(minv, true).reshape(1, 6);
 }
 
-
+#else
 cv::Mat1f c_affine_image_transform::invert(const cv::Mat1f & p) const
 {
   const float Cx = _Cr[0];
@@ -863,6 +897,7 @@ cv::Mat1f c_affine_image_transform::invert(const cv::Mat1f & p) const
 
   return cv::Mat1f(minv, true).reshape(1, 6);
 }
+#endif
 
 cv::Mat1f c_affine_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
@@ -942,6 +977,7 @@ void c_affine_image_transform::scale_transfrom(double factor)
   _parameters(2, 0) *= factor;
   _parameters(5, 0) *= factor;
   _Cr *= factor;
+  _Cc *= factor;
 }
 
 double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -962,17 +998,19 @@ bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Siz
 
   rmap.create(size);
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
       float * __restrict mp = (float * )rmap[y];
-      const float yy = y - Cy;
+      const float yy = y - Cry;
       for( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
-        const float xx = x - Cx;
-        mp[0] = a(0, 0) * xx + a(0, 1) * yy + a(0, 2);
-        mp[1] = a(1, 0) * xx + a(1, 1) * yy + a(1, 2);
+        const float xx = x - Crx;
+        mp[0] = a(0, 0) * xx + a(0, 1) * yy + a(0, 2) + Ccx;
+        mp[1] = a(1, 0) * xx + a(1, 1) * yy + a(1, 2) + Ccy;
       }
     }
   });
@@ -992,20 +1030,22 @@ bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size 
 
 bool c_affine_image_transform::remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
 {
-  // x_cur =  a00 * (x_ref-Cx_ref) + a01 * (y_ref-Cy_ref) + a02
-  // y_cur =  a10 * (x_ref-Cx_ref) + a11 * (y_ref-Cy_ref) + a12
+  // x_cur =  a00 * (x_ref-Crx) + a01 * (y_ref-Cry) + a02 + Ccx
+  // y_cur =  a10 * (x_ref-Crx) + a11 * (y_ref-Cry) + a12 + Ccy
 
   cpts.resize(rpts.size());
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-    const float xx = rp.x - Cx;
-    const float yy = rp.y - Cy;
+    const float xx = rp.x - Crx;
+    const float yy = rp.y - Cry;
     auto & cp = cpts[i];
-    cp.x = a(0, 0) * xx + a(0, 1) * yy + a(0, 2);
-    cp.y = a(1, 0) * xx + a(1, 1) * yy + a(1, 2);
+    cp.x = a(0, 0) * xx + a(0, 1) * yy + a(0, 2) + Ccx;
+    cp.y = a(1, 0) * xx + a(1, 1) * yy + a(1, 2) + Ccy;
   }
   return true;
 }
@@ -1088,41 +1128,46 @@ void c_homography_image_transform::reset()
   set_matrix(cv::Matx33f::eye());
 }
 
-// This should update current parameters when reference point C is changed
-void c_homography_image_transform::set_reference_point(const cv::Vec2f & C)
+#if 1
+cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
 {
-  // w     =  (x_ref-Cx) * a20 + (y_ref-Cy) * a21 + a22
-  // x_cur = ((x_ref-Cx) * a00 + (y_ref-Cy) * a01 + a02) / w + Cx
-  // y_cur = ((x_ref-Cx) * a10 + (y_ref-Cy) * a11 + a12) / w + Cy
+  constexpr float safe_min = std::numeric_limits<float>::min();
 
-  if( C != _Cr ) {
-    const float dx = C[0] - _Cr[0];
-    const float dy = C[1] - _Cr[1];
+  const cv::Matx33f m = matrix(p);
 
-    cv::Matx33f dT(
-      1.0f, 0.0f, dx,
-      0.0f, 1.0f, dy,
-      0.0f, 0.0f, 1.0f
-    );
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
-    cv::Matx33f dTinv(
-      1.0f, 0.0f, -dx,
-      0.0f, 1.0f, -dy,
-      0.0f, 0.0f, 1.0f
-    );
+  const cv::Matx33f TC(
+    1.0f, 0.0f, Ccx,
+    0.0f, 1.0f, Ccy,
+    0.0f, 0.0f, 1.0f
+  );
 
-    cv::Matx33f Hnew = dTinv * this->_matrix * dT;
+  const cv::Matx33f TCinv(
+    1.0f, 0.0f, -Crx,
+    0.0f, 1.0f, -Cry,
+    0.0f, 0.0f, 1.0f
+  );
 
-    constexpr float safe_min = std::numeric_limits<float>::min();
-    if (std::abs(Hnew(2, 2)) > safe_min) {
-      Hnew = Hnew * (1.0f / Hnew(2, 2));
-    }
+  const cv::Matx33f H = TC * m * TCinv;
+  const cv::Matx33f Hinv = H.inv();
 
-    this->_matrix = Hnew;
-    _Cr = C;
-    update_parameters();
+  const cv::Matx33f TC_R_inv(1.0f, 0.0f, -Crx, 0.0f, 1.0f, -Cry, 0.0f, 0.0f, 1.0f);
+  const cv::Matx33f TC_C(1.0f, 0.0f, Ccx, 0.0f, 1.0f, Ccy, 0.0f, 0.0f, 1.0f);
+  cv::Matx33f minv = TC_R_inv * Hinv * TC_C;
+
+  const float scale = minv(2, 2);
+  if (std::abs(scale) >= safe_min) {
+    minv /= scale;
   }
+
+  return cv::Mat1f(minv, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
 }
+
+#else
 
 cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
 {
@@ -1159,6 +1204,7 @@ cv::Mat1f c_homography_image_transform::invert(const cv::Mat1f & p) const
 
   return cv::Mat1f(minv, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
 }
+#endif
 
 cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
@@ -1261,8 +1307,8 @@ void c_homography_image_transform::scale_transfrom(double factor)
   _matrix(1, 2) *= factor;
   _matrix(2, 0) /= factor;
   _matrix(2, 1) /= factor;
-  _Cr[0] *= factor;
-  _Cr[1] *= factor;
+  _Cr *= factor;
+  _Cc *= factor;
   update_parameters();
 }
 
@@ -1282,17 +1328,18 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
   INSTRUMENT_REGION("");
   rmap.create(size);
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  constexpr float safe_min = std::numeric_limits<float>::min();
 
-  constexpr float safe_min =
-      std::numeric_limits<float>::min();
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
       cv::Vec2f * __restrict mp = rmap[y];
 
-      const float yy = y - Cy;
+      const float yy = y - Cry;
 
       // invariant parts for the current row yy
       const float intermediate_w     = a(2, 1) * yy + a(2, 2);
@@ -1300,11 +1347,11 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
       const float intermediate_num_y = a(1, 1) * yy + a(1, 2);
 
       for ( int x = 0; x < rmap.cols; ++x ) {
-        const float xx = x - Cx;
+        const float xx = x - Crx;
         const float den = a(2, 0) * xx + intermediate_w;
         const float w = (std::abs(den) > safe_min) ? (1.0f / den) : 0.0f;
-        mp[x][0] = (a(0, 0) * xx + intermediate_num_x) * w;
-        mp[x][1] = (a(1, 0) * xx + intermediate_num_y) * w;
+        mp[x][0] = (a(0, 0) * xx + intermediate_num_x) * w + Ccx;
+        mp[x][1] = (a(1, 0) * xx + intermediate_num_y) * w + Ccy;
       }
     }
   });
@@ -1327,18 +1374,20 @@ bool c_homography_image_transform::remap(const cv::Matx33f & a, const std::vecto
 {
   cpts.resize(rpts.size());
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   constexpr float safe_min = std::numeric_limits<float>::min();
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-    const float xx = rp.x - Cx;
-    const float yy = rp.y - Cy;
+    const float xx = rp.x - Crx;
+    const float yy = rp.y - Cry;
     const float den = a(2, 0) * xx + a(2, 1) * yy + a(2, 2);
     const float w = (std::abs(den) > safe_min) ? (1.0f / den) : 0.0f;
-    cpts[i].x = (a(0, 0) * xx + a(0, 1) * yy + a(0, 2)) * w;
-    cpts[i].y = (a(1, 0) * xx + a(1, 1) * yy + a(1, 2)) * w;
+    cpts[i].x = (a(0, 0) * xx + a(0, 1) * yy + a(0, 2)) * w + Ccx;
+    cpts[i].y = (a(1, 0) * xx + a(1, 1) * yy + a(1, 2)) * w + Ccy;
   }
 
   return true;
@@ -1371,18 +1420,18 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
     J[i].create(size);
   }
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
-
   constexpr float safe_min = std::numeric_limits<float>::min();
+
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
 
   parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
 
-      const float yy = y - Cy;
+      const float yy = y - Cry;
 
       for ( int x = 0; x < size.width; ++x ) {
-        const float xx = x - Cx;
+        const float xx = x - Crx;
 
         const float den = xx * a(2,0) + yy * a(2,1) + 1.0f;
         const float w = (std::abs(den) > safe_min) ? (1.0f / den) : 0.0f;
@@ -1449,46 +1498,6 @@ c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(float a00, fl
 void c_semi_quadratic_image_transform::reset()
 {
   set_matrix(cv::Matx24f::eye());
-}
-
-// This should update current parameters when reference point C is changed
-void c_semi_quadratic_image_transform::set_reference_point(const cv::Vec2f & C)
-{
-  // Semi-quadratic image transform, 2x4 = 8 parameters are estimated
-  //    xx = x_ref - Cx
-  //    yy = y_ref - Cy
-  //    x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Cx
-  //    y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Cy
-
-  if( C != _Cr ) {
-
-    const float dx = C[0] - _Cr[0];
-    const float dy = C[1] - _Cr[1];
-
-    const float a00 = _parameters(0, 0);
-    const float a01 = _parameters(1, 0);
-    const float a02 = _parameters(2, 0);
-    const float a03 = _parameters(3, 0);
-
-    const float a10 = _parameters(4, 0);
-    const float a11 = _parameters(5, 0);
-    const float a12 = _parameters(6, 0);
-    const float a13 = _parameters(7, 0);
-
-    // x_cur
-    _parameters(0, 0) = a00 + a03 * dy;             // a00
-    _parameters(1, 0) = a01 + a03 * dx;             // a01
-    _parameters(2, 0) = a02 + a00 * dx + a01 * dy + a03 * dx * dy - dx; // a02
-    // _parameters(3, 0) (= a03) no change
-
-    // y_cur
-    _parameters(4, 0) = a10 + a13 * dy; // a10
-    _parameters(5, 0) = a11 + a13 * dx; // a11
-    _parameters(6, 0) = a12 + a10 * dx + a11 * dy + a13 * dx * dy - dy; // a12
-    // _parameters(7, 0) (= a13) no change
-
-    _Cr = C;
-  }
 }
 
 void c_semi_quadratic_image_transform::set_translation(const cv::Vec2f & v)
@@ -1595,6 +1604,7 @@ void c_semi_quadratic_image_transform::scale_transfrom(double factor)
   _parameters(6, 0) *= factor;
   _parameters(7, 0) /= factor;
   _Cr *= factor;
+  _Cc *= factor;
 }
 
 double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -1628,17 +1638,19 @@ bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const
 
   rmap.create(size);
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
       float * __restrict mp = (float * )rmap[y];
-      const float yy = y - Cy;
+      const float yy = y - Cry;
       for ( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
-        const float xx = x - Cx;
-        mp[0] = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy;
-        mp[1] = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy;
+        const float xx = x - Crx;
+        mp[0] = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + Ccx;
+        mp[1] = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + Ccy;
       }
     }
   });
@@ -1660,16 +1672,18 @@ bool c_semi_quadratic_image_transform::remap(const cv::Matx24f & a, const std::v
 {
   cpts.resize(rpts.size());
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-    const float xx = rp.x - Cx;
-    const float yy = rp.y - Cy;
+    const float xx = rp.x - Crx;
+    const float yy = rp.y - Cry;
     auto & cp = cpts[i];
-    cp.x = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy;
-    cp.y = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy;
+    cp.x = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + Ccx;
+    cp.y = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + Ccy;
   }
 
   return true;
@@ -1697,14 +1711,14 @@ bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::
     J[i].create(size);
   }
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
 
   parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      const float yy = y - Cy;
+      const float yy = y - Cry;
       for ( int x = 0; x < size.width; ++x ) {
-        const float xx = x - Cx;
+        const float xx = x - Crx;
 
         const float g_x = gx[y][x];
         const float g_y = gy[y][x];
@@ -1723,6 +1737,95 @@ bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::
   });
 
   return true;
+}
+
+// First-order approximation of Pseudo-Inverse (linear inversion of deformations).
+cv::Mat1f c_semi_quadratic_image_transform::invert(const cv::Mat1f & p) const
+{
+  if (p.rows != 8 || p.cols != 1) {
+    CF_ERROR("c_semi_quadratic_image_transform::invert: Invalid parameters size");
+    return cv::Mat1f();
+  }
+
+  // Current parameters p
+  const float a00 = p(0, 0); // Scale / rotation along X
+  const float a01 = p(1, 0); // Affine shift along X
+  const float a02 = p(2, 0); // Translation Tx
+  const float a03 = p(3, 0); // Quadratic XY term for X
+
+  const float a10 = p(4, 0); // Affine shift along Y
+  const float a11 = p(5, 0); // Scale / rotation along Y
+  const float a12 = p(6, 0); // Translation Ty
+  const float a13 = p(7, 0); // Quadratic XY term for Y
+
+  cv::Mat1f res_p(8, 1);
+
+  // For linear dimensionless coefficients and quadratic bending terms,
+  // the inversion consists of changing the sign of the increment.
+  res_p(0, 0) = -a00; // Inversion of scale/rotation along X
+  res_p(1, 0) = -a01; // Inversion of affine shift along X
+  res_p(3, 0) = -a03; // Inversion of quadratic term for X
+
+  res_p(4, 0) = -a10; // Inversion of affine shift along Y
+  res_p(5, 0) = -a11; // Inversion of scale/rotation along Y
+  res_p(7, 0) = -a13; // Inversion of quadratic term for Y
+
+  // For the translational component (Tx, Ty), it is necessary to account for the sign
+  // and compensate for the displacement caused by the linear deformation components
+  // relative to the reference center _Cr.
+  // Mathematically, this is equivalent to inverting the transformation matrix centered at that point.
+  res_p(2, 0) = -a02; // Inversion of the Tx shift
+  res_p(6, 0) = -a12; // Inversion of the Ty shift
+
+  return res_p;
+}
+
+// Use firt-order Taylor series for linear approximation of the Inverse Compositional step
+cv::Mat1f c_semi_quadratic_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+{
+  if (p.rows != 8 || p.cols != 1 || dp.rows != 8 || dp.cols != 1) {
+    CF_ERROR("c_semi_quadratic_image_transform::invert_and_compose: Invalid parameters size");
+    return cv::Mat1f();
+  }
+
+  // Current parameters p
+  const float a00 = p(0, 0); // Scale / rotation along X
+  const float a01 = p(1, 0); // Affine shift along X
+  const float a02 = p(2, 0); // Translation Tx
+  const float a03 = p(3, 0); // Quadratic XY term for X
+
+  const float a10 = p(4, 0); // Affine shift along Y
+  const float a11 = p(5, 0); // Scale / rotation along Y
+  const float a12 = p(6, 0); // Translation Ty
+  const float a13 = p(7, 0); // Quadratic XY term for Y
+
+  // Current updates to p
+  const float da00 = dp(0, 0);
+  const float da01 = dp(1, 0);
+  const float da02 = dp(2, 0);
+  const float da03 = dp(3, 0);
+
+  const float da10 = dp(4, 0);
+  const float da11 = dp(5, 0);
+  const float da12 = dp(6, 0);
+  const float da13 = dp(7, 0);
+
+  //  Subtract dp from p since the step is inverted with respect to the templatee.
+  cv::Mat1f res_p(8, 1);
+
+  // X
+  res_p(0, 0) = a00 - da00;
+  res_p(1, 0) = a01 - da01;
+  res_p(2, 0) = a02 - da02; // Tx
+  res_p(3, 0) = a03 - da03; // XY_x
+
+  // Y
+  res_p(4, 0) = a10 - da10;
+  res_p(5, 0) = a11 - da11;
+  res_p(6, 0) = a12 - da12; // Ty
+  res_p(7, 0) = a13 - da13; // XY_y
+
+  return res_p;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1758,53 +1861,6 @@ void c_quadratic_image_transform::reset()
   set_matrix(cv::Matx26f::eye());
 }
 
-
-// This should update current parameters when reference point C is changed
-void c_quadratic_image_transform::set_reference_point(const cv::Vec2f & C)
-{
-  //  Image full quadratic transform, 12 parameters are estimated
-  //    xx = x_ref - Cx
-  //    yy = y_ref - Cy
-  //    x_cur =  a00 * xx + a01 * yy + a02 + a03 * xx * yy + a04 * xx * xx + a05 * yy * yy + Cx
-  //    y_cur =  a10 * xx + a11 * yy + a12 + a13 * xx * yy + a14 * xx * xx + a15 * yy * yy + Cy
-
-  if( C != _Cr ) {
-    const float dx = C[0] - _Cr[0];
-    const float dy = C[1] - _Cr[1];
-
-    const float a00 = _parameters(0, 0);
-    const float a01 = _parameters(1, 0);
-    const float a02 = _parameters(2, 0);
-    const float a03 = _parameters(3, 0);
-    const float a04 = _parameters(4, 0);
-    const float a05 = _parameters(5, 0);
-
-    const float a10 = _parameters(6, 0);
-    const float a11 = _parameters(7, 0);
-    const float a12 = _parameters(8, 0);
-    const float a13 = _parameters(9, 0);
-    const float a14 = _parameters(10, 0);
-    const float a15 = _parameters(11, 0);
-
-    const float dx2 = dx * dx;
-    const float dy2 = dy * dy;
-    const float dxdy = dx * dy;
-
-    // X
-    _parameters(0, 0) = a00 + a03 * dy + 2.0f * a04 * dx; // a00
-    _parameters(1, 0) = a01 + a03 * dx + 2.0f * a05 * dy; // a01
-    _parameters(2, 0) = a02 + a00 * dx + a01 * dy + a03 * dxdy + a04 * dx2 + a05 * dy2 - dx; // a02
-    // (a03, a04, a05) no changes
-
-    // Y
-    _parameters(6, 0) = a10 + a13 * dy + 2.0f * a14 * dx; // a10
-    _parameters(7, 0) = a11 + a13 * dx + 2.0f * a15 * dy; // a11
-    _parameters(8, 0) = a12 + a10 * dx + a11 * dy + a13 * dxdy + a14 * dx2 + a15 * dy2 - dy; // a12
-    // (a13, a14, a15) no changes
-
-    _Cr = C;
-  }
-}
 
 void c_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 {
@@ -1928,6 +1984,7 @@ void c_quadratic_image_transform::scale_transfrom(double factor)
   _parameters(10, 0) /= factor;
   _parameters(11, 0) /= factor;
   _Cr *= factor;
+  _Cc *= factor;
 }
 
 double c_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -1950,17 +2007,19 @@ bool c_quadratic_image_transform::create_remap(const cv::Matx26f & a, const cv::
 {
   rmap.create(size);
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
       cv::Vec2f * __restrict mp = rmap[y];
-      const float yy = y - Cy;
+      const float yy = y - Cry;
       for ( int x = 0; x < rmap.cols; ++x ) {
-        const float xx = x - Cx;
-        mp[x][0] = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + a(0,4) * xx * xx + a(0,5) * yy * yy;
-        mp[x][1] = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + a(1,4) * xx * xx + a(1,5) * yy * yy;
+        const float xx = x - Crx;
+        mp[x][0] = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + a(0,4) * xx * xx + a(0,5) * yy * yy + Ccx;
+        mp[x][1] = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + a(1,4) * xx * xx + a(1,5) * yy * yy + Ccy;
       }
     }
   });
@@ -1982,15 +2041,18 @@ bool c_quadratic_image_transform::remap(const cv::Matx26f & a, const std::vector
 {
   cpts.resize(rpts.size());
 
-  const float Cx = _Cr[0];
-  const float Cy = _Cr[1];
+  const float Crx = _Cr[0];
+  const float Cry = _Cr[1];
+  const float Ccx = _Cc[0];
+  const float Ccy = _Cc[1];
+
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-    const float xx = rp.x - Cx;
-    const float yy = rp.y - Cy;
+    const float xx = rp.x - Crx;
+    const float yy = rp.y - Cry;
     auto & cp = cpts[i];
-    cp.x = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + a(0,4) * xx * xx + a(0,5) * yy * yy;
-    cp.y = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + a(1,4) * xx * xx + a(1,5) * yy * yy;
+    cp.x = a(0,0) * xx + a(0,1) * yy + a(0,2) + a(0,3) * xx * yy + a(0,4) * xx * xx + a(0,5) * yy * yy + Ccx;
+    cp.y = a(1,0) * xx + a(1,1) * yy + a(1,2) + a(1,3) * xx * yy + a(1,4) * xx * xx + a(1,5) * yy * yy + Ccy;
   }
 
   return true;

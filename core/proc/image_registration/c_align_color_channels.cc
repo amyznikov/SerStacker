@@ -37,6 +37,7 @@ bool c_align_color_channels::setImageTransform(IMAGE_MOTION_TYPE motionType,
     if( !parameters[i].empty() ) {
       _image_transforms[i] = create_image_transform(motionType);
       _image_transforms[i]->set_parameters(parameters[i]);
+      // FIXME: MUST set also reference points here!!!!
     }
   }
 
@@ -114,12 +115,15 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
 
   _remaps.resize(4);
 
+  // const cv::Vec2f Cref(reference_channel.cols / 2, reference_channel.rows / 2);
+
   for( int i = 0; i < 4; ++i ) {
     if ( i == reference_channel_index ) {
       _image_transforms[i].reset();
     }
     else {
       _image_transforms[i] = create_image_transform(opts.motion_type);
+      // _image_transforms[i]->set_reference_point(Cref);
     }
   }
 

@@ -687,32 +687,56 @@ static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
     const cv::Size & global_canvas_size)
 {
   if( transform->invertible() ) {
-
-    const cv::Mat1f inv_p = transform->invert(transform->parameters());
-
     std::vector<cv::Point2f> current_corners = {
         cv::Point2f(0.f, 0.f),
-        cv::Point2f(static_cast<float>(current_image_size.width), 0.f),
-        cv::Point2f(static_cast<float>(current_image_size.width), static_cast<float>(current_image_size.height)),
-        cv::Point2f(0.f, static_cast<float>(current_image_size.height))
+        cv::Point2f(float(current_image_size.width), 0.f),
+        cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
+        cv::Point2f(0.f, float(current_image_size.height))
     };
 
     std::vector<cv::Point2f> ref_corners_local;
 
-    if( transform->remap(inv_p, current_corners, ref_corners_local) && ref_corners_local.size() == 4 ) {
+    transform->forward_remap(current_corners, ref_corners_local);
 
-      cv::Point2f global_offset = last_canvas_bbox.tl();
-      std::vector<cv::Point2f> ref_corners_global(4);
-      for( size_t i = 0; i < 4; ++i ) {
-        ref_corners_global[i] = ref_corners_local[i] + global_offset;
-      }
-
-      cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
-      cv::Rect new_global_bbox = rbox.boundingRect();
-      return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+    cv::Point2f global_offset = last_canvas_bbox.tl();
+    std::vector<cv::Point2f> ref_corners_global(4);
+    for( size_t i = 0; i < 4; ++i ) {
+      ref_corners_global[i] = ref_corners_local[i] + global_offset;
     }
+
+    cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
+    cv::Rect new_global_bbox = rbox.boundingRect();
+    return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
   }
 
+
+//  if( transform->invertible() ) {
+//
+//    const cv::Mat1f inv_p = transform->invert(transform->parameters());
+//
+//    std::vector<cv::Point2f> current_corners = {
+//        cv::Point2f(0.f, 0.f),
+//        cv::Point2f(float(current_image_size.width), 0.f),
+//        cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
+//        cv::Point2f(0.f, float(current_image_size.height))
+//    };
+//
+//    std::vector<cv::Point2f> ref_corners_local;
+//
+//    if( transform->remap(inv_p, current_corners, ref_corners_local) && ref_corners_local.size() == 4 ) {
+//
+//      cv::Point2f global_offset = last_canvas_bbox.tl();
+//      std::vector<cv::Point2f> ref_corners_global(4);
+//      for( size_t i = 0; i < 4; ++i ) {
+//        ref_corners_global[i] = ref_corners_local[i] + global_offset;
+//      }
+//
+//      cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
+//      cv::Rect new_global_bbox = rbox.boundingRect();
+//      return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+//    }
+//  }
+//
   // FALLBACK for non-invertibla transformations
   int margin = 32;
   cv::Rect test_rect = cv::Rect(
@@ -964,7 +988,8 @@ bool c_canvas_average_pipeline::process_current_frame()
 
 
   if( _registration_options.enable_phase_correlate ) {
-    if( _registration_options.motion_type == IMAGE_MOTION_TRANSLATION ) {
+    //if( _registration_options.motion_type == IMAGE_MOTION_TRANSLATION )
+    {
       if( !_phase_correlate.initialized() ) {
         if( !_phase_correlate.setup(_current_image.size(), _registration_options.phase_correlate) ) {
           CF_ERROR("_phase_correlate.setup() fails");
@@ -1034,6 +1059,9 @@ bool c_canvas_average_pipeline::process_current_frame()
     }
 
     _image_transform->reset();
+    _image_transform->set_reference_point(cv::Vec2f(_current_image.cols / 2, _current_image.rows / 2));
+    //    _image_transform->set_reference_points(cv::Vec2f(_current_image.cols / 4, _current_image.rows / 4),
+    //        cv::Vec2f(3*_current_image.cols / 4, 3*_current_image.rows / 4));
 
     if ( _registration_options.enable_phase_correlate ) {
 
@@ -1056,7 +1084,9 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      _image_transform->set_translation(T);
+      const cv::Vec2f & Cr = _image_transform->destination_reference_point();
+      const cv::Vec2f & Cc = _image_transform->source_reference_point();
+      _image_transform->set_translation(T + Cr - Cc);
     }
     else if( _registration_options.enable_feature2d_registration ) {
       INSTRUMENT_REGION("feature2d_registration");
@@ -1181,6 +1211,13 @@ bool c_canvas_average_pipeline::process_current_frame()
             _average.last_bbox(),
             _current_image.size(),
             _average.accumulator_size());
+
+    if ( true ) {
+      const cv::Vec2f T = _image_transform->translation();
+      CF_DEBUG("[F %d] newCanvasBBox: x=%d y%d w=%d h=%d Tx=%g Ty=%g", _input_sequence->current_pos()-1,
+          newCanvasBBox.x, newCanvasBBox.y, newCanvasBBox.width, newCanvasBBox.height,
+          T(0), T(1));
+    }
 
     if( newCanvasBBox.empty() ) {
       CF_ERROR("BAD Bounding Box from computeNewCanvasBBox()");

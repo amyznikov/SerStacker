@@ -62,13 +62,14 @@ public:
   virtual bool set_parameters(const cv::Mat1f & p) = 0;
   virtual void scale_transfrom(double factor) = 0;
   virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const = 0;
-  virtual bool remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const = 0;
   virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
   virtual double eps(const cv::Mat1f & dp, const cv::Size & image_size) = 0;
 
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
+  virtual bool remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const = 0;
+  virtual bool forward_remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const = 0;
 
   // Set both reference points on source and destination images
   inline void set_reference_points(const cv::Vec2f & Cr, const cv::Vec2f & Cc)
@@ -133,6 +134,11 @@ public:
     return remap(parameters(), rpts, cpts) ;
   }
 
+  inline bool forward_remap(const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const
+  {
+    return forward_remap(parameters(), cpts, rpts) ;
+  }
+
   inline bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
   {
     return create_steepest_descent_images(parameters(), gx, gy, J);
@@ -195,19 +201,15 @@ public:
 
   bool create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & map) const;
   bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const final;
-  bool remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
-  bool remap(const cv::Mat1f & , const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final
-  {
-    return -p;
-  }
+  bool remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
+  bool remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
+  bool forward_remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const;
+  bool forward_remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
 
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
-  {
-    return p - dp;
-  }
+  // cv::Mat1f invert(const cv::Mat1f & p) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 
   bool invertible() const final
   {
@@ -277,10 +279,12 @@ public:
   bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale) const;
 
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
+  bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
+
+  //cv::Mat1f invert(const cv::Mat1f & p) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
   bool invertible() const final
   {
@@ -352,17 +356,19 @@ public:
 
   bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
-  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  bool remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
+  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
+  bool forward_remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const;
+  bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
+
+  //  cv::Mat1f invert(const cv::Mat1f & p) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
   bool invertible() const final
   {
     return true;
   }
-
 };
 
 
@@ -411,11 +417,14 @@ public:
 
   bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool remap(const cv::Matx33f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
-  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  cv::Mat1f invert(const cv::Mat1f & p) const;
+  bool remap(const cv::Matx33f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
+  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
+  bool forward_remap(const cv::Matx33f & a, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const;
+  bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
+
+
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
   bool invertible() const final
   {
@@ -473,11 +482,14 @@ public:
 
   bool create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
-  bool remap(const cv::Matx24f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const ;
-  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
-  cv::Mat1f invert(const cv::Mat1f & p) const final;
+  bool remap(const cv::Matx24f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const ;
+  bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
+  bool forward_remap(const cv::Matx24f & a, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const ;
+  bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
+
+  //cv::Mat1f invert(const cv::Mat1f & p) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 
   bool invertible() const final
@@ -531,9 +543,13 @@ public:
 
   bool create_remap(const cv::Matx26f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+
   bool remap(const cv::Matx26f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const ;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
-  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+  bool forward_remap(const cv::Matx26f & a, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const ;
+  bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
+
 };
 
 

@@ -42,7 +42,8 @@ struct c_canvas_average_registration_options
   c_triangle_extractor_options triangle_extractor;
   c_triangle_matcher_options triangle_matcher;
 
-  c_phase_correlate_options phase_correlate;
+  //c_phase_correlate_options phase_correlate;
+  c_polar_phase_correlate_options phase_correlate;
   c_ecch_options ecch;
   c_eccflow_options eccflow;
   c_estimate_image_transform_options transform_estimation;
@@ -134,7 +135,8 @@ protected:
   c_ecch _ecch;
   c_eccflow _eccflow;
   c_sparse_feature_extractor_and_matcher::sptr _feature2d;
-  c_phase_correlate _phase_correlate;
+  // c_phase_correlate _phase_correlate;
+  c_polar_phase_correlate _phase_correlate;
   c_star_extractor _star_extractor;
   c_triangle_extractor _triangle_extractor;
   c_triangle_matcher _triangle_matcher;

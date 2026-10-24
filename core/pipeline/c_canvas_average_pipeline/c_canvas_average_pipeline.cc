@@ -63,9 +63,13 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _registration_options, enable_ecc_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_eccflow_registration);
 
-    if( auto group = SERIALIZE_GROUP(section, save, "phase_correlate") ) {
+//    if( auto group = SERIALIZE_GROUP(section, save, "phase_correlate") ) {
+//      SERIALIZE_OPTION(group, save, _registration_options, minAcceptablePhaseCorrelation);
+//      serialize_phase_correlate_options(group, save, _registration_options.phase_correlate);
+//    }
+    if( auto group = SERIALIZE_GROUP(section, save, "polar_phase_correlate") ) {
       SERIALIZE_OPTION(group, save, _registration_options, minAcceptablePhaseCorrelation);
-      serialize_phase_correlate_options(group, save, _registration_options.phase_correlate);
+      serialize_polar_phase_correlate_options(group, save, _registration_options.phase_correlate);
     }
 
     if ( auto group = SERIALIZE_GROUP(section, save, "feature2d_registration") ) {
@@ -990,7 +994,8 @@ bool c_canvas_average_pipeline::process_current_frame()
   if( _registration_options.enable_phase_correlate ) {
     //if( _registration_options.motion_type == IMAGE_MOTION_TRANSLATION )
     {
-      if( !_phase_correlate.initialized() ) {
+      //if( !_phase_correlate.initialized() ) {
+      if ( _average.accumulated_frames() < 1 ) {
         if( !_phase_correlate.setup(_current_image.size(), _registration_options.phase_correlate) ) {
           CF_ERROR("_phase_correlate.setup() fails");
           return false;
@@ -1076,17 +1081,23 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
 
       cv::Vec2f T;
-      const double score = _phase_correlate.compute(T);
+      double R;
+      //const double score = _phase_correlate.compute(T);
+      bool pcok = _phase_correlate.compute(R, T);
 
-      if ( score < _registration_options.minAcceptablePhaseCorrelation ) {
-        CF_ERROR("_phase_correlate.compute() : bad correlation = %g < acceptable = %g",
-            score, _registration_options.minAcceptablePhaseCorrelation);
+//      if ( score < _registration_options.minAcceptablePhaseCorrelation ) {
+//        CF_ERROR("_phase_correlate.compute() : bad correlation = %g < acceptable = %g",
+//            score, _registration_options.minAcceptablePhaseCorrelation);
+//        return !canceled();
+//      }
+      if ( !pcok ) {
+        CF_ERROR("_phase_correlate.compute() fails");
         return !canceled();
       }
 
       const cv::Vec2f & Cr = _image_transform->destination_reference_point();
       const cv::Vec2f & Cc = _image_transform->source_reference_point();
-      _image_transform->set_translation(T + Cr - Cc);
+      _image_transform->set_translation(-T + Cr - Cc);
     }
     else if( _registration_options.enable_feature2d_registration ) {
       INSTRUMENT_REGION("feature2d_registration");

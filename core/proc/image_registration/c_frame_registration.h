@@ -13,6 +13,7 @@
 #include <core/ctrlbind/ctrlbind.h>
 #include "image_transform.h"
 #include "c_phase_correlate.h"
+#include "c_polar_phase_correlate.h"
 #include "ecc2.h"
 
 

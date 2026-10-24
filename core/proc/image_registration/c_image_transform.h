@@ -550,6 +550,11 @@ public:
   bool forward_remap(const cv::Matx26f & a, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const ;
   bool forward_remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const final;
 
+  bool invertible() const final
+  {
+    return true;
+  }
+
 };
 
 

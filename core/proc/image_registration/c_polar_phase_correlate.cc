@@ -354,8 +354,11 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
     cv::resize(smallImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
   }
 
-  // cv::subtract(smallImage, cv::mean(smallImage), smallImage);
+#if 0
+   cv::subtract(smallImage, cv::mean(srcImage, srcMask), smallImage);
+#else
   cv::subtract(smallImage, estimateMedian(smallImage), smallImage);
+#endif
 
   packScaledImageForPhaseCorreation(smallImage,
       frame->image, _fftSize,

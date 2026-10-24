@@ -30,6 +30,9 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
       cv::pyrDown(image, image, cv::Size(), _borderType);
       if( !mask.empty() ) {
         cv::pyrDown(mask, mask, cv::Size(), _borderType);
+        if ( mask.depth() == CV_8U ) {
+          cv::compare(mask, 254, mask, cv::CMP_GE);
+        }
       }
     }
   }
@@ -38,6 +41,9 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
       cv::pyrUp(image, image, cv::Size(), _borderType);
       if( !mask.empty() ) {
         cv::pyrUp(mask, mask, cv::Size(), _borderType);
+        if ( mask.depth() == CV_8U ) {
+          cv::compare(mask, 254, mask, cv::CMP_GE);
+        }
       }
     }
   }

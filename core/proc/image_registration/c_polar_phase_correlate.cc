@@ -10,6 +10,7 @@
 #include <core/proc/run-loop.h>
 #include <core/proc/fft.h>
 #include <core/proc/divide.h>
+#include <core/proc/multiply.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -24,6 +25,8 @@ static int getOptimalFFTSizeDown(int size)
 
 static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
 {
+  INSTRUMENT_REGION("");
+
   const cv::Size acmSize = acm.size();
   const float cx = acmSize.width / 2;
   const float cy = acmSize.height / 2;
@@ -113,9 +116,12 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
   acmplr = padded_acmplr(cv::Rect(0, 1, nRadii, nAngles));
 }
 
-static cv::Scalar estimateMedian(cv::InputArray image)
+static cv::Scalar estimateMedian(cv::InputArray image, cv::InputArray mask = cv::noArray())
 {
+  INSTRUMENT_REGION("");
+
   const cv::Mat1f src = image.getMat();
+  const cv::Mat1b msk = mask.getMat();
 
   const int stepX = std::max(1, src.cols / 64);
   const int stepY = std::max(1, src.rows / 64);
@@ -123,10 +129,23 @@ static cv::Scalar estimateMedian(cv::InputArray image)
   std::vector<float> backgroundPixels;
   backgroundPixels.reserve(4096); // 64 * 64
 
-  for( int y = 0; y < src.rows; y += stepY ) {
-    const float * row = src[y];
-    for( int x = 0; x < src.cols; x += stepX ) {
-      backgroundPixels.push_back(row[x]);
+  if ( msk.empty() ) {
+    for( int y = 0; y < src.rows; y += stepY ) {
+      const float * srcp = src[y];
+      for( int x = 0; x < src.cols; x += stepX ) {
+        backgroundPixels.push_back(srcp[x]);
+      }
+    }
+  }
+  else {
+    for( int y = 0; y < src.rows; y += stepY ) {
+      const float * srcp = src[y];
+      const uint8_t * mskp = msk[y];
+      for( int x = 0; x < src.cols; x += stepX ) {
+        if ( mskp[x] ) {
+          backgroundPixels.push_back(srcp[x]);
+        }
+      }
     }
   }
 
@@ -148,6 +167,8 @@ static bool packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Mat1f
     cv::Rect & outputValidROI,
     cv::Point & sourceCropOffset)
 {
+  INSTRUMENT_REGION("");
+
   if ( srcImage.channels() != 1 ) {
     CF_ERROR("APP BUG: single-channel input image expected");
     return false;
@@ -170,12 +191,7 @@ static bool packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Mat1f
 
   if( copyWidth > 0 && copyHeight > 0 ) {
     const cv::Rect srcROI(srcX, srcY, copyWidth, copyHeight);
-    if( srcImage.depth() == CV_32F ) {
-      src(srcROI).copyTo(outImage(outputValidROI));
-    }
-    else {
-      src(srcROI).convertTo(outImage(outputValidROI), CV_32F);
-    }
+    src(srcROI).copyTo(outImage(outputValidROI));
   }
 
   return true;
@@ -251,6 +267,8 @@ void c_polar_phase_correlate::release()
 void c_polar_phase_correlate::generateBandpassFilter(cv::Mat1f & filter, const cv::Size & size,
     double sigma, bool squared) const
 {
+  INSTRUMENT_REGION("");
+
   // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
   // otherwise the bandpass filter become not symmetrical due to embedded sign alternating
   // ilambda = _gsigma * (2 * sqrt(pi))
@@ -314,6 +332,8 @@ void c_polar_phase_correlate::generateBandpassFilter(cv::Mat1f & filter, const c
 
 bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame)
 {
+  INSTRUMENT_REGION("");
+
   const cv::Size fftSize = _fftSize;
   if( fftSize.empty() ) {
     CF_ERROR("fftSize is empty");
@@ -326,79 +346,102 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
   }
 
   cv::Mat src;
-  if ( srcImage.channels() == 1 ) {
-    if ( srcImage.depth() == CV_32F ) {
-      src = srcImage.getMat();
-    }
-    else {
-      srcImage.getMat().convertTo(src, CV_32F);
-    }
-  }
-  else if ( srcImage.depth() == CV_32F ) {
-    cv::cvtColor(srcImage, src, cv::COLOR_BGR2GRAY);
-  }
-  else {
-    cv::cvtColor(srcImage, src, cv::COLOR_BGR2GRAY);
-    src.convertTo(src, CV_32F);
-  }
-
-  cv::Mat smallImage;
   const double scale = 0.5;
 
-  if( !_maxPooling ) {
-    cv::resize(srcImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+  static const cv::Mat1b SE33(3, 3, 255);
+
+  if( srcMask.empty() ) {
+    if( srcImage.channels() == 1 ) {
+      srcImage.getMat().convertTo(src, CV_32F, 1, -estimateMedian(srcImage)[0]);
+    }
+    else {
+      cv::cvtColor(srcImage, src, cv::COLOR_BGR2GRAY);
+      src.convertTo(src, CV_32F, 1, -estimateMedian(srcImage)[0]);
+    }
   }
   else {
-    static const cv::Mat1b SE(3, 3, 255);
-    cv::dilate(srcImage, smallImage, SE);
-    cv::resize(smallImage, smallImage, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+    if( srcImage.channels() == 1 ) {
+      src = cv::Mat1f::zeros(srcImage.size());
+      cv::add(srcImage, -estimateMedian(srcImage, srcMask)[0], src, srcMask, CV_32F);
+    }
+    else { // worst case
+      cv::Mat tmp;
+      cv::cvtColor(srcImage, tmp, cv::COLOR_BGR2GRAY);
+      src = cv::Mat1f::zeros(srcImage.size());
+      cv::add(tmp, -estimateMedian(tmp, srcMask)[0], src, srcMask, CV_32F);
+    }
   }
 
-#if 0
-   cv::subtract(smallImage, cv::mean(srcImage, srcMask), smallImage);
-#else
-  cv::subtract(smallImage, estimateMedian(smallImage), smallImage);
-#endif
+  if( !_maxPooling ) {
+    cv::resize(src, src, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+  }
+  else {
+    cv::dilate(src, src, SE33);
+    cv::resize(src, src, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+  }
 
-  packScaledImageForPhaseCorreation(smallImage,
+  packScaledImageForPhaseCorreation(src,
       frame->image, _fftSize,
       frame->validROI,
       frame->cropOffset);
 
-  if ( _aalpha > 0 ) {
-    const cv::Size apodizationSize((_expectedFrameSize.width + 1) / 2, (_expectedFrameSize.height + 1) / 2);
-    if( _apodizationWindow.size() != apodizationSize ) {
-      fftCreateSuperEllipticalApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
+  if ( srcMask.empty() ) {
+    INSTRUMENT_REGION("window_apodization");
+    if ( _aalpha > 0 ) {
+      const cv::Size apodizationSize((_expectedFrameSize.width + 1) / 2, (_expectedFrameSize.height + 1) / 2);
+      if( _apodizationWindow.size() != apodizationSize ) {
+        fftCreateSuperEllipticalApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
+      }
     }
+
     const cv::Rect roi(frame->validROI.x, frame->validROI.y, _apodizationWindow.cols, _apodizationWindow.rows);
     cv::multiply(frame->image(roi), _apodizationWindow, frame->image(roi));
   }
+  else {
+    INSTRUMENT_REGION("mask_apodization");
+    // Use blurred mask of complex shape as apodization window
+    cv::Mat msk;
+    static constexpr double maskScale = 0.5 * 0.25;
 
-  if ( _bp1.size() != _fftSize ) {
-    generateBandpassFilter(_bp1, _fftSize, _gsigma1, true);
+    cv::resize(srcMask, msk, cv::Size(), maskScale, maskScale, cv::INTER_NEAREST);
+    cv::erode(msk, msk, SE33, cv::Point(-1,-1), 1, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    cv::resize(msk, msk, src.size(), 0, 0, cv::INTER_LINEAR);
+
+    const cv::Rect roi(frame->validROI.x, frame->validROI.y, src.cols, src.rows);
+    multiplyImages(frame->image(roi), msk, frame->image(roi), CV_32F, 1. / 255);
   }
 
   // CCS packed output
-  cv::dft(frame->image, frame->spec, cv::DFT_REAL_OUTPUT);
+  if ( true ) {
+    INSTRUMENT_REGION("dft");
+    cv::dft(frame->image, frame->spec, cv::DFT_REAL_OUTPUT);
+  }
 
   // Compute auto cross spectrum in CCS
-  if ( fftAutoCrossSpectrumWeightedCCS(frame->spec, _bp1, frame->autospec) <= 0 ) {
-    CF_ERROR("fftAutoCrossSpectrumWeightedCCS() fails");
-    return false;
-  }
+  if (_estimateRotation ) {
 
-  cv::idft(frame->autospec, frame->acm, cv::DFT_REAL_OUTPUT);
+    if ( _bp1.size() != _fftSize ) {
+      generateBandpassFilter(_bp1, _fftSize, _gsigma1, true);
+    }
 
-  acm2plr(frame->acm, frame->acmp, numAngles);
+    if ( fftAutoCrossSpectrumWeightedCCS(frame->spec, _bp1, frame->autospec) <= 0 ) {
+      CF_ERROR("fftAutoCrossSpectrumWeightedCCS() fails");
+      return false;
+    }
 
-  const cv::Size polarSize = frame->acmp.size();
-  if (_vlap2.size() != polarSize ) {
-    _vlap2 = fftGenerateDiscreteLaplacianFilter(polarSize, false);
-  }
+    cv::idft(frame->autospec, frame->acm, cv::DFT_REAL_OUTPUT);
 
-  if (!fftPPSDecompositionCCS(frame->acmp, _vlap2, frame->polarSpec, cv::noArray())) {
-    CF_ERROR("fftPPSDecompositionCCS() failed for current polar frame");
-    return false;
+    acm2plr(frame->acm, frame->acmp, numAngles);
+
+    const cv::Size polarSize = frame->acmp.size();
+    if (_vlap2.size() != polarSize ) {
+      _vlap2 = fftGenerateDiscreteLaplacianFilter(polarSize, false);
+    }
+
+    if (!fftPPSDecompositionCCS(frame->acmp, _vlap2, frame->polarSpec, cv::noArray())) {
+      CF_ERROR("fftPPSDecompositionCCS() failed for current polar frame");
+      return false;
+    }
   }
 
   return true;
@@ -420,6 +463,8 @@ bool c_polar_phase_correlate::estimatePeakLocation(const cv::Mat1f & correlation
     double & outPeakVal,
     const cv::Rect & searchROI /*= cv::Rect()*/) const
 {
+  INSTRUMENT_REGION("");
+
   static constexpr double safe_min = std::numeric_limits<double>::min();
 
   const int rows = correlationMap.rows;
@@ -482,6 +527,8 @@ bool c_polar_phase_correlate::estimatePeakLocation(const cv::Mat1f & correlation
 bool c_polar_phase_correlate::estimateRotationPeak(const cv::Mat1f & correlationMap,double crossEnergyScale,
     cv::Point2f & outPeakPos, double & outPeakVal) const
 {
+  INSTRUMENT_REGION("");
+
   const int cols = correlationMap.cols;
   const int rows = correlationMap.rows;
   const int R = (_gsigma2 > 0) ? int(3 * _gsigma2) + 1 : 5;
@@ -506,6 +553,8 @@ bool c_polar_phase_correlate::estimateTranslationPeak(const cv::Mat1f & correlat
 
 bool c_polar_phase_correlate::computeOrientation(double & outAngleRadian)
 {
+  INSTRUMENT_REGION("");
+
   if (_currentFrame.acmp.empty() || _referenceFrame.acmp.empty()) {
     CF_ERROR("c_polar_phase_correlate: Frames are not initialized. Call setReferenceImage() and setCurrentImage() first.");
     return false;
@@ -554,14 +603,16 @@ bool c_polar_phase_correlate::computeOrientation(double & outAngleRadian)
   const double deltaPixels = peakPos.y - _currentFrame.acmp.rows / 2;
   outAngleRadian = deltaPixels * CV_PI / numAngles;
 
-  CF_DEBUG("Peak: X=%g Y=%g Val=%g delta: %g px => %g deg", peakPos.x, peakPos.y, peakVal,
-      deltaPixels, outAngleRadian * 180.0 / CV_PI);
+  CF_DEBUG("Rotation: X=%g Y=%g Val=%g delta: %g deg (%g px)", peakPos.x, peakPos.y, peakVal,
+      outAngleRadian * 180.0 / CV_PI, deltaPixels);
 
   return true;
 }
 
 bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, cv::Vec2f & outTranslation)
 {
+  INSTRUMENT_REGION("");
+
   if( _currentFrame.image.empty() || _referenceFrame.image.empty() ) {
     CF_ERROR("c_polar_phase_correlate: Frames are not initialized.");
     return false;
@@ -581,6 +632,8 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
     _currentFrame.image.copyTo(_derotatedCurrentImage);
   }
   else {
+    INSTRUMENT_REGION("warpAffine");
+
     const cv::Mat M =
         cv::getRotationMatrix2D(cv::Point2f(cols / 2.f, rows / 2.f),
             orientationAngleRadian * 180 / CV_PI, 1.0);
@@ -589,11 +642,16 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
         cv::INTER_LINEAR | cv::WARP_INVERSE_MAP, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
 
-  cv::dft(_derotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
+  if ( true ) {
+    INSTRUMENT_REGION("dft");
+    cv::dft(_derotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
+  }
 
   if ( _bp3.size() != _fftSize ) {
     generateBandpassFilter(_bp3, _fftSize, _gsigma3, true);
   }
+
+  double crossEnergyScale = 1;
 
   if( _whitenTransSpecs ) {
     if( !fftPhaseCorrelateWeightedCCS(_rotatedCurrentSpec, _referenceFrame.spec, _bp3, _crossSpectrum) ) {
@@ -607,46 +665,26 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
       CF_ERROR("fftCrossSpectrumWeightedCCS() failed in computeTranslation");
       return false;
     }
+    crossEnergyScale = 1 / std::sqrt(crossEnergy);
   }
 
-  cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT);
-
-  cv::Point maxPos;
-  double maxVal = 0;
-  cv::minMaxLoc(_correlationMap, nullptr, &maxVal, nullptr, &maxPos);
-
-  const int R = 2;
-  double sw = 0, sx = 0, sy = 0;
-
-  if( maxPos.x < R || maxPos.x >= cols - R || maxPos.y < R || maxPos.y >= rows - R ) {
-    sx = maxPos.x;
-    sy = maxPos.y;
-    sw = 1.0;
-  }
-  else {
-    for( int dy = -R; dy <= R; ++dy ) {
-      const float * row_ptr = _correlationMap.ptr<float>(maxPos.y + dy);
-      for( int dx = -R; dx <= R; ++dx ) {
-        double val = row_ptr[maxPos.x + dx];
-        if( val > 0 ) {
-          sw += val;
-          sx += val * (maxPos.x + dx);
-          sy += val * (maxPos.y + dy);
-        }
-      }
-    }
+  if ( true ) {
+    INSTRUMENT_REGION("idft");
+    cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT);
   }
 
-  const float pkX = (sw > 0) ? float(sx / sw) : float(maxPos.x);
-  const float pkY = (sw > 0) ? float(sy / sw) : float(maxPos.y);
-  const float delta_x = pkX - (cols / 2.f);
-  const float delta_y = pkY - (rows / 2.f);
+  cv::Point2f peakPos;
+  double peakVal = 0;
+
+  estimateTranslationPeak(_correlationMap, crossEnergyScale, peakPos, peakVal);
+  const float delta_x = peakPos.x - cols / 2;
+  const float delta_y = peakPos.y - rows / 2;
 
   const float tx_ref = 2 * (delta_x + (_currentFrame.cropOffset.x - _currentFrame.validROI.x)
-           - (_referenceFrame.cropOffset.x - _referenceFrame.validROI.x));
+      - (_referenceFrame.cropOffset.x - _referenceFrame.validROI.x));
 
-   const float ty_ref = 2 * (delta_y + (_currentFrame.cropOffset.y - _currentFrame.validROI.y)
-           - (_referenceFrame.cropOffset.y - _referenceFrame.validROI.y));
+  const float ty_ref = 2 * (delta_y + (_currentFrame.cropOffset.y - _currentFrame.validROI.y)
+      - (_referenceFrame.cropOffset.y - _referenceFrame.validROI.y));
 
    if ( !need_warp ) {
      outTranslation[0] = -tx_ref;
@@ -661,14 +699,16 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
      outTranslation[1] = -float(tx_ref * sa + ty_ref * ca);
    }
 
-   CF_DEBUG("Translation (CUR system): dX=%g, dY=%g (REF system: dX=%g, dY=%g, peak val=%g)",
-       outTranslation[0], outTranslation[1], tx_ref, ty_ref, maxVal);
+   CF_DEBUG("Translation: CUR: dX=%g dY=%g REF: dX=%g dY=%g, Peak=%g",
+       outTranslation[0], outTranslation[1], tx_ref, ty_ref, peakVal);
 
   return true;
 }
 
 bool c_polar_phase_correlate::compute(double & outputEstimatedRotation, cv::Vec2f & outputEstimatedTranslation)
 {
+  INSTRUMENT_REGION("");
+
   outputEstimatedRotation = 0.0;
   outputEstimatedTranslation = cv::Vec2f(0.f, 0.f);
 

@@ -10,8 +10,123 @@
 #include <core/proc/pixtype.h>
 #include <core/debug.h>
 
+//template<class _Tp1, class _Tp2, class _Tp3>
+//static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst)
+//{
+//  using _Tpc = std::common_type_t<std::common_type_t<_Tp1,_Tp2>, _Tp3>;
+//  using _Tcomp = std::conditional_t<std::is_floating_point_v<_Tpc>, _Tpc, float>;
+//
+//  const cv::Size size = _src1.size();
+//
+//  const cv::Mat src1 = _src1.getMat();
+//  const uint8_t * const src1_base = (uint8_t*) src1.ptr();
+//  const size_t src1_stride = src1.step;
+//  const int src1_channels = _src1.channels();
+//
+//  const cv::Mat src2 = _src2.getMat();
+//  const uint8_t * const src2_base = (uint8_t*) src2.ptr();
+//  const size_t src2_stride = src2.step;
+//  const int src2_channels = _src2.channels();
+//
+//  _dst.create(size, CV_MAKETYPE(cv::DataType<_Tp3>::depth, src1_channels));
+//  cv::Mat & dst = _dst.getMatRef();
+//  uint8_t * const dst_base = (uint8_t*) dst.ptr();
+//  const size_t dst_stride = dst.step;
+//
+//  parallel_for(0, size.height, [=](const auto & range) {
+//
+//    for ( int y = rbegin(range); y < rend(range); ++y) {
+//      const _Tp1* srcp1 = (const _Tp1* )(src1_base + y * src1_stride);
+//      const _Tp2* srcp2 = (const _Tp2* )(src2_base + y * src2_stride);
+//      _Tp3* __restrict dstp = (_Tp3* )(dst_base + y * dst_stride);
+//
+//      if ( src1_channels == 1 && src2_channels == 1 ) {
+//        for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
+//          *dstp = cv::saturate_cast<_Tp3>(_Tcomp(*srcp1) * _Tcomp(*srcp2));
+//        }
+//      }
+//      else if ( src2_channels == 1 ) {
+//        for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
+//          const _Tcomp v2 = *srcp2;
+//          for ( int c = 0; c < src1_channels; ++c) {
+//            dstp[c] = cv::saturate_cast<_Tp3>(srcp1[c] * v2);
+//          }
+//        }
+//      }
+//      else {
+//        for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
+//          const _Tcomp v1 = *srcp1, v2 = *srcp2;
+//          *dstp = cv::saturate_cast<_Tp3>(v1 * v2);
+//        }
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
+
+//template<class _Tp1, class _Tp2, class _Tp3>
+//static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst,
+//    double scale, double offset)
+//{
+//  using _Tpc = std::common_type_t<std::common_type_t<_Tp1,_Tp2>, _Tp3>;
+//  using _Tcomp = std::conditional_t<std::is_floating_point_v<_Tpc>, _Tpc, float>;
+//
+//  const cv::Size size = _src1.size();
+//
+//  const cv::Mat src1 = _src1.getMat();
+//  const uint8_t * const src1_base = (uint8_t*) src1.ptr();
+//  const size_t src1_stride = src1.step;
+//  const int src1_channels = _src1.channels();
+//
+//  const cv::Mat src2 = _src2.getMat();
+//  const uint8_t * const src2_base = (uint8_t*) src2.ptr();
+//  const size_t src2_stride = src2.step;
+//  const int src2_channels = _src2.channels();
+//
+//  _dst.create(size, CV_MAKETYPE(cv::DataType<_Tp3>::depth, src1_channels));
+//  cv::Mat & dst = _dst.getMatRef();
+//  uint8_t * const dst_base = (uint8_t*) dst.ptr();
+//  const size_t dst_stride = dst.step;
+//
+//  const _Tcomp s = static_cast<_Tcomp>(scale);
+//  const _Tcomp o = static_cast<_Tcomp>(offset);
+//
+//  parallel_for(0, size.height, [=](const auto & range) {
+//
+//    for ( int y = rbegin(range); y < rend(range); ++y) {
+//      const _Tp1* srcp1 = (const _Tp1* )(src1_base + y * src1_stride);
+//      const _Tp2* srcp2 = (const _Tp2* )(src2_base + y * src2_stride);
+//      _Tp3* __restrict dstp = (_Tp3* )(dst_base + y * dst_stride);
+//
+//      if ( src1_channels == 1 && src2_channels == 1 ) {
+//        for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
+//          *dstp = cv::saturate_cast<_Tp3>(s * _Tcomp(*srcp1) * _Tcomp(*srcp2) + o);
+//        }
+//      }
+//      else if ( src2_channels == 1 ) {
+//        for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
+//          const _Tcomp v2 = *srcp2;
+//          for ( int c = 0; c < src1_channels; ++c) {
+//            dstp[c] = cv::saturate_cast<_Tp3>(s * _Tcomp(srcp1[c]) * v2 + o);
+//          }
+//        }
+//      }
+//      else {
+//        for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
+//          const _Tcomp v1 = *srcp1, v2 = *srcp2;
+//          *dstp = cv::saturate_cast<_Tp3>(s * v1 * v2 + o);
+//        }
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
+
 template<class _Tp1, class _Tp2, class _Tp3>
-static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst)
+static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst,
+    double scale, double offset)
 {
   using _Tpc = std::common_type_t<std::common_type_t<_Tp1,_Tp2>, _Tp3>;
   using _Tcomp = std::conditional_t<std::is_floating_point_v<_Tpc>, _Tpc, float>;
@@ -33,6 +148,9 @@ static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::Outp
   uint8_t * const dst_base = (uint8_t*) dst.ptr();
   const size_t dst_stride = dst.step;
 
+  const _Tcomp s = _Tcomp(scale);
+  const _Tcomp o = _Tcomp(offset);
+
   parallel_for(0, size.height, [=](const auto & range) {
 
     for ( int y = rbegin(range); y < rend(range); ++y) {
@@ -42,21 +160,29 @@ static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::Outp
 
       if ( src1_channels == 1 && src2_channels == 1 ) {
         for ( int x = 0; x < size.width; ++x, ++srcp1, ++srcp2, ++dstp) {
-          *dstp = cv::saturate_cast<_Tp3>(_Tcomp(*srcp1) * _Tcomp(*srcp2));
+          const _Tcomp v2 = _Tcomp(*srcp2);
+          *dstp = cv::saturate_cast<_Tp3>(std::abs(v2) > 0 ? s * _Tcomp(*srcp1) * v2 + o : o);
         }
       }
       else if ( src2_channels == 1 ) {
         for ( int x = 0; x < size.width; ++x, srcp1 += src1_channels, ++srcp2, dstp += src1_channels ) {
           const _Tcomp v2 = *srcp2;
-          for ( int c = 0; c < src1_channels; ++c) {
-            dstp[c] = cv::saturate_cast<_Tp3>(srcp1[c] * v2);
+          if ( std::abs(v2) > 0 ) {
+            for ( int c = 0; c < src1_channels; ++c) {
+              dstp[c] = cv::saturate_cast<_Tp3>( s * _Tcomp(srcp1[c]) * v2 + o);
+            }
+          }
+          else {
+            for ( int c = 0; c < src1_channels; ++c) {
+              dstp[c] = cv::saturate_cast<_Tp3>(o);
+            }
           }
         }
       }
       else {
         for ( int x = 0, total_pixels = src1_channels * size.width; x < total_pixels; ++x, ++srcp1, ++srcp2, ++dstp ) {
           const _Tcomp v1 = *srcp1, v2 = *srcp2;
-          *dstp = cv::saturate_cast<_Tp3>(v1 * v2);
+          *dstp = cv::saturate_cast<_Tp3>(std::abs(v2) > 0 ? s * v1 * v2 + o : o);
         }
       }
     }
@@ -65,7 +191,8 @@ static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::Outp
   return true;
 }
 
-bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst, int ddepth)
+bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst, int ddepth,
+    double scale, double offset)
 {
   if ( src1.empty() || src2.empty() ) {
     dst.release();
@@ -98,7 +225,7 @@ bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray ds
            using T2 = std::remove_pointer_t<decltype(t2)>;
            return cv_dispatch_helper(ddepth, [&](auto t3) {
              using T3 = std::remove_pointer_t<decltype(t3)>;
-             return _multiplyImages<T1, T2, T3>(src1, src2, dst);
+             return _multiplyImages<T1, T2, T3>(src1, src2, dst, scale, offset);
            });
          });
        });

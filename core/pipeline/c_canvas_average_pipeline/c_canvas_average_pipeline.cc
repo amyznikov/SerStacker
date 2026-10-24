@@ -1065,6 +1065,8 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     _image_transform->reset();
     _image_transform->set_reference_point(cv::Vec2f(_current_image.cols / 2, _current_image.rows / 2));
+
+    // Special stress test:
     //    _image_transform->set_reference_points(cv::Vec2f(_current_image.cols / 4, _current_image.rows / 4),
     //        cv::Vec2f(3*_current_image.cols / 4, 3*_current_image.rows / 4));
 
@@ -1502,7 +1504,7 @@ bool c_canvas_average_pipeline::write_input_video(cv::InputArray image, cv::Inpu
       bool fOk =
           add_output_writer(_input_video_writer,
               _output_options.output_input_video_options,
-              "input",
+              "-input",
               ".ser");
 
       if( !fOk ) {
@@ -1540,7 +1542,7 @@ bool c_canvas_average_pipeline::write_progress_video()
         const bool fOk =
             add_output_writer(_progress_writer,
                 _output_options.output_progress_video_options,
-                "progress",
+                "-progress",
                 ".ser");
 
         if( !fOk ) {
@@ -1570,7 +1572,7 @@ bool c_canvas_average_pipeline::write_reference_video(cv::InputArray image, cv::
       bool fOk =
           add_output_writer(_reference_video_writer,
               _output_options.output_reference_video_options,
-              "reference",
+              "-reference",
               ".ser");
 
       if( !fOk ) {
@@ -1599,7 +1601,7 @@ bool c_canvas_average_pipeline::write_weights_video(cv::InputArray image, cv::In
       bool fOk =
           add_output_writer(_weights_video_writer,
               _output_options.output_weights_video_options,
-              "weights",
+              "-weights",
               ".ser");
 
       if( !fOk ) {

@@ -1123,10 +1123,13 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
 
-
-    if( weights_required(accopts) ) {
+    if( !current_mask.empty() && current_mask.depth() != CV_8U ) {
+      cv::compare(current_mask, 0, current_weights, cv::CMP_GT);
+      cv::swap(current_weights, current_mask);
+    }
+    else if( weights_required(accopts) ) {
       compute_weights(accopts, current_frame, current_mask, current_weights);
-      if ( canceled() ) {
+      if( canceled() ) {
         set_status_msg("canceled");
         break;
       }
@@ -1553,7 +1556,7 @@ void c_image_stacking_pipeline::compute_weights(const c_frame_accumulation_optio
     cv::Mat & dst) const
 {
   compute_local_variance_map(src, opts.sharpness_measure, dst);
-  if ( !srcmask.empty() ) {
+  if( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);
   }
 }

@@ -345,17 +345,26 @@ bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
   return false;
 }
 
-// FIXME: estimate_affine_transform Not updated for Cr/Cc
 bool estimate_affine_transform(c_affine_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
+  /**
+   * Image affine transform:
+   *  xx = x_ref - Crx
+   *  yy = y_ref - Cry
+   *  x_cur = a00 * xx + a01 * yy + a02 + Ccx
+   *  y_cur = a10 * xx + a11 * yy + a12 + Ccy
+   */
 
   if( matched_current_positions_.size() < 3 ) {
     CF_ERROR("Not enough key points matches: %zu", matched_current_positions_.size());
     return false;
   }
+
+  const cv::Vec2f Cr = transform->destination_reference_point();
+  const cv::Vec2f Cc = transform->source_reference_point();
 
   const cv::Mat affine_matrix =
       cv::estimateAffine2D(matched_reference_positions, matched_current_positions_,
@@ -370,19 +379,33 @@ bool estimate_affine_transform(c_affine_image_transform * transform,
     return false;
   }
 
-  transform->set_matrix(cv::Matx23f(affine_matrix));
+  cv::Matx23f a = affine_matrix;
+  const cv::Matx22f A(a(0, 0), a(0, 1), a(1, 0), a(1, 1));
+  const cv::Vec2f T = cv::Vec2f(a(0, 2), a(1, 2)) + A * Cr - Cc;
+  a(0, 2) = T(0);
+  a(1, 2) = T(1);
+
+  transform->set_matrix(a);
 
   return true;
 }
 
-// FIXME: estimate_homography_transform Not updated for Cr/Cc
 bool estimate_homography_transform(c_homography_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
+  /**
+   * Image homography transform relative to reference point [Crx, Cry]:
+   *  xx = x_ref - Crx
+   *  yy = y_ref - Cry
+   *
+   *  w  =  a20 * xx + a21 * yy + a22
+   *  x_cur =  (a00 * xx + a01 * yy + a02) / w + Ccx
+   *  y_cur =  (a10 * xx + a11 * yy + a12) / w + Ccy
+   */
 
-  if( matched_current_positions_.size() < 3 ) {
+  if( matched_current_positions_.size() < 4 ) {
     CF_ERROR("Not enough key points matches: %zu", matched_current_positions_.size());
     return false;
   }
@@ -400,22 +423,38 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
     return false;
   }
 
-  transform->set_matrix(cv::Matx33f(homography));
+  const cv::Vec2f Cr = transform->destination_reference_point();
+  const cv::Vec2f Cc = transform->source_reference_point();
+
+  const cv::Matx33f H =
+      homography;
+
+  const cv::Matx33f TCc(
+      1.f, 0.f, -Cc[0],
+      0.f, 1.f, -Cc[1],
+      0.f, 0.f, 1.f
+      );
+
+  const cv::Matx33f TCr(
+      1.f, 0.f, Cr[0],
+      0.f, 1.f, Cr[1],
+      0.f, 0.f, 1.f
+      );
+
+  const cv::Matx33f h = TCc * H * TCr;
+  transform->set_matrix(h);
 
   return true;
 }
 
 
 
-// FIXME: estimate_semi_quadratic_transform Not updated for Cr/Cc
 bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
-  const int N =
-      matched_current_positions.size();
-
+  const int N = matched_current_positions.size();
   if( N < 4 ) {
     CF_ERROR("Not enough key points matches: %zu. Mininum 4 required",
         matched_current_positions.size());
@@ -423,6 +462,12 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
   }
 
   /*
+   * Semi-quadratic image transform, 2x4 = 8 parameters are estimated
+   * xx = x_ref - Crx
+   * yy = y_ref - Cry
+   * x_cur = a00 * xx + a01 * yy + a02 + a03 * xx * yy + Ccx
+   * y_cur = a10 * xx + a11 * yy + a12 + a13 * xx * yy + Ccy
+   *
    * [ x' y' ] = [x y 1 x*y ] [ a00 ] [ a10 ]
    *                          [ a01 ] [ a11 ]
    *                          [ a02 ] [ a12 ]
@@ -435,6 +480,9 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
 
   std::vector<uint8_t> inliers(N, true);
 
+  const cv::Vec2f Cr = transform->destination_reference_point();
+  const cv::Vec2f Cc = transform->source_reference_point();
+
   int n = N;
 
   while (42) {
@@ -442,29 +490,25 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
     cv::Mat1f S1(n, 4);
     cv::Mat1f S2(n, 2);
 
+    const float Crx = Cr[0];
+    const float Cry = Cr[1];
+    const float Ccx = Cc[0];
+    const float Ccy = Cc[1];
+
     for( int i = 0, j = 0; i < N; ++i ) {
       if( inliers[i] ) {
 
-        const float x1 =
-            matched_reference_positions[i].x;
+        const float xxr = matched_reference_positions[i].x - Crx;
+        const float yyr = matched_reference_positions[i].y - Cry;
+        const float xxc = matched_current_positions[i].x - Ccx;
+        const float yyc = matched_current_positions[i].y - Ccy;
 
-        const float y1 =
-            matched_reference_positions[i].y;
-
-        const float x2 =
-            matched_current_positions[i].x;
-
-        const float y2 =
-            matched_current_positions[i].y;
-
-
-        S1[j][0] = x1;
-        S1[j][1] = y1;
-        S1[j][2] = 1;
-        S1[j][3] = x1 * y1;
-
-        S2[j][0] = x2;
-        S2[j][1] = y2;
+        S1[j][0] = xxr;
+        S1[j][1] = yyr;
+        S1[j][2] = 1.0f;
+        S1[j][3] = xxr * yyr;
+        S2[j][0] = xxc;
+        S2[j][1] = yyc;
 
         ++j;
       }
@@ -482,14 +526,9 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
       transform->set_matrix(X.t());
 
       if ( n > 4 ) {
-
-        const cv::Mat1f D =
-            S1 * X - S2;
-
+        const cv::Mat1f D = S1 * X - S2;
         int outliers = 0;
-
         double s = 0;
-
         for( int i = 0, j = 0; i < n; ++i ) {
           if( inliers[i] ) {
             s += D[j][0] * D[j][0] + D[j][1] * D[j][1];
@@ -499,9 +538,7 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
 
         s = s / (2 * n);
 
-        const double f =
-            opts.semi_quadratic.rmse_factor * opts.semi_quadratic.rmse_factor;
-
+        const double f = opts.semi_quadratic.rmse_factor * opts.semi_quadratic.rmse_factor;
         for( int i = 0, j = 0; i < n; ++i ) {
           if( inliers[i] ) {
             const float d = D[j][0] * D[j][0] + D[j][1] * D[j][1];
@@ -532,15 +569,12 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
 }
 
 
-// FIXME: estimate_quadratic_transform Not updated for Cr/Cc
 bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
-  const int N =
-      matched_current_positions.size();
-
+  const int N = matched_current_positions.size();
   if( N < 6 ) {
     CF_ERROR("Not enough key points matches: %zu. Mininum 6 required",
         matched_current_positions.size());
@@ -548,6 +582,12 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
   }
 
   /*
+   * Image full quadratic transform, 12 parameters are estimated
+   * xx = x_ref - Crx
+   * yy = y_ref - Cry
+   * x_cur =  a00 * xx + a01 * yy + a02 + a03 * xx * yy + a04 * xx * xx + a05 * yy * yy + Ccx
+   * y_cur =  a10 * xx + a11 * yy + a12 + a13 * xx * yy + a14 * xx * xx + a15 * yy * yy + Ccy
+   *
    * [ x' y' ] = [x y 1 x*y x*x y*y ] [ a00 ] [ a10 ]
    *                                  [ a01 ] [ a11 ]
    *                                  [ a02 ] [ a12 ]
@@ -562,6 +602,9 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
 
   std::vector<uint8_t> inliers(N, true);
 
+  const cv::Vec2f Cr = transform->destination_reference_point();
+  const cv::Vec2f Cc = transform->source_reference_point();
+
   int n = N;
 
   while (42) {
@@ -569,31 +612,27 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     cv::Mat1f S1(n, 6);
     cv::Mat1f S2(n, 2);
 
+    const float Crx = Cr[0];
+    const float Cry = Cr[1];
+    const float Ccx = Cc[0];
+    const float Ccy = Cc[1];
+
     for( int i = 0, j = 0; i < N; ++i ) {
       if( inliers[i] ) {
 
-        const float x1 =
-            matched_reference_positions[i].x;
-
-        const float y1 =
-            matched_reference_positions[i].y;
-
-        const float x2 =
-            matched_current_positions[i].x;
-
-        const float y2 =
-            matched_current_positions[i].y;
-
-
-        S1[j][0] = x1;
-        S1[j][1] = y1;
+        const float xxr = matched_reference_positions[i].x - Crx;
+        const float yyr = matched_reference_positions[i].y - Cry;
+        const float xxc = matched_current_positions[i].x - Ccx;
+        const float yyc = matched_current_positions[i].y - Ccy;
+        S1[j][0] = xxr;
+        S1[j][1] = yyr;
         S1[j][2] = 1;
-        S1[j][3] = x1 * y1;
-        S1[j][4] = x1 * x1;
-        S1[j][5] = y1 * y1;
+        S1[j][3] = xxr * yyr;
+        S1[j][4] = xxr * xxr;
+        S1[j][5] = yyr * yyr;
 
-        S2[j][0] = x2;
-        S2[j][1] = y2;
+        S2[j][0] = xxc;
+        S2[j][1] = yyc;
 
         ++j;
       }
@@ -611,10 +650,7 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
       transform->set_matrix(X.t());
 
       if ( n > 6 ) {
-
-        const cv::Mat1f D =
-            S1 * X - S2;
-
+        const cv::Mat1f D = S1 * X - S2;
         int outliers = 0;
 
         double s = 0;
@@ -661,8 +697,8 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
 
 // FIXME: estimate_epipolar_derotation Not updated for Cr/Cc
 bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transform,
-    const std::vector<cv::Point2f> & matched_current_positions_,
-    const std::vector<cv::Point2f> & matched_reference_positions_,
+    const std::vector<cv::Point2f> & _matched_current_positions,
+    const std::vector<cv::Point2f> & _matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
 //
@@ -682,8 +718,8 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
   bool fOk =
       lm_refine_camera_pose(A, T,
           camera_matrix,
-          matched_current_positions_,
-          matched_reference_positions_,
+          _matched_current_positions,
+          _matched_reference_positions,
           inliers,
           &opts.epipolar_derotation.camera_pose);
 

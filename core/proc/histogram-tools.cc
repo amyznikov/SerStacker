@@ -377,6 +377,8 @@ bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
     double qlow, double qhigh, double omin, double omax, int ddepth,
     double * minval, double * maxval)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat1d H;
   cv::Scalar lb, hb;
   double gmin = -1, gmax = -1;

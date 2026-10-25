@@ -547,6 +547,8 @@ static bool reduceChannels(cv::InputArray src, cv::OutputArray dst, cv::InputArr
 bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _srcm, cv::OutputArray _dstm,
     int channel, int ddepth, bool autoscale)
 {
+  INSTRUMENT_REGION("");
+
   if( ddepth < 0 ) {
     ddepth = _dst.fixedType() ? _dst.depth() : _src.depth();
   }

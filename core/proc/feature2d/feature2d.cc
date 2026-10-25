@@ -399,6 +399,7 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
 bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray current_image,
     cv::InputArray current_mask)
 {
+  INSTRUMENT_REGION("");
   bool fOk = false;
 
   _current_matches.clear();

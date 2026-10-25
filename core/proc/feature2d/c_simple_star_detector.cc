@@ -14,6 +14,8 @@ using Blob = c_simple_star_detector::Blob;
 static void build_dog(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat1f & G,
     int maxlevels, double weight_decay = 0.5)
 {
+  INSTRUMENT_REGION("");
+
   std::vector<cv::Mat> dogs;
   cv::Mat current_image, lpass;
 
@@ -52,6 +54,7 @@ static void build_dog(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat1f
 static inline void computeMAD(cv::InputArray _src, cv::Scalar &outputMean, cv::Scalar &outputMAD,
     cv::InputArray _mask = cv::noArray())
 {
+  INSTRUMENT_REGION("");
   cv::Mat tmp;
   cv::absdiff(_src, outputMean = cv::mean(_src, _mask), tmp);
   outputMAD = cv::mean(tmp, _mask);
@@ -60,6 +63,8 @@ static inline void computeMAD(cv::InputArray _src, cv::Scalar &outputMean, cv::S
 const std::vector<Blob> & c_simple_star_detector::detect(cv::InputArray _image,
     cv::InputArray _mask)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat src, mask;
   cv::Mat1i labels;
   cv::Scalar Mean, MAD;

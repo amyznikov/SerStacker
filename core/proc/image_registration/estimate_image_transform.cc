@@ -755,6 +755,8 @@ bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
+  INSTRUMENT_REGION("");
+
   if ( !transform ) {
     CF_ERROR("No image transform specified");
     return false;
@@ -824,6 +826,8 @@ bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::DMatch> & sparse_matches,
     const c_estimate_image_transform_options & opts)
 {
+  INSTRUMENT_REGION("");
+
   std::vector<cv::Point2f> current_positions, reference_positions;
 
   for( const cv::DMatch &m : sparse_matches ) {

@@ -218,6 +218,8 @@ void extract_matched_positions(const std::vector<cv::KeyPoint> & current_keypoin
 static void scaleImage(double scale, cv::InputArray _src, cv::InputArray _srcm,
     cv::OutputArray dst, cv::OutputArray dstm)
 {
+  INSTRUMENT_REGION("");
+
   const cv::Mat src = _src.getMat();
   const cv::Mat srcm = _srcm.getMat();
 
@@ -906,19 +908,28 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 bool c_frame_registration::create_feature_image(cv::InputArray _src, cv::InputArray _srcm,
     cv::OutputArray dst, cv::OutputArray dstm) const
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat src, srcm;
 
-  _src.copyTo(src), _srcm.copyTo(srcm);
-
-  if ( _feature_image_preprocessor ) {
+  if ( !_feature_image_preprocessor ) {
+    src = _src.getMat();
+    srcm = _srcm.getMat();
+  }
+  else {
+    // copy is required
+    INSTRUMENT_REGION("copy");
+    _src.copyTo(src), _srcm.copyTo(srcm);
     _feature_image_preprocessor(src, srcm);
   }
 
-  if( _options.feature_registration.registration_channel != color_channel_dont_change ) {
-    if( !extract_channel(src, src, srcm, srcm, _options.feature_registration.registration_channel) ) {
-      CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails",
-          _options.feature_registration.registration_channel);
-      return false;
+  if ( src.channels() != 1 ) {
+    if( _options.feature_registration.registration_channel != color_channel_dont_change ) {
+      if( !extract_channel(src, src, srcm, srcm, _options.feature_registration.registration_channel) ) {
+        CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails",
+            _options.feature_registration.registration_channel);
+        return false;
+      }
     }
   }
 

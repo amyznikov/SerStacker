@@ -653,6 +653,9 @@ void QLivePipelineThread::run()
      }
      else {
        CF_ERROR("currentPipeline->run() fails");
+       QMutexLocker lock(&_lock);
+       _currentPipeline.reset();
+       Q_EMIT pipelineChanged();
      }
 
      _condvar.wakeAll();

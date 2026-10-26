@@ -722,6 +722,11 @@ void MainWindow::setupCameraControls()
   QObject::connect(&_cameraWriter, &QCameraWriter::statusUpdate,
       this, &ThisClass::onCameraWriterStatusUpdate,
       Qt::QueuedConnection);
+
+  QObject::connect(&_cameraWriter, &QCameraWriter::outputDirectoryChanged,
+      this, &ThisClass::onCameraWriterOutputDirectoryChanged,
+      Qt::QueuedConnection);
+
 }
 
 void MainWindow::setupPipelines()
@@ -948,6 +953,12 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(capture_drops));
 }
 
+void MainWindow::onCameraWriterOutputDirectoryChanged(const QString & v)
+{
+  if ( _liveThread ) {
+    _liveThread->setDefaultOutputPath(v);
+  }
+}
 
 void MainWindow::onCurrentLivePipelineChanged()
 {

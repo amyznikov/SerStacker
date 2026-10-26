@@ -53,6 +53,7 @@ protected Q_SLOTS:
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
   void onCameraWriterStatusUpdate();
+  void onCameraWriterOutputDirectoryChanged(const QString & );
   void onPipelineStatusUpdate();
   void onCentralDisplayROIShapeChanged();
   void onCentralDisplayLineShapeChanged();

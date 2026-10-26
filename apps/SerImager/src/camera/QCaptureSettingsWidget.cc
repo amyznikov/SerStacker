@@ -498,13 +498,13 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
           QFileDialog::Directory,
           [this](const QString & path) {
             if ( _opts ) {
-              _opts->setOutputDirectoty(path);
+              _opts->setOutputDirectory(path);
               saveSettings();
             }
           },
           [this](QString * path) {
             if ( _opts ) {
-              *path = _opts->outputDirectoty();
+              *path = _opts->outputDirectory();
               return true;
             }
             return false;
@@ -622,9 +622,9 @@ void QCaptureSettingsWidget::onload(const QSettings & settings, const QString & 
       _opts->setOutputFormat(outputFormat);
     }
 
-    QString outputDirectoty = _opts->outputDirectoty();
+    QString outputDirectoty = _opts->outputDirectory();
     if( load_parameter(settings, PREFIX, "outputDirectoty", &outputDirectoty) ) {
-      _opts->setOutputDirectoty(outputDirectoty);
+      _opts->setOutputDirectory(outputDirectoty);
     }
 
     QString filenamePrefix = _opts->filenamePrefix();
@@ -662,7 +662,7 @@ void QCaptureSettingsWidget::onsave(QSettings & settings, const QString & prefix
     const QString PREFIX = prefix.isEmpty() ? "CaptureSettings" : prefix;
 
     save_parameter(settings, PREFIX, "outputFormat",_opts->outputFormat());
-    save_parameter(settings, PREFIX, "outputDirectoty", _opts->outputDirectoty());
+    save_parameter(settings, PREFIX, "outputDirectoty", _opts->outputDirectory());
     save_parameter(settings, PREFIX, "filenamePrefix",_opts->filenamePrefix());
     save_parameter(settings, PREFIX, "filenameSuffix",_opts->filenameSuffix());
     save_parameter(settings, PREFIX, "numRounds",_opts->numRounds());

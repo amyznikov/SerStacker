@@ -57,8 +57,8 @@ public:
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr & camera() const;
 
-  void setOutputDirectoty(const QString & path);
-  const QString & outputDirectoty() const;
+  void setOutputDirectory(const QString & path);
+  const QString & outputDirectory() const;
 
   void setOutputFormat(FORMAT v);
   FORMAT outputFormat() const;
@@ -87,8 +87,6 @@ public:
   void setIntervalBetweenRounds(int v);
   int intervalBetweenRounds() const;
 
-
-
   State state() const;
   int num_saved_frames() const;
   int num_dropped_frames() const;
@@ -101,6 +99,7 @@ public:
 Q_SIGNALS:
   void stateChanged();
   void statusUpdate();
+  void outputDirectoryChanged(const QString &);
 
 protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldState,
@@ -114,27 +113,27 @@ protected:
 protected:
   std::mutex _mtx;
   QImagingCamera::sptr _camera;
-  c_capture_limits _capture_limits;
-  QString _output_directoty;
-  QString _output_file_name;
-  QString _filename_prefix;
-  QString _filename_suffix;
+  c_capture_limits _captureLimits;
+  QString _outputDirectory;
+  QString _outputFileName;
+  QString _filenamePrefix;
+  QString _filenameSuffix;
 
-  FORMAT _output_format = FORMAT::SER;
-  QString _ffmpeg_options = "-r 10 -c rawvideo -pix_fmt bgr24"; // "-c huffyuv -r 100 -f avi";
+  FORMAT _outputFormat = FORMAT::SER;
+  QString _ffmpegOptions = "-r 10 -c rawvideo -pix_fmt bgr24"; // "-c huffyuv -r 100 -f avi";
 
-  bool _enable_split_stereo_stream = false;
-  c_stereo_stream_options _stereo_stream_options;
+  bool _enableSplitStereoStream = false;
+  c_stereo_stream_options _stereoStreamOptions;
 
   alignas(64) std::atomic<int> _numRounds = 1;
-  alignas(64) std::atomic<int> _interval_between_rounds = 0;
+  alignas(64) std::atomic<int> _intervalBetweenRounds = 0;
 
-  State _current_state = State::Idle;
-  int _last_index = -1;
-  int _num_saved_frames = 0;
-  int _num_dropped_frames = 0;
+  State _currentState = State::Idle;
+  int _lastIndex = -1;
+  int _numSavedFrames = 0;
+  int _numDroppedFrames = 0;
   int _round = 0;
-  double _capture_duration = 0;
+  double _captureDuration = 0;
 };
 
 

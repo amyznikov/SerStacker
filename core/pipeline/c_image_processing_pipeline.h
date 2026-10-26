@@ -54,8 +54,12 @@ public: // pipeline methods
   const char * cname() const;
   virtual const std::string & get_class_name() const = 0;
 
+  const std::string & default_output_path() const;
+  void set_default_output_path(const std::string & v);
+
   const c_input_sequence::sptr & input_sequence() const;
   const char * csequence_name() const;
+
 
   virtual bool has_master_frame() const ;
   virtual void set_master_source(const std::string & master_source_path);
@@ -202,6 +206,7 @@ protected:
 protected:
   std::string _name;
   c_input_sequence::sptr _input_sequence;
+  std::string _default_output_path;
   std::string _output_path;
   std::vector<c_output_frame_writer*> _opened_writers;
   std::vector<c_output_text_writer*> _opened_text_writers;

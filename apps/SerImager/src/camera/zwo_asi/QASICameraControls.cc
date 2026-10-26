@@ -491,15 +491,13 @@ bool QASIROIControlWidget::setup_camera_capture_format()
       case QImagingCamera::State_connected:
         case QImagingCamera::State_starting: {
 
-        const int currentFrameSizeIndex =
-            frameSize_ctl->currentIndex();
+        const int currentFrameSizeIndex = frameSize_ctl->currentIndex();
         if( currentFrameSizeIndex < 0 ) {
           CF_ERROR("No current item selected in frameSize_ctl");
           return false;
         }
 
-        const int currentRoiIndex =
-            frameSize_ctl->itemData(currentFrameSizeIndex).value<int>();
+        const int currentRoiIndex = frameSize_ctl->itemData(currentFrameSizeIndex).value<int>();
         if( currentRoiIndex < 0 ) {
           CF_ERROR("Invalid currentRoiIndex selected");
           return false;
@@ -513,8 +511,7 @@ bool QASIROIControlWidget::setup_camera_capture_format()
         ASI_IMG_TYPE iFormat =
             (ASI_IMG_TYPE) imageFormat_ctl->currentData().value<int>();
 
-        int iBin =
-            binning_ctl->currentData().value<int>();
+        int iBin = binning_ctl->currentData().value<int>();
 
         int iX = roi.rect.x();
         int iY = roi.rect.y();

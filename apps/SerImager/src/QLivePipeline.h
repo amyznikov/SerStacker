@@ -164,6 +164,9 @@ public:
   void setPipeline(const c_image_processing_pipeline::sptr & pipeline);
   const c_image_processing_pipeline::sptr & pipeline() const;
 
+  void setDefaultOutputPath(const QString & v);
+  const QString & defaultOutputPath() const;
+
   void setFrameQualityEstimator(QFrameQualityEstimation * estimator);
   QFrameQualityEstimation* frameQualityEstimator() const;
 
@@ -184,6 +187,7 @@ protected:
   QImagingCamera::sptr _camera;
   c_image_processing_pipeline::sptr _currentPipeline;
   QFrameQualityEstimation * _qualityEstimator = nullptr;
+  QString _defaultOutputPath;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

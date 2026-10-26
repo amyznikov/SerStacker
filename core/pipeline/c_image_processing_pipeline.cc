@@ -158,6 +158,16 @@ bool c_image_processing_pipeline::copy_parameters(const sptr & dst) const
   return true;
 }
 
+const std::string & c_image_processing_pipeline::default_output_path() const
+{
+  return _default_output_path;
+}
+
+void c_image_processing_pipeline::set_default_output_path(const std::string & v)
+{
+  _default_output_path = v;
+}
+
 void c_image_processing_pipeline::set_name(const std::string & name)
 {
   _name = name;
@@ -468,175 +478,84 @@ int c_image_processing_pipeline::accumulated_frames() const
   return _accumulated_frames;
 }
 
-std::string c_image_processing_pipeline::create_output_path(const std::string & output_directory) const
-{
-  std::string output_path;
-
-  if( output_directory.empty() ) {
-
-    std::string parent_directory =
-        _input_sequence->sources().empty() ? "." :
-            get_parent_directory(_input_sequence->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path =
-        ssprintf("%s/%s",
-            parent_directory.c_str(),
-            cname());
-
-  }
-  else if( !is_absolute_path(output_directory) ) {
-
-    std::string parent_directory =
-        _input_sequence->sources().empty() ? "." :
-            get_parent_directory(_input_sequence->source(0)->filename());
-
-    if( parent_directory.empty() ) {
-      parent_directory = ".";
-    }
-
-    output_path =
-        ssprintf("%s/%s",
-            parent_directory.c_str(),
-            output_directory.c_str());
-  }
-  else {
-    output_path =
-        output_directory;
-  }
-
-  return output_path;
-}
-
-//void c_image_processing_pipeline::update_output_path()
+//std::string c_image_processing_pipeline::create_output_path(const std::string & output_directory) const
 //{
-//  if( output_directory_.empty() ) {
+//  std::string output_path;
+//
+//  if( output_directory.empty() ) {
 //
 //    std::string parent_directory =
-//        input_sequence_->sources().empty() ? "." :
-//            get_parent_directory(input_sequence_->source(0)->filename());
+//        _input_sequence->sources().empty() ? "." :
+//            get_parent_directory(_input_sequence->source(0)->filename());
 //
 //    if( parent_directory.empty() ) {
 //      parent_directory = ".";
 //    }
 //
-//    output_path_ =
+//    output_path =
 //        ssprintf("%s/%s",
 //            parent_directory.c_str(),
 //            cname());
 //
 //  }
-//  else if( !is_absolute_path(output_directory_) ) {
+//  else if( !is_absolute_path(output_directory) ) {
 //
 //    std::string parent_directory =
-//        input_sequence_->sources().empty() ? "." :
-//            get_parent_directory(input_sequence_->source(0)->filename());
+//        _input_sequence->sources().empty() ? "." :
+//            get_parent_directory(_input_sequence->source(0)->filename());
 //
 //    if( parent_directory.empty() ) {
 //      parent_directory = ".";
 //    }
 //
-//    output_path_ =
+//    output_path =
 //        ssprintf("%s/%s",
 //            parent_directory.c_str(),
-//            output_directory_.c_str());
+//            output_directory.c_str());
 //  }
 //  else {
-//    output_path_ =
-//        output_directory_;
+//    output_path =
+//        output_directory;
 //  }
 //
+//  return output_path;
 //}
 
-//void c_image_processing_pipeline::gather_badframe_indexes()
-//{
-//  _badframes.clear();
-//
-//  if( _input_sequence && !_input_sequence->is_live() ) {
-//
-//    const bool was_open = _input_sequence->is_open();
-//    if( !was_open && !_input_sequence->open() ) {
-//      CF_ERROR("input_sequence_->open() fails");
-//      return;
-//    }
-//
-//    const std::vector<c_input_source::sptr> &sources =
-//        _input_sequence->sources();
-//
-//    for( uint source_index = 0, n = sources.size(); source_index < n; ++source_index ) {
-//
-//      const c_input_source::sptr source =
-//          _input_sequence->source(source_index);
-//
-//      if( source ) {
-//
-//        const std::vector<uint> &bad_source_frames =
-//            source->badframes();
-//
-//        for( uint source_frame_index : bad_source_frames ) {
-//
-//          const int global_index =
-//              _input_sequence->global_pos(source_index,
-//                  source_frame_index);
-//
-//          if( global_index >= 0 ) {
-//            _badframes.emplace_back(global_index);
-//          }
-//        }
-//      }
-//    }
-//
-//    if( !was_open ) {
-//      _input_sequence->close(false);
-//    }
-//  }
-//}
+std::string c_image_processing_pipeline::create_output_path(const std::string & output_directory) const
+{
+  std::string output_path;
+
+  if ( !output_directory.empty() ) {
+    if ( is_absolute_path(output_directory) ) {
+      output_path = output_directory;
+    }
+    else if (_input_sequence->is_live() ) {
+      output_path = ssprintf("%s/%s/%s", _default_output_path.c_str(), cname(),
+          output_directory.c_str());
+    }
+    else {
+      output_path = ssprintf("%s/%s",
+          get_parent_directory(_input_sequence->source(0)->filename()).c_str(),
+          output_directory.c_str());
+    }
+  }
+  else if (_input_sequence->is_live() ) {
+    output_path = ssprintf("%s/%s", _default_output_path.c_str(), cname());
+  }
+  else {
+    output_path = ssprintf("%s/%s", get_parent_directory(
+        _input_sequence->source(0)->filename()).c_str(),
+        cname());
+  }
+
+  return output_path;
+}
+
 
 bool c_image_processing_pipeline::is_bad_frame_index(uint32_t global_pos) const
 {
-//  if( !_badframes.empty() ) {
-//
-//    const std::vector<uint>::const_iterator pos =
-//        std::find(_badframes.begin(),
-//            _badframes.end(),
-//            global_pos);
-//
-//    return pos != _badframes.end();
-//  }
-//
-//  return false;
   return _input_sequence->is_bad_frame_index(global_pos);
 }
-
-//bool c_image_processing_pipeline::open_output_writer(c_output_frame_writer & writer, const c_output_frame_writer_options & opts,
-//    const std::string & postfix, const std::string & suffix, int file_index) const
-//{
-//  if ( !writer.is_open() ) {
-//
-//    const std::string filename =
-//        generate_output_filename(opts.output_filename,
-//            postfix,
-//            suffix,
-//            file_index);
-//
-//    const bool fOK =
-//        writer.open(filename,
-//            opts.ffmpeg_opts,
-//            opts.output_image_processor,
-//            opts.output_pixel_depth,
-//            opts.save_frame_mapping);
-//
-//    if( !fOK ) {
-//      CF_ERROR("writer.open('%s') fails",  filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//  return true;
-//}
 
 bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writer,
     const c_output_frame_writer_options & opts,

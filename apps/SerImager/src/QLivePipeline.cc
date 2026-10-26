@@ -471,6 +471,17 @@ const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
   return _currentPipeline;
 }
 
+void QLivePipelineThread::setDefaultOutputPath(const QString & v)
+{
+  QMutexLocker lock(&_lock);
+  _defaultOutputPath = v;
+}
+
+const QString & QLivePipelineThread::defaultOutputPath() const
+{
+  return _defaultOutputPath;
+}
+
 void QLivePipelineThread::run()
 {
   struct c_camera_input_source : public c_image_input_source
@@ -641,8 +652,8 @@ void QLivePipelineThread::run()
        }
        camera = _camera;
        currentPipeline = _currentPipeline;
+       currentPipeline->set_default_output_path(_defaultOutputPath.toStdString());
      }
-
 
      c_camera_input_sequence::sptr input_sequence(new c_camera_input_sequence(this, camera));
 

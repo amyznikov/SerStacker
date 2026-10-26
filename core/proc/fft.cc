@@ -1410,8 +1410,9 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
         const float dx = (freq_x - cx) * sx;
         const float dx2 = dx * dx;
 
-        const float gaussLPF = fgain * std::exp(-(dx2 + dy2));
-        dstp[x] = float(inverseFilter ? 1.0f + fgain - gaussLPF : gaussLPF);
+        const float LPF = fgain * std::exp(-(dx2 + dy2));
+        const float fltv = inverseFilter ? (1.f + fgain) / (1.f + LPF) : (1.f + LPF) / (1.f + fgain);
+        dstp[x] = fltv;
       }
     }
   });
@@ -1462,9 +1463,9 @@ cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_s
         // Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)
         // Normalized such that when dx=0, dy=0, the value inside the parentheses equals 1.0
         const float denominator = 1.0f + dx2 + dy2;
-        const float expLPF = fgain / (denominator * std::sqrt(denominator)); // ^1.5
-
-        dstp[x] = float(inverseFilter ? 1.0f + fgain - expLPF : expLPF);
+        const float LPF = fgain / (denominator * std::sqrt(denominator)); // ^1.5
+        const float fltv = inverseFilter ? (1.f + fgain) / (1.f + LPF) : (1.f + LPF) / (1.f + fgain);
+        dstp[x] = fltv;
       }
     }
   });
@@ -1722,8 +1723,8 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
         const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
         const double dx = (freq_x - cx) * sx;
         const double dx2 = dx * dx;
-        const double gaussLPF = std::exp(-(dx2 + dy2));
-        const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
+        const double LPF = std::exp(-(dx2 + dy2));
+        const double unsharpHPF = 1.0 + gain * (1.0 - LPF);
         // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
         dstp[x] = float(inverseFilter ? 1.0 + gain - unsharpHPF : unsharpHPF);
       }

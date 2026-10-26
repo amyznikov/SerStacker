@@ -20,6 +20,7 @@ public:
 
   enum FILTER {
     FILTER_GAUSSIAN,
+    FILTER_EXPONENTIAL,
     FILTER_LAPLACIAN,
     FILTER_RAMP,
     FILTER_BUTTERWORTH,
@@ -53,6 +54,12 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  void parameter_changed()
+  {
+    _FILTER.release();
+  }
+
+protected:
   FILTER _filterType = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
   bool _ppsDecomposition = false;
@@ -62,6 +69,11 @@ protected:
     double sigma = 1;
     double gain = 1;
   } gaussian;
+
+  struct c_exponential_filter_opts {
+    double lambda = 1;
+    double gain = 1;
+  } exponential;
 
   struct c_laplacian_filter_opts {
     double gain = 1;
@@ -100,7 +112,8 @@ protected:
     double gain = 1;
   } laplacian_lpass;
 
-  cv::Mat1f VLAP;
+  cv::Mat1f _VLAP;
+  cv::Mat1f _FILTER;
 };
 
 #endif /* __c_fft_gaussian_filter_routine_h__ */

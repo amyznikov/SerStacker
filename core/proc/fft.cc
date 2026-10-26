@@ -1411,13 +1411,67 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
         const float dx2 = dx * dx;
 
         const float gaussLPF = fgain * std::exp(-(dx2 + dy2));
-        dstp[x] = float(inverseFilter ? fgain - gaussLPF : gaussLPF);
+        dstp[x] = float(inverseFilter ? 1.0f + fgain - gaussLPF : gaussLPF);
       }
     }
   });
 
   return FILTER;
 }
+
+// Space Isotropic Exponential
+// PSF ~ exp(-r / lambda_space)
+cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_space, double gain, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  const bool inverseFilter = lambda_space < 0;
+  if( inverseFilter ) {
+    lambda_space = -lambda_space;
+  }
+  else if( lambda_space == 0 ) {
+    lambda_space = 1;
+  }
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  const float cx = float(w / 2.0);
+  const float cy = float(h / 2.0);
+
+  // Factor of 2 * PI to convert spatial radius lambda_space into the frequency domain
+  const float sx = float(lambda_space * 2.0 * CV_PI / w);
+  const float sy = float(lambda_space * 2.0 * CV_PI / h);
+  const float fgain = float(gain);
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const float dy = (freq_y - cy) * sy;
+      const float dy2 = dy * dy;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const float dx = (freq_x - cx) * sx;
+        const float dx2 = dx * dx;
+
+        // Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)
+        // Normalized such that when dx=0, dy=0, the value inside the parentheses equals 1.0
+        const float denominator = 1.0f + dx2 + dy2;
+        const float expLPF = fgain / (denominator * std::sqrt(denominator)); // ^1.5
+
+        dstp[x] = float(inverseFilter ? 1.0f + fgain - expLPF : expLPF);
+      }
+    }
+  });
+
+  return FILTER;
+}
+
 
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     double gain /* =1*/,
@@ -1671,7 +1725,7 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
         const double gaussLPF = std::exp(-(dx2 + dy2));
         const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
         // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
-        dstp[x] = float(inverseFilter ? (1.0 + gain) - unsharpHPF : unsharpHPF);
+        dstp[x] = float(inverseFilter ? 1.0 + gain - unsharpHPF : unsharpHPF);
       }
     }
   });
@@ -2188,46 +2242,6 @@ bool fftPPSDecompositionPlanes(const std::vector<cv::Mat> & planes, const cv::Ma
   }
 
   return true;
-}
-
-
-/**
-* @brief Create smooth circular cosine window to mask the corners of a square.
-* for planetary disk ROIs
-*/
-cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
-{
-  cv::Mat1f mask = cv::Mat1f::zeros(size);
-
-  const float r_outer = (size.width / 2.0f) * 0.95f;
-  const float r_inner = r_outer * 0.65f;
-
-  parallel_for(0, size.height, [=, &mask](const auto & range) {
-    const int cx = size.width / 2;
-    const int cy = size.height / 2;
-
-    for( int y = rbegin(range); y < rend(range); ++y ) {
-      float * __restrict dstp = mask[y];
-      for( int x = 0; x < mask.cols; ++x ) {
-        const float dx = x - cx;
-        const float dy = y - cy;
-        const float r = std::sqrt(dx * dx + dy * dy);
-
-        if( r <= r_inner ) {
-          dstp[x] = 1.0f;
-        }
-        else if( r >= r_outer ) {
-          dstp[x] = 0.0f;
-        }
-        else {
-          const float fraction = (r - r_inner) * float(CV_PI) / (r_outer - r_inner);
-          dstp[x] = 0.5f * (1.0f + std::cos(fraction));
-        }
-      }
-    }
-  });
-
-  return mask;
 }
 
 void fftCreateEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size & size, double edgeSize)

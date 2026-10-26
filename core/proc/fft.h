@@ -99,6 +99,12 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
     double sigma_space = 2.0, double gain = 1.0,
     bool centerDC = true);
 
+// Space Isotropic Exponential
+// PSF ~ exp(-r / lambda_space)
+cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize,
+    double lambda_space, double gain,
+    bool centerDC = true);
+
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
 
@@ -131,9 +137,6 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);
-
-// Create smooth circular cosine window to mask the corners of a planetary disk ROIs
-cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size);
 
 /**
  * @brief Generate 2D Tukey apodization window.

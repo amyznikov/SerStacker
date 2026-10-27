@@ -8,7 +8,6 @@
 #include "QImageProcessingPipeline.h"
 #include "QOutputFrameWriterOptions.h"
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
-#include <core/pipeline/c_dkgen_pipeline/c_dkgen_pipeline.h>
 #include <core/pipeline/c_image_stacking_pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
@@ -20,7 +19,8 @@
 #include <core/pipeline/c_cte_pipeline/c_cte_pipeline.h>
 #include <core/pipeline/c_jdr_pipeline/c_jdr_pipeline.h>
 #include <core/pipeline/c_sdr_pipeline/c_sdr_pipeline.h>
-
+#include <core/pipeline/c_gendk_pipeline/c_gendk_pipeline.h>
+#include <core/pipeline/c_genflt_pipeline/c_genflt_pipeline.h>
 
 void registerPipelineClasses()
 {
@@ -32,6 +32,8 @@ void registerPipelineClasses()
         });
 
   REGISTER_PIPELINE_CLASS(c_generic_image_processor_pipeline);
+  REGISTER_PIPELINE_CLASS(c_gendk_pipeline);
+  REGISTER_PIPELINE_CLASS(c_genflt_pipeline);
   REGISTER_PIPELINE_CLASS(c_image_stacking_pipeline);
   REGISTER_PIPELINE_CLASS(c_canvas_average_pipeline);
   REGISTER_PIPELINE_CLASS(c_jdr_pipeline);
@@ -43,7 +45,6 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(c_virtual_stereo_pipeline);
   REGISTER_PIPELINE_CLASS(c_epipolar_alignment_pipeline);
   REGISTER_PIPELINE_CLASS(c_cte_pipeline);
-  REGISTER_PIPELINE_CLASS(c_dkgen_pipeline);
 
 #undef REGISTER_PIPELINE_CLASS
 }

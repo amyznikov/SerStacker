@@ -75,6 +75,64 @@ bool c_image_stacking_pipeline_base::initialize_pipeline()
   return true;
 }
 
+bool c_image_stacking_pipeline_base::initialize_pipeline(const c_image_stacking_pipeline_base_input_options & opts)
+{
+  if ( !this_class::initialize_pipeline() ) {
+    CF_ERROR("initialize_pipeline() fails");
+    return false;
+  }
+
+  if ( true ) {
+    lock_guard lock(mutex());
+
+    if ( !opts.darkbayer_filename.empty() ) {
+      cv::Mat ignored_optional_mask;
+      if ( !load_image(opts.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
+        CF_ERROR("load_image('%s') fails.", opts.darkbayer_filename.c_str());
+        return false;
+      }
+    }
+
+    CF_DEBUG("DARK: %dx%d channels=%d depth=%d '%s'", _darkbayer.cols, _darkbayer.rows,
+        _darkbayer.channels(), _darkbayer.depth(), opts.darkbayer_filename.c_str());
+
+    if ( !opts.flatbayer_filename.empty() ) {
+      cv::Mat ignored_optional_mask;
+      if ( !load_image(opts.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
+        CF_ERROR("load_image('%s') fails.", opts.flatbayer_filename.c_str());
+        return false;
+      }
+    }
+
+    CF_DEBUG("FLAT: %dx%d channels=%d depth=%d '%s'", _flatbayer.cols, _flatbayer.rows,
+        _flatbayer.channels(), _flatbayer.depth(), opts.flatbayer_filename.c_str());
+
+    if ( !opts.missing_pixel_mask_filename.empty() ) {
+      if ( !load_image(opts.missing_pixel_mask_filename, _missing_pixel_mask, cv::noArray()) ) {
+        CF_ERROR("load_image('%s') fails.", opts.missing_pixel_mask_filename.c_str());
+        return false;
+      }
+
+      if ( _missing_pixel_mask.type() != CV_8UC1 ) {
+        CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
+            opts.missing_pixel_mask_filename.c_str());
+        return false;
+      }
+
+      if ( !opts.missing_pixels_marked_black ) {
+        cv::invert(_missing_pixel_mask, _missing_pixel_mask);
+      }
+    }
+
+    CF_DEBUG("MASK: %dx%d channels=%d depth=%d '%s'", _missing_pixel_mask.cols, _missing_pixel_mask.rows,
+        _missing_pixel_mask.channels(), _missing_pixel_mask.depth(),
+        opts.missing_pixel_mask_filename.c_str());
+  }
+
+  CF_DEBUG("H");
+  return true;
+}
+
 void c_image_stacking_pipeline_base::cleanup_pipeline()
 {
   if( true ) {
@@ -146,8 +204,11 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
             1. / ((1 << input_sequence->bpp())));
       }
 
-      cv::divide(output_image, _flatbayer,
+      cv::multiply(output_image, _flatbayer,
           output_image, output_image.depth());
+
+      //      cv::divide(output_image, _flatbayer,
+      //          output_image, output_image.depth());
     }
 
 

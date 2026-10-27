@@ -42,6 +42,7 @@ public:
   c_image_stacking_pipeline_base(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
 
 protected:
+  bool initialize_pipeline(const c_image_stacking_pipeline_base_input_options & opts);
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
 

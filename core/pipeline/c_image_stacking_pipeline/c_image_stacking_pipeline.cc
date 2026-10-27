@@ -386,22 +386,12 @@ bool c_image_stacking_pipeline::initialize_pipeline()
 {
   set_pipeline_stage(stacking_stage_initialize);
 
-  if ( !base::initialize_pipeline() ) {
-    CF_ERROR("c_image_stacking_pipeline: base::initialize() fails" );
-    return false;
-  }
-
-  _output_path =
-      create_output_path(_output_options.output_directory);
-
-
   if (true ) {
 
     lock_guard lock(mutex());
 
     _output_file_name_postfix.clear();
     _output_file_name.clear();
-
     _frame_registration.reset();
     _frame_accumulation.reset();
     _flow_accumulation.reset();
@@ -410,38 +400,46 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _stack_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
   }
 
-  if ( !_input_options.darkbayer_filename.empty() ) {
-    cv::Mat ignored_optional_mask;
-    if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
-      return false;
-    }
+  if ( !base::initialize_pipeline(_input_options) ) {
+    CF_ERROR("c_image_stacking_pipeline: base::initialize() fails" );
+    return false;
   }
 
-  if ( !_input_options.flatbayer_filename.empty() ) {
-    cv::Mat ignored_optional_mask;
-    if ( !load_image(_input_options.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
-      return false;
-    }
-  }
+  _output_path = create_output_path(_output_options.output_directory);
 
-  if ( !_input_options.missing_pixel_mask_filename.empty() ) {
-    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask, cv::noArray()) ) {
-      CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
-      return false;
-    }
 
-    if ( _missing_pixel_mask.type() != CV_8UC1 ) {
-      CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-          _input_options.missing_pixel_mask_filename.c_str());
-      return false;
-    }
-
-    if ( !_input_options.missing_pixels_marked_black ) {
-      cv::invert(_missing_pixel_mask, _missing_pixel_mask);
-    }
-  }
+//  if ( !_input_options.darkbayer_filename.empty() ) {
+//    cv::Mat ignored_optional_mask;
+//    if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
+//      CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
+//      return false;
+//    }
+//  }
+//
+//  if ( !_input_options.flatbayer_filename.empty() ) {
+//    cv::Mat ignored_optional_mask;
+//    if ( !load_image(_input_options.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
+//      CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
+//      return false;
+//    }
+//  }
+//
+//  if ( !_input_options.missing_pixel_mask_filename.empty() ) {
+//    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask, cv::noArray()) ) {
+//      CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
+//      return false;
+//    }
+//
+//    if ( _missing_pixel_mask.type() != CV_8UC1 ) {
+//      CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
+//          _input_options.missing_pixel_mask_filename.c_str());
+//      return false;
+//    }
+//
+//    if ( !_input_options.missing_pixels_marked_black ) {
+//      cv::invert(_missing_pixel_mask, _missing_pixel_mask);
+//    }
+//  }
 
   CF_DEBUG("Output path='%s'", this->_output_path.c_str());
 

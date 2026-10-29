@@ -15,6 +15,7 @@
 
 struct c_polar_phase_correlate_options
 {
+  double downscale_factor = 1;
   double gsigma1 = 2;
   double gsigma2 = 2;
   double gsigma3 = 2;
@@ -44,6 +45,10 @@ template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_polar_phase_correlate_options> & ctx)
 {
   using S = c_polar_phase_correlate_options;
+
+  ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor),
+      "Image downscale factor >= 1");
+
   ctlbind(ctls, "gsigma1 [px]:", ctx(&S::gsigma1),
       "Rotation Estimate: Bandpass filter used to compute image AUTO correlation map before polar conversion");
 
@@ -83,12 +88,13 @@ public:
     cv::Mat1f acm;
     cv::Mat1f acmp;
     cv::Mat1f acmpm;
-    cv::Rect validROI;
-    cv::Point cropOffset;
+    cv::Rect srcROI;
+    cv::Rect dstROI;
+    //cv::Point cropOffset;
     cv::Mat1f polarSpec;
   };
 
-  static constexpr int numAngles = 320;
+  static constexpr int numAngles = 512;
 
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_polar_phase_correlate_options & opts);
@@ -134,7 +140,7 @@ public:
     return _correlationMap;
   }
 
-  static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize);
+  static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor);
 
 protected: // internal helpers
   void generateBandpassFilter(cv::Mat1f & filter, const cv::Size & size, double sigma, bool squared) const;
@@ -156,6 +162,7 @@ protected: // internal helpers
 protected: // internal data
   cv::Size _fftSize;
   cv::Size _expectedFrameSize;
+  double _downscale_factor = 1;
   double _gsigma1 = 2;
   double _gsigma2 = 2;
   double _gsigma3 = 2;

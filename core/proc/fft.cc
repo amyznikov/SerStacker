@@ -1014,6 +1014,63 @@ bool fftSpectrumToPolarCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSp
   return true;
 }
 
+/**
+ * CV_32FC2 Polar (mag/phase) input -> CV_32FC2 complex output
+ * */
+bool fftSpectrumPolarToCart(cv::InputArray _polar, cv::OutputArray _cart)
+{
+  if( _polar.empty() || _polar.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 polar spectrum is expected on input");
+    return false;
+  }
+
+  if ( _cart.fixedType() && _cart.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 complex spectrum is expected on output");
+    return false;
+  }
+
+  if( _cart.fixedSize() && _cart.size() != _polar.size() ) {
+    CF_ERROR("Invalid argument: output spectrum fixed size %dx%d does not match input size %dx%d",
+        _cart.cols(), _cart.rows(), _polar.cols(), _polar.rows());
+    return false;
+  }
+
+  const cv::Size size = _polar.size();
+
+  const cv::Mat2f polar = _polar.getMat();
+  const uint8_t * polar_base = polar.ptr();
+  const size_t polar_stride = polar.step;
+
+  _cart.create(size, CV_32FC2);
+  cv::Mat2f cart = _cart.getMatRef();
+  uint8_t * cart_base = cart.ptr();
+  const size_t cart_stride = cart.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * polarp = (const float * )(polar_base + y * polar_stride);
+      float * __restrict cartp = (float * )(cart_base + y * cart_stride);
+
+      for ( int x = 0; x < size.width; ++x, polarp += 2, cartp += 2 ) {
+        const float mag   = polarp[0];
+        const float phase = polarp[1];
+
+        if ( mag <= 0.0f ) {
+          cartp[0] = 0.0f; // re
+          cartp[1] = 0.0f; // im
+        }
+        else {
+          cartp[0] = mag * std::cos(phase);
+          cartp[1] = mag * std::sin(phase);
+        }
+      }
+    }
+  });
+
+  return true;
+}
+
+
 // DFT Radial Profile for packed OpenCV CCS spectrum module.
 // Include corners. The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
 bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum, cv::Mat1f & outputProfile)

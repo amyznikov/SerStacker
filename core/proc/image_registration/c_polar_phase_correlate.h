@@ -127,9 +127,9 @@ public:
   {
     return _derotatedCurrentImage;
   }
-  const cv::Mat1f & rotatedCurrentSpec() const
+  const cv::Mat1f & derotatedCurrentSpec() const
   {
-    return _rotatedCurrentSpec;
+    return _derotatedCurrentSpec;
   }
   const cv::Mat1f & crossSpectrum() const
   {
@@ -186,7 +186,7 @@ protected: // Cached data
   cv::Mat1f _crossSpectrumPolar;
   cv::Mat1f _correlationMapPolar;
   cv::Mat1f _derotatedCurrentImage;
-  cv::Mat1f _rotatedCurrentSpec;
+  cv::Mat1f _derotatedCurrentSpec;
   cv::Mat1f _crossSpectrum;
   cv::Mat1f _correlationMap;
 };

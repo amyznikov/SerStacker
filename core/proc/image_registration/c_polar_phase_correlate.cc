@@ -637,12 +637,12 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
             orientationAngleRadian * 180 / CV_PI, 1.0);
 
     cv::warpAffine(_currentFrame.image, _derotatedCurrentImage, M, _referenceFrame.image.size(),
-        cv::INTER_LINEAR | cv::WARP_INVERSE_MAP, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+        cv::INTER_CUBIC | cv::WARP_INVERSE_MAP, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
 
   if ( true ) {
     INSTRUMENT_REGION("dft");
-    cv::dft(_derotatedCurrentImage, _rotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
+    cv::dft(_derotatedCurrentImage, _derotatedCurrentSpec, cv::DFT_REAL_OUTPUT);
   }
 
   if ( _bp3.size() != _fftSize ) {
@@ -652,13 +652,13 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
   double crossEnergyScale = 1;
 
   if( _whitenTransSpecs ) {
-    if( !fftPhaseCorrelateWeightedCCS(_rotatedCurrentSpec, _referenceFrame.spec, _bp3, _crossSpectrum) ) {
+    if( !fftPhaseCorrelateWeightedCCS(_derotatedCurrentSpec, _referenceFrame.spec, _bp3, _crossSpectrum) ) {
       CF_ERROR("fftPhaseCorrelateWeightedCCS() failed in computeTranslation");
       return false;
     }
   }
   else {
-    double crossEnergy = fftCrossSpectrumWeightedCCS(_rotatedCurrentSpec, _referenceFrame.spec, _bp3, _crossSpectrum);
+    double crossEnergy = fftCrossSpectrumWeightedCCS(_derotatedCurrentSpec, _referenceFrame.spec, _bp3, _crossSpectrum);
     if( crossEnergy <= 0 ) {
       CF_ERROR("fftCrossSpectrumWeightedCCS() failed in computeTranslation");
       return false;

@@ -30,10 +30,11 @@ const c_enum_member* members_of<c_fft_polar_phase_correlate_routine::DISPLAY>()
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_IMAGE, "REFERENCE_IMAGE" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", },
       { c_fft_polar_phase_correlate_routine::DISPLAY_rotatedCurrentImage, "rotatedCurrentImage" },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_alignedImage, "alignedImage" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_alignedImage, "ALIGNED_IMAGE" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_SPECTRUM, "REFERENCE_SPECTRUM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM, "CURRENT_SPECTRUM", },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_rotatedCurrentSpec, "rotatedCurrentSpec" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_AUTO_SPEC, "CURRENT_AUTO_SPEC"},
+      { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_AUTO_SPEC, "REFERENCE_AUTO_SPEC"},
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM, "CURRENT_ACM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_REFERENCE_ACM, "REFERENCE_ACM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM_POLAR, "CURRENT_ACM_POLAR" },
@@ -43,10 +44,9 @@ const c_enum_member* members_of<c_fft_polar_phase_correlate_routine::DISPLAY>()
       { c_fft_polar_phase_correlate_routine::DISPLAY_POLAR_CROSS_SPECTRUM, "POLAR_CROSS_SPECTRUM" },
       { c_fft_polar_phase_correlate_routine::DISPLAY_POLAR_CORRELATION_MAP, "POLAR_CORRELATION_MAP" },
 
-      { c_fft_polar_phase_correlate_routine::DISPLAY_crossSpectrum, "crossSpectrum" },
-      { c_fft_polar_phase_correlate_routine::DISPLAY_correlationMap, "correlationMap" },
-
-
+      { c_fft_polar_phase_correlate_routine::DISPLAY_derotatedCurrentSpec, "DEROTATED_CURRENT_SPEC" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_crossSpectrum, "CROSS_SPECTRUM" },
+      { c_fft_polar_phase_correlate_routine::DISPLAY_correlationMap, "CORRELATION_MAP" },
 
       { c_fft_polar_phase_correlate_routine::DISPLAY_CURRENT_ACM, },
   };
@@ -215,6 +215,16 @@ bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv
       fftSpectrumMagnitudeCCS(pc.referenceFrame().spec, image, true);
       mask.release();
       break;
+    case DISPLAY_CURRENT_AUTO_SPEC:
+      fftUnpackCCSSpectrumAlternateSign(pc.currentFrame().autospec, image);
+      fftSwapQuadrants(image);
+      mask.release();
+      break;
+    case DISPLAY_REFERENCE_AUTO_SPEC:
+      fftUnpackCCSSpectrumAlternateSign(pc.referenceFrame().autospec, image);
+      fftSwapQuadrants(image);
+      mask.release();
+      break;
     case DISPLAY_CURRENT_ACM:
       pc.currentFrame().acm.copyTo(image);
       mask.release();
@@ -256,19 +266,21 @@ bool c_fft_polar_phase_correlate_routine::process(cv::InputOutputArray image, cv
       mask.release();
       break;
 
-    case DISPLAY_rotatedCurrentSpec:
-      pc.rotatedCurrentSpec().copyTo(image);
+    case DISPLAY_derotatedCurrentSpec:
+      pc.derotatedCurrentSpec().copyTo(image);
       mask.release();
       break;
     case DISPLAY_crossSpectrum:
-      fftSpectrumMagnitudeCCS(pc.crossSpectrum(), image, true);
+      //fftSpectrumMagnitudeCCS(pc.crossSpectrum(), image, true);
+      fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+      fftSpectrumToPolar(image);
+      fftSwapQuadrants(image);
       mask.release();
       break;
     case DISPLAY_correlationMap:
       pc.correlationMap().copyTo(image);
       mask.release();
       break;
-
   }
 
 

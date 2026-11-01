@@ -88,6 +88,11 @@ bool fftSpectrumToPolar(cv::InputOutputArray complexSpectrum);
 bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPolar);
 
 /**
+ * CV_32FC2 Polar (mag/phase) input -> CV_32FC2 complex output
+ * */
+bool fftSpectrumPolarToCart(cv::InputArray _polar, cv::OutputArray _cart);
+
+/**
  * CV_32FC1 CCS input -> CV_32FC2 Polar (mag/phase) output
  * */
 bool fftSpectrumToPolarCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,

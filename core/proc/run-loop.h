@@ -109,6 +109,55 @@ T rend(const cv_blocked_range<T> & range)
 /**
 * @brief Abstract wrapper to simulate TBB parallel reduction with OpenCV threads
 */
+#if 1
+template<typename RangeType, typename Reducer>
+static inline void parallel_reduce(RangeType start, RangeType end, Reducer & rootReducer)
+{
+  // Simulate static partitioner behavior
+
+  const int maxThreads = cv::getNumThreads();
+  std::vector<Reducer*> localReducers(maxThreads, nullptr);
+  cv_reduction_splitter splitter;
+
+  cv::parallel_for_(cv::Range(0, maxThreads), [&](const cv::Range & threadRange) {
+
+    for (int tIdx = threadRange.start; tIdx < threadRange.end; ++tIdx) {
+
+      // manually compute the static range of Y rows for the current thread
+      RangeType totalElements = end - start;
+      RangeType chunk = totalElements / maxThreads;
+      RangeType remainder = totalElements % maxThreads;
+
+      RangeType y_start = start + tIdx * chunk + std::min((RangeType)tIdx, remainder);
+      RangeType y_end = y_start + chunk + (tIdx < remainder ? 1 : 0);
+
+      if (y_start < y_end) {
+        Reducer* currentReducer = nullptr;
+
+        if (tIdx == 0) {
+          currentReducer = &rootReducer;
+        }
+        else {
+          if (localReducers[tIdx] == nullptr) {
+            localReducers[tIdx] = new Reducer(rootReducer, splitter);
+          }
+          currentReducer = localReducers[tIdx];
+        }
+
+        (*currentReducer)(cv_blocked_range<RangeType>(y_start, y_end));
+      }
+    }
+  });
+
+  // Sequential join
+  for( int i = 0; i < maxThreads; ++i ) {
+    if( localReducers[i] != nullptr ) {
+      rootReducer.join(*localReducers[i]);
+      delete localReducers[i];
+    }
+  }
+}
+#else
 template<typename RangeType, typename Reducer>
 static inline void parallel_reduce(RangeType start, RangeType end, Reducer & rootReducer)
 {
@@ -141,6 +190,8 @@ static inline void parallel_reduce(RangeType start, RangeType end, Reducer & roo
     }
   }
 }
+#endif
+
 #endif
 
 template<typename T, typename Func>

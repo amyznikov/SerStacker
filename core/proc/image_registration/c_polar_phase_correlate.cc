@@ -23,6 +23,144 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
+#if 1
+
+namespace {
+struct c_acm2polar_reducer
+{
+  const cv::Mat1f & acm;
+  cv::Mat1f acmplr;
+  cv::Mat1f cntr;
+  cv::Size acmSize;
+  float cx, cy;
+  float rscale2, rmin_offset, tscale;
+  int nRadii, nAngles;
+
+  c_acm2polar_reducer(const cv::Mat1f & _acm, cv::Size _lpSize, cv::Size _acmSize,
+      float _cx, float _cy, float _rscale2, float _rmin_offset, float _tscale,
+      int _nRadii, int _nAngles) :
+      acm(_acm), acmSize(_acmSize), cx(_cx), cy(_cy), rscale2(_rscale2),
+      rmin_offset(_rmin_offset), tscale(_tscale), nRadii(_nRadii), nAngles(_nAngles)
+  {
+    acmplr.create(_lpSize);
+    acmplr.setTo(0);
+    cntr.create(_lpSize);
+    cntr.setTo(0);
+  }
+
+  c_acm2polar_reducer(c_acm2polar_reducer & other, cv_reduction_splitter) :
+      acm(other.acm), acmSize(other.acmSize), cx(other.cx), cy(other.cy),
+      rscale2(other.rscale2), rmin_offset(other.rmin_offset), tscale(other.tscale),
+      nRadii(other.nRadii), nAngles(other.nAngles)
+  {
+    acmplr.create(other.acmplr.size());
+    acmplr.setTo(0);
+    cntr.create(other.cntr.size());
+    cntr.setTo(0);
+  }
+
+  template<typename RangeType>
+  void operator()(const RangeType & range)
+  {
+    const uint8_t * const src_base = acm.ptr();
+    const size_t src_stride = acm.step;
+
+    uint8_t * const acmplr_base = acmplr.ptr();
+    const size_t acmplr_stride = acmplr.step;
+
+    uint8_t * const cntr_base = cntr.ptr();
+    const size_t cntr_stride = cntr.step;
+
+    const int y_end = rend(range);
+    for( int y = rbegin(range); y < y_end; ++y ) {
+
+      const float * srcp = (const float * )(src_base + y * src_stride);
+      const float dy = y - cy;
+      const float dy2 = dy * dy;
+
+      const int xbeg = (y < acmSize.height / 2) ? 0 : acmSize.width / 2;
+      for( int x = xbeg; x < acmSize.width; ++x ) {
+
+        const float dx = x - cx;
+        const float dx2 = dx * dx;
+        const float r = std::sqrt(std::sqrt(dx2 + dy2)) * rscale2 - rmin_offset;
+        if ( r < 0 || r >= float(nRadii - 1) ) {
+          continue;
+        }
+
+        const float t = std::atan2(-dy, dx) * tscale;
+        const int r0 = int(r);
+        const int r1 = r0 + 1;
+        const int t0 = int(t);
+        const int t1 = t0 + 1 < nAngles ? t0 + 1 : 0;
+        const float dr = r - float(r0);
+        const float dt = t - float(t0);
+
+        const float w00 = (1.f - dt) * (1.f - dr);
+        const float w10 = dt * (1.f - dr);
+        const float w01 = (1.f - dt) * dr;
+        const float w11 = dt * dr;
+
+        const float val = srcp[x];
+
+        float * __restrict acmplr_t0 = (float*) (acmplr_base + t0 * acmplr_stride);
+        float * __restrict acmplr_t1 = (float*) (acmplr_base + t1 * acmplr_stride);
+
+        float * __restrict cntr_t0   = (float*) (cntr_base + t0 * cntr_stride);
+        float * __restrict cntr_t1   = (float*) (cntr_base + t1 * cntr_stride);
+
+        acmplr_t0[r0] += val * w00;   cntr_t0[r0] += w00;
+        acmplr_t1[r0] += val * w10;   cntr_t1[r0] += w10;
+        acmplr_t0[r1] += val * w01;   cntr_t0[r1] += w01;
+        acmplr_t1[r1] += val * w11;   cntr_t1[r1] += w11;
+      }
+    }
+  }
+
+  void join(const c_acm2polar_reducer & other)
+  {
+    cv::add(this->acmplr, other.acmplr, this->acmplr);
+    cv::add(this->cntr, other.cntr, this->cntr);
+  }
+};
+} // namespace
+
+// Convert (central-symmetric) auto-correlation map to polar map for limited radius range
+// Forward mapping is used to account deposit from all of the input ACM pixels.
+static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
+{
+  INSTRUMENT_REGION("");
+
+  const cv::Size acmSize = acm.size();
+  const float cx = acmSize.width / 2;
+  const float cy = acmSize.height / 2;
+
+  const int rmin = (int) (2 * nAngles / (3 * CV_PI));
+  const int rmax = std::max(acmSize.width, acmSize.height) / 2;
+
+  const float diff_sqrt = std::sqrt(float(rmax)) - std::sqrt(float(rmin));
+  const float mscale = (diff_sqrt > 0.01f) ? ((float(rmax) * rmax) / (4.f * diff_sqrt * diff_sqrt)) : 1.f;
+
+  const int sqrt_rmin = std::sqrt(rmin * mscale);
+  const int sqrt_rmax = std::sqrt(rmax * mscale);
+  const int sqrt_range = sqrt_rmax - sqrt_rmin;
+  const int nRadii = getOptimalFFTSizeDown((int)sqrt_range);
+
+  const float tscale = float(nAngles / CV_PI);
+  const float rscale = float(nRadii - 1) / (sqrt_rmax - sqrt_rmin);
+  const float rscale2 = rscale * std::sqrt(mscale);
+  const float rmin_offset = sqrt_rmin * rscale;
+
+  const cv::Size lpSize(nRadii, nAngles);
+
+  c_acm2polar_reducer reducer(acm, lpSize, acmSize, cx, cy, rscale2, rmin_offset, tscale, nRadii, nAngles);
+
+  // y range is [0..acmSize.height / 2] inclusive:
+  parallel_reduce(0, acmSize.height / 2 + 1, reducer);
+  divideImages(reducer.acmplr, reducer.cntr, acmplr);
+
+}
+#else
 static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
 {
   INSTRUMENT_REGION("");
@@ -116,6 +254,7 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
 
   divideImages(acmplr, cntr, acmplr);
 }
+#endif
 
 static double estimateMedian(cv::InputArray image, cv::InputArray mask = cv::noArray())
 {

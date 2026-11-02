@@ -31,7 +31,7 @@ protected:
   c_align_color_channels _algorithm;
   c_align_color_channels_options _opts;
   int referenceChannel = 1;
-  bool reEstimate = true;
+  bool estimate = true;
 };
 
 #endif /* __c_align_color_channels_routine_h__ */

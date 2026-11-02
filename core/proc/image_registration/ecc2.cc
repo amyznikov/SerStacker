@@ -70,6 +70,21 @@ const c_enum_member * members_of<ECCH_PYRAMID_TYPE>()
   return members;
 }
 
+// Ugly construct but don’t want to throw exceptions back to the calling code.
+static inline bool ecc_solve(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst)
+{
+  bool fOk = false;
+  try {
+    if( !(fOk = cv::solve(src1, src2, dst, cv::DECOMP_CHOLESKY)) ) {
+      fOk = cv::solve(src1, src2, dst, cv::DECOMP_SVD);
+    }
+  }
+  catch( ... ) {
+  }
+
+  return fOk;
+}
+
 double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask)
 {
   const cv::Size size = src1.size();
@@ -427,7 +442,7 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
         [&]{ cv::Scharr(src, gy, CV_32F, 0, 1, 1.0, 0.0, cv::BORDER_REPLICATE); }
     );
 
-    cv::magnitude(gx, gx, dst);
+    cv::magnitude(gx, gy, dst);
   }
 
   if( src_mask.empty() ) {
@@ -606,14 +621,34 @@ int c_ecc_align::max_iterations() const
   return this->_max_iterations;
 }
 
-void c_ecc_align::set_max_eps(double v)
+void c_ecc_align::set_xtol(double v)
 {
-  this->_max_eps = v;
+  this->_xtol = v;
 }
 
-double c_ecc_align::max_eps() const
+double c_ecc_align::xtol() const
 {
-  return this->_max_eps;
+  return this->_xtol;
+}
+
+void c_ecc_align::set_ftol(double v)
+{
+  this->_ftol = v;
+}
+
+double c_ecc_align::ftol() const
+{
+  return this->_ftol;
+}
+
+void c_ecc_align::set_gtol(double v)
+{
+  this->_gtol = v;
+}
+
+double c_ecc_align::gtol() const
+{
+  return this->_gtol;
 }
 
 void c_ecc_align::set_interpolation(enum ECC_INTERPOLATION_METHOD  v)
@@ -648,9 +683,10 @@ bool c_ecc_align::enable_image_normalization() const
 
 void c_ecc_align::copy_parameters(const this_class & rhs)
 {
-  _max_eps = rhs._max_eps;
-  _max_epse = rhs._max_epse;
   _update_step_scale = rhs._update_step_scale;
+  _xtol = rhs._xtol;
+  _ftol = rhs._ftol;
+  _gtol = rhs._gtol;
   _max_iterations = rhs._max_iterations;
   _interpolation = rhs._interpolation;
   _enable_image_normalization = rhs._enable_image_normalization;
@@ -933,19 +969,6 @@ int c_ecch::minimum_image_size() const
   return _opts.minimum_image_size;
 }
 
-void c_ecch::set_epsx(double v)
-{
-  _opts.epsx = v;
-  for( const auto & m : _pyramid ) {
-    m->set_max_eps(v);
-  }
-}
-
-double c_ecch::epsx() const
-{
-  return _opts.epsx;
-}
-
 void c_ecch::set_max_iterations(int v)
 {
   _opts.max_iterations = v;
@@ -959,15 +982,83 @@ int c_ecch::max_iterations() const
   return _opts.max_iterations;
 }
 
-void c_ecch::set_max_eps(double v)
+
+void c_ecch::set_xtol(double v)
 {
-  set_epsx(v);
+  _opts.xtol = v;
+  for( const auto & m : _pyramid ) {
+    m->set_xtol(v);
+  }
 }
 
-double c_ecch::max_eps() const
+double c_ecch::xtol() const
 {
-  return _opts.epsx;
+  return _opts.xtol;
 }
+
+void c_ecch::set_ftol(double v)
+{
+  _opts.ftol = v;
+  for( const auto & m : _pyramid ) {
+    m->set_ftol(v);
+  }
+}
+
+double c_ecch::ftol() const
+{
+  return _opts.ftol;
+}
+
+void c_ecch::set_gtol(double v)
+{
+  _opts.gtol = v;
+  for( const auto & m : _pyramid ) {
+    m->set_gtol(v);
+  }
+}
+
+double c_ecch::gtol() const
+{
+  return _opts.gtol;
+}
+
+
+//void c_ecch::set_epsx(double v)
+//{
+//  set_epsx(v);
+//}
+//
+//double c_ecch::epsx() const
+//{
+//  return _opts.epsx;
+//}
+
+//void c_ecch::set_epsx(double v)
+//{
+//  _opts.epsx = v;
+//  for( const auto & m : _pyramid ) {
+//    m->set_max_epsx(v);
+//  }
+//}
+//
+//double c_ecch::epsx() const
+//{
+//  return _opts.epsx;
+//}
+//
+//void c_ecch::set_epse(double v)
+//{
+//  _opts.epse = v;
+//  for( const auto & m : _pyramid ) {
+//    m->set_max_epse(v);
+//  }
+//}
+//
+//double c_ecch::epse() const
+//{
+//  return _opts.epse;
+//}
+
 
 double c_ecch::eps() const
 {
@@ -1086,7 +1177,7 @@ cv::Mat2f c_ecch::create_remap() const
   return rmap;
 }
 
-c_ecc_align::uptr c_ecch::create_ecc_align(enum ECC_ALIGN_METHOD method, double epsx) const
+c_ecc_align::uptr c_ecch::create_ecc_align(enum ECC_ALIGN_METHOD method, double xtol) const
 {
   c_ecc_align::uptr ecc;
 
@@ -1110,7 +1201,9 @@ c_ecc_align::uptr c_ecch::create_ecc_align(enum ECC_ALIGN_METHOD method, double 
   ecc->set_max_iterations(_opts.max_iterations);
   ecc->set_update_step_scale(_opts.update_step_scale);
   ecc->set_enable_image_normalization(_opts.enable_image_normalization);
-  ecc->set_max_eps(epsx);
+  ecc->set_ftol(_opts.ftol);
+  ecc->set_gtol(_opts.gtol);
+  ecc->set_xtol(xtol);
 
   return ecc;
 }
@@ -1184,7 +1277,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
   if( _pyramid.size() != required_lvls ) {
     _pyramid.clear();
 
-    double epsx = _opts.epsx;
+    double xtol = _opts.xtol;
     for( int lvl = 0; lvl < required_lvls; ++lvl ) {
       ECC_ALIGN_METHOD method = _opts.method;
       if ( _opts.force_direct_methods_for_coarse_levels && !is_direct_method(_opts.method) ) {
@@ -1193,7 +1286,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
           method = ECC_ALIGN_LM;
         }
       }
-      _pyramid.emplace_back(create_ecc_align(method, epsx / (lvl + 1)));
+      _pyramid.emplace_back(create_ecc_align(method, xtol / (lvl + 1)));
     }
   }
 
@@ -1338,13 +1431,13 @@ bool c_ecch::align()
       if( !(fOK = _pyramid[lvl]->align()) ) {
         CF_ERROR("pyramid[lvl=%d]->align() fails", lvl);
       }
-      const cv::Mat1f & rimg = _pyramid[lvl]->reference_image();
-      const int iterations = _pyramid[lvl]->num_iterations();
-      const double eps = _pyramid[lvl]->eps();
-      const double maxeps = _pyramid[lvl]->max_eps();
-      const cv::Vec2f T = _pyramid[lvl]->image_transform()->translation();
-//      CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
-//          iterations, eps, maxeps, T[0], T[1]);
+      //  const cv::Mat1f & rimg = _pyramid[lvl]->reference_image();
+      //  const int iterations = _pyramid[lvl]->num_iterations();
+      //  const double eps = _pyramid[lvl]->eps();
+      //  const double xtol = _pyramid[lvl]->xtol();
+      //  const cv::Vec2f T = _pyramid[lvl]->image_transform()->translation();
+      //  CF_DEBUG("[lvl=%d %dx%d] %d iterations eps=%g/%g Tx=%g Ty=%g", lvl, rimg.cols, rimg.rows,
+      //    iterations, eps, maxeps, T[0], T[1]);
     }
 
     if( fOK && lvl > 0 ) {
@@ -1421,11 +1514,6 @@ bool c_ecc_forward_additive::align()
 
   _failed = false;
   _num_iterations = -1;
-  //rho_ = -1;
-
-  if( _max_eps <= 0 ) {
-    _max_eps = 1e-3;
-  }
 
   if( (_nparams = _transform->parameters().rows) < 1 ) {
     CF_FATAL("image_transform_->image_transform_->parameters().rows return %d", _nparams);
@@ -1510,7 +1598,7 @@ bool c_ecc_forward_additive::align()
     _transform->set_parameters(_transform->parameters() + dp);
 
     _eps = _transform->eps(dp, _reference_image.size());
-    if( _eps < _max_eps ) {
+    if( _eps < _xtol ) {
       break;
     }
     // prevent cycling on low res
@@ -1705,8 +1793,8 @@ bool c_ecclm::align()
   params = _transform->parameters();
 
   const int M = params.rows;
-  const double epsx = _max_eps;
-  const double epse = _max_epse;
+  const double xtol = _xtol;
+  const double ftol = _ftol;
   const int max_iterations = _max_iterations;
 
   double lambda = 0.1;
@@ -1749,7 +1837,7 @@ bool c_ecclm::align()
       cv::scaleAdd(deltap, -_update_step_scale, params, newparams);
 
       /* Check for increment in parameters  */
-      if( (eps = _transform->eps(deltap, _reference_image.size())) <= epsx ) {
+      if( (eps = _transform->eps(deltap, _reference_image.size())) <= xtol ) {
         step_accepted = true;
         converged = true;
         break;
@@ -1772,7 +1860,7 @@ bool c_ecclm::align()
 
       /* Check Function Tolerance */
       const double diff = err - newerr;
-      if (diff < err * epse ) {
+      if (diff < err * ftol ) {
         converged = true;
         break;
       }
@@ -1930,7 +2018,7 @@ bool c_ecc_inverse_compositional::align()
         },
         [&]() {
           ecc_project_error_image(jac, rhs, v);
-          cv::solve(H, v * (RMA / CMA), deltap, cv::DECOMP_CHOLESKY);
+          ecc_solve(H, v * (RMA / CMA), deltap);
         });
 
     if ( rmsnew >= rmsold ) {
@@ -1941,7 +2029,7 @@ bool c_ecc_inverse_compositional::align()
     rmsold = rmsnew;
     _transform->set_parameters(newparams);
 
-    if ( (_eps = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
+    if ( (_eps = _transform->eps(deltap, _reference_image.size())) < _xtol ) {
       break;
     }
   }
@@ -2145,14 +2233,19 @@ bool c_ecclm_inverse_compositional::align()
   cv::Mat1f params, newparams, deltap;
   cv::Mat1f H, temp_d, v;
 
-  double err, newerr;
+  double olderr, newerr;
 
   params = _transform->parameters();
   const int M = params.rows;
 
+  const double xtol = _xtol;
+  const double ftol = _ftol;
+  // const double gtol = _gtol;
+
   double lambda = 0.1;
   double eps = FLT_MAX;
   bool recompute_remap = true;
+  bool converged = false;
 
   RMA = _reference_mask.empty() ? _reference_image.size().area() : cv::countNonZero(_reference_mask);
 
@@ -2184,11 +2277,11 @@ bool c_ecclm_inverse_compositional::align()
     }
 
     compute_v(params, v);
+    olderr = _last_rms;
     Hp.copyTo(H);
-    err = _last_rms;
 
     /*
-     * Solve normal equation for given Jacobian and lambda
+     * Solve normal equations for given Jacobian and lambda
      * */
     do {
 
@@ -2202,38 +2295,9 @@ bool c_ecclm_inverse_compositional::align()
         H[i][i] = (1 + lambda) * Hp[i][i];
       }
 
-      /* Solve system to define delta and define new value of params */
-      cv::solve(H,   v, deltap, cv::DECOMP_CHOLESKY);
-      newparams = _transform->invert_and_compose(params, _update_step_scale * deltap);
-
-      /* Compute function for newparams */
-      newerr = compute_rhs(newparams);
-//      if ( newerr < FLT_EPSILON ) {
-//        step_accepted = true;
-//        break;
-//      }
-
-      /* Check for increments in parameters  */
-      if( (eps = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
-        // CF_DEBUG("BREAK by eps= %g / %g ", eps, _max_eps);
-        step_accepted = true;
-        break;
-      }
-
-      cv::gemm(Hp, deltap, -1, v, 2, temp_d);
-      const double dS = deltap.dot(temp_d);
-      const double rho = (err - newerr) / (std::abs(dS) > 0 ? dS : 1);
-
-//      CF_DEBUG(">> [it %d] eps=%g/%g newerr=%g olderr=%g dS=%g rho=%g lambda=%g deltap: {%g %g %g} params={%g %g %g}", _num_iterations,
-//          eps, _max_eps,
-//          newerr, err,
-//          dS, rho,
-//          lambda,
-//          deltap(0, 0), deltap(0, 1), deltap(0, 2),
-//          params(0, 0), params(0, 1), params(0, 2));
-
-      if( newerr >= err ) {
-        /** Try increase lambda ==> gradient descend */
+      /* Try to solve system to define delta and define new value of params.
+       * */
+      if( !ecc_solve(H, v, deltap) ) {
         if( (lambda *= 5) > 1e6 ) {
           _failed = true;
           break;
@@ -2242,16 +2306,49 @@ bool c_ecclm_inverse_compositional::align()
       }
 
       /*
+       * Compute function for newparams
+       * */
+      newparams = _transform->invert_and_compose(params, _update_step_scale * deltap);
+      newerr = compute_rhs(newparams);
+      if ( CMA < M || newerr > olderr ) { // CMA is updated inside of compute_rhs()
+        if( (lambda *= 5) > 1e6 ) {
+          _failed = true;
+          break;
+        }
+        continue;
+      }
+
+      /* Check for increments in error and parameters  */
+      if( (eps = _transform->eps(deltap, _reference_image.size())) <= xtol ) {
+        step_accepted = true;
+        converged = true;
+        break;
+      }
+
+      const double delta_error = olderr - newerr;
+      if ( (lambda < 10) && (delta_error <= olderr * ftol) )  {
+        step_accepted = true;
+        converged = true;
+        break;
+      }
+
+
+      /*
        * Accept new params and compute update to lambda
        * */
       step_accepted = true;
+
+      cv::gemm(Hp, deltap, -1, v, 2, temp_d);
+      const double dS = deltap.dot(temp_d);
+      const double rho = delta_error / (std::abs(dS) > 0 ? dS : 1);
 
       if( rho > 0.25 && lambda > 1e-6 ) {
         /* Decrease lambda ==> Gauss-Newton method */
         lambda = std::max(1e-6, lambda * 0.2 );
       }
       else if ( rho < 0.01 ) {
-        lambda *= 10; /** Try increase lambda ==> gradient descend */
+        /** Try increase lambda ==> gradient descend */
+        lambda *= 10;
       }
 
       break;
@@ -2259,26 +2356,27 @@ bool c_ecclm_inverse_compositional::align()
     } while (_num_iterations < _max_iterations);
 
     if ( _failed ) {
+      // CF_DEBUG("BREAK by fail");
       break;
     }
 
     if( step_accepted ) {
       /* Accept new params */
-      err = newerr;
+      olderr = newerr;
       recompute_remap = false;
       _transform->set_parameters(newparams);
       params = _transform->parameters();
     }
 
-    if( eps < _max_eps ) {
-      // CF_DEBUG("BREAK2 by dp");
+    if( converged ) {
+      // CF_DEBUG("BREAK by convergence");
       break;
     }
   }
 
   _eps = eps;
 
-  return true;
+  return !_failed;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3064,7 +3162,9 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
 
 bool serialize_ecch_options(c_config_setting section, bool save, c_ecch_options & opts)
 {
-  SERIALIZE_OPTION(section, save, opts, epsx);
+  SERIALIZE_OPTION(section, save, opts, xtol);
+  SERIALIZE_OPTION(section, save, opts, ftol);
+  SERIALIZE_OPTION(section, save, opts, gtol);
   SERIALIZE_OPTION(section, save, opts, reference_smooth_sigma);
   SERIALIZE_OPTION(section, save, opts, input_smooth_sigma);
   SERIALIZE_OPTION(section, save, opts, update_step_scale);

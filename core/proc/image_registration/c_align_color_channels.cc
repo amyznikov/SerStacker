@@ -125,14 +125,14 @@ bool c_align_color_channels::estimate(cv::InputArray _src, cv::InputArray _srcma
     }
   }
 
-  c_ecch ecch(opts.method);
-  ecch.set_maxlevel(opts.max_level);
-  ecch.set_interpolation(opts.interpolation);
-  ecch.set_update_step_scale(opts.update_step_scale);
-  ecch.set_reference_smooth_sigma(opts.smooth_sigma);
-  ecch.set_input_smooth_sigma(opts.smooth_sigma);
-  ecch.set_max_iterations(opts.max_iterations);
-  ecch.set_max_eps(opts.eps);
+  c_ecch ecch(opts.ecch);
+  //  ecch.set_maxlevel(opts.max_level);
+  //  ecch.set_interpolation(opts.interpolation);
+  //  ecch.set_update_step_scale(opts.update_step_scale);
+  //  ecch.set_reference_smooth_sigma(opts.smooth_sigma);
+  //  ecch.set_input_smooth_sigma(opts.smooth_sigma);
+  //  ecch.set_max_iterations(opts.max_iterations);
+  //  ecch.set_epsx(opts.eps);
 
   if( !ecch.set_reference_image(reference_channel, reference_mask) ) {
     CF_ERROR("ecc.set_reference_image() fails");
@@ -191,7 +191,8 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
     for( int i = 0; i < cn; ++i ) {
 
       if( _dst.needed() && _image_transforms[i] ) {
-        remap(channels[i], channels[i], opts, i, opts.interpolation, opts.border_mode, opts.border_value[i]);
+        remap(channels[i], channels[i], opts, i, opts.ecch.interpolation,
+            opts.border_mode, opts.border_value[i]);
       }
 
       if( _dstmask.needed() && !srcm.empty() ) {
@@ -273,13 +274,14 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
 
     for( int i = 0; i < cn; ++i ) {
       if( _dst.needed() && _image_transforms[i] ) {
-        remap(channels[i], channels[i], opts, i, opts.interpolation, opts.border_mode, opts.border_value[i]);
+        remap(channels[i], channels[i], opts, i, opts.ecch.interpolation,
+            opts.border_mode, opts.border_value[i]);
       }
 
       if( _dstmask.needed() ) {
 
         if( !is_single_channel_mask && _image_transforms[i] ) {
-          const int interp = opts.interpolation;
+          const int interp = opts.ecch.interpolation;
           const int mask_interp = (interp == cv::INTER_NEAREST) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
           remap(mask_channels[i], mask_channels[i], opts, i, mask_interp, cv::BORDER_CONSTANT, 0);
         }
@@ -333,16 +335,21 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
 
 bool serialize_align_color_channels_options(c_config_setting section, bool save, c_align_color_channels_options & opts)
 {
-  SERIALIZE_OPTION(section, save, opts, method);
   SERIALIZE_OPTION(section, save, opts, motion_type);
-  SERIALIZE_OPTION(section, save, opts, interpolation);
   SERIALIZE_OPTION(section, save, opts, border_mode);
   SERIALIZE_OPTION(section, save, opts, border_value);
-  SERIALIZE_OPTION(section, save, opts, smooth_sigma);
-  SERIALIZE_OPTION(section, save, opts, eps);
-  SERIALIZE_OPTION(section, save, opts, max_iterations);
-  SERIALIZE_OPTION(section, save, opts, max_level);
-  SERIALIZE_OPTION(section, save, opts, update_step_scale);
+  //SERIALIZE_OPTION(section, save, opts, max_level);
   SERIALIZE_OPTION(section, save, opts, normalization_level);
+  if ( auto grp = SERIALIZE_GROUP(section, save, "ecch") ) {
+    serialize_ecch_options(grp, save, opts.ecch);
+  }
+
+//
+//  SERIALIZE_OPTION(section, save, opts, method);
+//  SERIALIZE_OPTION(section, save, opts, interpolation);
+//  SERIALIZE_OPTION(section, save, opts, smooth_sigma);
+//  SERIALIZE_OPTION(section, save, opts, eps);
+//  SERIALIZE_OPTION(section, save, opts, max_iterations);
+//  SERIALIZE_OPTION(section, save, opts, update_step_scale);
   return true;
 }

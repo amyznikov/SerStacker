@@ -83,8 +83,14 @@ public:
   void set_max_iterations(int v);
   int max_iterations() const;
 
-  void set_max_eps(double v);
-  double max_eps() const;
+  void set_xtol(double v);
+  double xtol() const;
+
+  void set_ftol(double v);
+  double ftol() const;
+
+  void set_gtol(double v);
+  double gtol() const;
 
   void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
   enum ECC_INTERPOLATION_METHOD interpolation() const;
@@ -130,11 +136,12 @@ protected:
   cv::Mat1b _reference_mask;
   cv::Mat1f _current_image;
   cv::Mat1b _current_mask;
-
   c_image_transform * _transform = nullptr;
-  double _max_eps = 0.2f;
-  double _max_epse = 1e-4;
-  float _update_step_scale = 1.f;
+
+  double _update_step_scale = 1.25;
+  double _xtol = 1e-1;
+  double _ftol = 1e-4;
+  double _gtol = 1e-6;
   int _max_iterations = 30;
   enum ECC_INTERPOLATION_METHOD _interpolation = ECC_INTER_LINEAR;
   bool _enable_image_normalization = true;
@@ -158,10 +165,13 @@ enum ECCH_PYRAMID_TYPE {
 
 struct c_ecch_options
 {
-  double epsx = 0.1;
+  double xtol = 1e-1;   // Parameter Tolerance
+  double ftol = 1e-4;   // Function Tolerance
+  double gtol = 1e-6;   // Function Gradient Tolerance
+
   double reference_smooth_sigma = 1;
   double input_smooth_sigma = 1;
-  double update_step_scale = 1.5;
+  double update_step_scale = 1.25;
 
   enum ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
@@ -184,7 +194,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "minimum_image_size", ctx(&S::minimum_image_size),  "");
   ctlbind(ctls, "maxlevel",  ctx(&S::maxlevel), "");
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
-  ctlbind(ctls, "max_eps", ctx(&S::epsx), "");
+  ctlbind(ctls, "xtol", ctx(&S::xtol), "Stop criteria: Parameter Tolerance (max error decrement in absolute pixels between iterations)");
+  ctlbind(ctls, "ftol", ctx(&S::ftol), "Stop criteria: Function Tolerance in relative error decrement");
+  ctlbind(ctls, "gtol", ctx(&S::gtol), "Stop criteria: Function Gradient Tolerance");
   ctlbind(ctls, "interpolation", ctx(&S::interpolation), "");
   ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
   ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
@@ -240,11 +252,14 @@ public:
   void set_max_iterations(int v);
   int max_iterations() const;
 
-  void set_epsx(double v);
-  double epsx() const;
+  void set_xtol(double v);
+  double xtol() const;
 
-  void set_max_eps(double v);
-  double max_eps() const;
+  void set_ftol(double v);
+  double ftol() const;
+
+  void set_gtol(double v);
+  double gtol() const;
 
   void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
   enum ECC_INTERPOLATION_METHOD interpolation() const;
@@ -279,8 +294,8 @@ public:
     _image_transform = nullptr;
   }
 
-  double eps() const;
   int num_iterations() const;
+  double eps() const;
 
   const cv::Mat1f & reference_image() const;
   const cv::Mat1b & reference_mask() const;
@@ -445,7 +460,7 @@ protected:
 
 
 /**
- * Inverse compositional Levenberg-Marquardt
+ * Inverse compositional Levenberg-Marquardt based on Baker-Matthews Algorithm (2001)
  */
 class c_ecclm_inverse_compositional:
     public c_ecc_align

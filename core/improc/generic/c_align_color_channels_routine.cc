@@ -40,23 +40,17 @@ static void serialize_transfrom_parameters(c_config_setting settings, bool save,
 
 void c_align_color_channels_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "reference channel", CTL_CONTEXT(ctx,referenceChannel), "");
+  ctlbind(ctls, "Reference channel:", CTL_CONTEXT(ctx, referenceChannel), "");
   base::getcontrols(ctls, ctx);
 
-  ctlbind(ctls, "interpolation", CTL_CONTEXT(ctx, _opts.interpolation), "");
   ctlbind(ctls, "border_mode", CTL_CONTEXT(ctx, _opts.border_mode), "");
   ctlbind(ctls, "border_value", CTL_CONTEXT(ctx, _opts.border_value), "");
 
-  ctlbind(ctls, "Estimate", CTL_CONTEXT(ctx, reEstimate), "");
+  ctlbind(ctls, "Estimate", CTL_CONTEXT(ctx, estimate), "");
   ctlbind_expandable_group(ctls, "Estimate", "Algorithm parameters");
     ctlbind(ctls, "motion_type", CTL_CONTEXT(ctx, _opts.motion_type), "");
-    ctlbind(ctls, "method", CTL_CONTEXT(ctx, _opts.method), "");
-    ctlbind(ctls, "smooth_sigma", CTL_CONTEXT(ctx, _opts.smooth_sigma), "");
-    ctlbind(ctls, "eps", CTL_CONTEXT(ctx, _opts.eps), "");
-    ctlbind(ctls, "update_step_scale", CTL_CONTEXT(ctx, _opts.update_step_scale), "");
-    ctlbind(ctls, "max_iterations", CTL_CONTEXT(ctx, _opts.max_iterations), "");
-    ctlbind(ctls, "max_level", CTL_CONTEXT(ctx, _opts.max_level), "");
     ctlbind(ctls, "normalization_level", CTL_CONTEXT(ctx, _opts.normalization_level), "");
+    ctlbind(ctls, CTL_CONTEXT(ctx, _opts.ecch));
   ctlbind_end_group(ctls);
 
   ctlbind_menu_button(ctls, "Transform...", ctx);
@@ -71,7 +65,7 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings, bool s
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, referenceChannel);
-    SERIALIZE_OPTION(settings, save, *this, reEstimate);
+    SERIALIZE_OPTION(settings, save, *this, estimate);
     serialize_align_color_channels_options(settings, save, _opts);
     serialize_transfrom_parameters(settings, save, _algorithm, _opts.motion_type);
     return true;
@@ -83,7 +77,7 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings, bool s
 
 bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( reEstimate || _algorithm.estimated_motion_type() != _opts.motion_type ) {
+  if( estimate || _algorithm.estimated_motion_type() != _opts.motion_type ) {
     const bool fOk = _algorithm.estimate(image, _ignore_mask ? cv::noArray() : mask, referenceChannel, _opts);
     if ( !fOk ) {
       CF_ERROR("_algorithm.align() fails");

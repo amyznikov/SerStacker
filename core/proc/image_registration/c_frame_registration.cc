@@ -792,7 +792,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
 
       CF_ERROR("_ecch.align() fails: eps=%g/%g iterations=%d/%d",
-          _ecch.eps(), _ecch.max_eps(),
+          _ecch.eps(), _ecch.xtol(),
           _ecch.num_iterations(), _ecch.max_iterations());
 
       return false;
@@ -891,7 +891,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       _current_status.timings.extract_ecc_image,
 
       rho, _options.ecc.min_rho,
-      _ecch.eps(), _ecch.max_eps(),
+      _ecch.eps(), _ecch.xtol(),
       _ecch.num_iterations(), _ecch.max_iterations(),
       _current_status.timings.ecc_align, _current_status.timings.ecc_align / (_ecch.num_iterations() + 1),
 

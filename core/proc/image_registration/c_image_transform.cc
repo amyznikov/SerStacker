@@ -2161,5 +2161,50 @@ bool c_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f
   return true;
 }
 
+// first-order approximation composition
+cv::Mat1f c_quadratic_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+{
+  if (p.rows != 12 || p.cols != 1 || dp.rows != 12 || dp.cols != 1) {
+    CF_ERROR("c_quadratic_image_transform::invert_and_compose: Invalid parameters size. Must be 12x1");
+    return cv::Mat1f();
+  }
+
+  const float a00 = p(0, 0); const float a01 = p(1, 0); const float a02 = p(2, 0);
+  const float a03 = p(3, 0); const float a04 = p(4, 0); const float a05 = p(5, 0);
+  const float a10 = p(6, 0); const float a11 = p(7, 0); const float a12 = p(8, 0);
+  const float a13 = p(9, 0); const float a14 = p(10, 0); const float a15 = p(11, 0);
+
+  const float da00 = -dp(0, 0); const float da01 = -dp(1, 0); const float da02 = -dp(2, 0);
+  const float da03 = -dp(3, 0); const float da04 = -dp(4, 0); const float da05 = -dp(5, 0);
+  const float da10 = -dp(6, 0); const float da11 = -dp(7, 0); const float da12 = -dp(8, 0);
+  const float da13 = -dp(9, 0); const float da14 = -dp(10, 0); const float da15 = -dp(11, 0);
+
+  // Substitute the deformed coordinates (with an increment d) into the quadratic form p,
+  // and discard all higher-order terms (products such as da * da, a03 * da04, etc.).
+  cv::Mat1f res_p(12, 1);
+
+  // Linear coefficients and X-shift
+  res_p(0, 0) = a00 + da00 + a00 * da00 + a01 * da10;
+  res_p(1, 0) = a01 + da01 + a00 * da01 + a01 * da11;
+  res_p(2, 0) = a02 + da02 + a00 * da02 + a01 * da12;
+
+  // Quadratic coefficients on X
+  res_p(3, 0) = a03 + da03 + a00 * da03 + a01 * da13 + a03 * (da00 + da11) + 2.0f * a04 * da01 + 2.0f * a05 * da10;
+  res_p(4, 0) = a04 + da04 + a00 * da04 + a01 * da14 + 2.0f * a04 * da00 + a03 * da10;
+  res_p(5, 0) = a05 + da05 + a00 * da05 + a01 * da15 + 2.0f * a05 * da11 + a03 * da01;
+
+  // Linear coefficients and Y-shift
+  res_p(6, 0) = a10 + da10 + a10 * da00 + a11 * da10;
+  res_p(7, 0) = a11 + da11 + a10 * da01 + a11 * da11;
+  res_p(8, 0) = a12 + da12 + a10 * da02 + a11 * da12;
+
+  // Quadratic coefficients for Y
+  res_p(9, 0) = a13 + da13 + a10 * da03 + a11 * da13 + a13 * (da00 + da11) + 2.0f * a14 * da01 + 2.0f * a15 * da10;
+  res_p(10, 0) = a14 + da14 + a10 * da04 + a11 * da14 + 2.0f * a14 * da00 + a13 * da10;
+  res_p(11, 0) = a15 + da15 + a10 * da05 + a11 * da15 + 2.0f * a15 * da11 + a13 * da01;
+
+  return res_p;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

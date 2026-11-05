@@ -1022,12 +1022,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   _processed_frames = 0;
   _accumulated_frames = 0;
 
-
   CF_DEBUG("TOTAL_FRAMES=%d", _total_frames);
+  int curpos;
 
   for ( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
-
-    CF_DEBUG("GENERATING_MASTER_FRAME=%d", _generating_master_frame);
 
     if ( canceled() ) {
       set_status_msg("canceled");
@@ -1051,6 +1049,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     _input_bpp = input_sequence->bpp();
+    curpos = input_sequence->current_pos() - 1;
 
     if ( canceled() ) {
       set_status_msg("canceled");
@@ -1062,7 +1061,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     if ( !select_image_roi(_roi_selection_options, current_frame, current_mask, current_frame, current_mask) ) {
-      CF_ERROR("[F %d] select_image_roi() fails", input_sequence->current_pos() - 1);
+      CF_ERROR("[F %d] select_image_roi() fails", curpos);
       continue;
     }
 
@@ -1074,7 +1073,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     if( _input_options.input_image_processor ) {
       if( !_generating_master_frame || _master_options.apply_input_image_processor ) {
         if( !_input_options.input_image_processor->process(current_frame, current_mask) ) {
-          CF_ERROR("[F %d] input_image_processor->process() fails", input_sequence->current_pos() - 1);
+          CF_ERROR("[F %d] input_image_processor->process() fails", curpos);
           continue;
         }
       }
@@ -1087,7 +1086,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if( _output_options.save_preprocessed_frames ) {
 
-      if( !save_preprocessed_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {
+      if( !save_preprocessed_video(current_frame, current_mask, curpos) ) {
         CF_ERROR("save_preprocessed_video() fails");
         return false;
       }
@@ -1169,20 +1168,20 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       _frame_registration->set_current_timestamp(input_sequence->last_ts(),
           input_sequence->has_last_ts());
 
-      CF_DEBUG("[F %d] CALL REGISTRER ", input_sequence->current_pos() - 1);
+      CF_DEBUG("[F %d] CALL REGISTER", curpos);
+
       const bool registered =
           _frame_registration->register_frame(current_frame,
               current_mask);
 
-      CF_DEBUG("[F %d] registered=%d", input_sequence->current_pos() - 1, registered);
+      CF_DEBUG("[F %d] REGISTERED=%d", curpos, registered);
 
       if( canceled() ) {
         set_status_msg("canceled");
         break;
       }
 
-
-      if ( !save_feature_video(input_sequence->current_pos() - 1) )  {
+      if ( !save_feature_video(curpos) )  {
         CF_ERROR("save_feature_video() fails");
         return false;
       }
@@ -1192,7 +1191,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      if( !save_ecc_video(input_sequence->current_pos() - 1) ) {
+      if( !save_ecc_video(curpos) ) {
         CF_ERROR("save_ecc_video() fails");
         return false;
       }
@@ -1202,7 +1201,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      if ( !save_sparse_matches_video(input_sequence->current_pos() - 1) )  {
+      if ( !save_sparse_matches_video(curpos) )  {
         CF_ERROR("save_sparse_matches_video() fails");
         return false;
       }
@@ -1213,11 +1212,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
 
       if( !registered ) {
-        CF_ERROR("[F %6d] reg->register_frame() fails\n", _processed_frames + startpos);
+        CF_ERROR("[F %6d] register_frame() fails", curpos);
         continue;
       }
 
-      if ( !save_sparse_matches_blend_video(input_sequence->current_pos() - 1) ) {
+      if ( !save_sparse_matches_blend_video(curpos) ) {
         CF_ERROR("[F %6d] save_sparse_matches_video() fails\n",
             _processed_frames + startpos);
         return false;
@@ -1306,7 +1305,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           break;
         }
 
-        if( !save_eccflow_video(input_sequence->current_pos() - 1) ) {
+        if( !save_eccflow_video(curpos) ) {
           CF_ERROR("save_eccflow_video() fails");
           return false;
         }

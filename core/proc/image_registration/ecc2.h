@@ -57,10 +57,8 @@ enum ECC_BORDER_MODE {
 
 
 enum ECC_ALIGN_METHOD {
-  ECC_ALIGN_FORWARD_ADDITIVE,
-  ECC_ALIGN_INVERSE_COMPOSITIONAL,
-  ECC_ALIGN_LM,
-  ECC_ALIGN_INVERSE_COMPOSITIONAL_LM
+  ECC_ALIGN_INVERSE_COMPOSITIONAL_LM,
+  ECC_ALIGN_FORWARD_ADDITIVE_LM,
 };
 
 /**
@@ -76,6 +74,8 @@ public:
 
   c_ecc_align(c_image_transform * transform = nullptr);
   virtual ~c_ecc_align() = default;
+
+  virtual void release_cached_memory();
 
   virtual void set_image_transform(c_image_transform * image_transform);
   c_image_transform * image_transform() const;
@@ -98,9 +98,6 @@ public:
   void set_update_step_scale(double v);
   double update_step_scale() const;
 
-  void set_enable_image_normalization(bool v);
-  bool enable_image_normalization() const;
-
   virtual void copy_parameters(const this_class & rhs);
 
   virtual bool set_reference_image(cv::InputArray reference_image,
@@ -108,8 +105,6 @@ public:
 
   virtual bool set_current_image(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray());
-
-  virtual void release_current_image();
 
   virtual bool align() = 0;
 
@@ -131,11 +126,19 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
+  const cv::Mat2f & current_remap() const;
+
+  const cv::Mat1f & remapped_current_image() const;
+  const cv::Mat1b & remapped_current_zmask() const;
+
 protected:
   cv::Mat1f _reference_image;
   cv::Mat1b _reference_mask;
   cv::Mat1f _current_image;
   cv::Mat1b _current_mask;
+  cv::Mat1f _remapped_current_image;
+  cv::Mat1b _remapped_current_zmask;
+  cv::Mat2f _rmap;    // Current remap
   c_image_transform * _transform = nullptr;
 
   double _update_step_scale = 1.25;
@@ -144,13 +147,11 @@ protected:
   double _gtol = 1e-6;
   int _max_iterations = 30;
   enum ECC_INTERPOLATION_METHOD _interpolation = ECC_INTER_LINEAR;
-  bool _enable_image_normalization = true;
 
   double _eps = FLT_MAX;
   int _nparams = 0;
   int _num_iterations  = 0;
   bool _failed = false;
-
 };
 
 
@@ -180,7 +181,6 @@ struct c_ecch_options
   int max_iterations = 50;
   int minimum_image_size = 16;
   int maxlevel = 0;
-  bool enable_image_normalization = true;
   bool force_direct_methods_for_coarse_levels = true;
 };
 
@@ -201,11 +201,12 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
   ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
   ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
-  ctlbind(ctls, "normalize images", ctx(&S::enable_image_normalization), "Normalize images by subtracting mean and scaling by stdev");
   ctlbind(ctls, "coarse_direct", ctx(&S::force_direct_methods_for_coarse_levels), "force_direct_methods_for_coarse_levels");
 }
 
-
+/**
+ * ECC on image pyramids
+ * */
 class c_ecch
 {
 public:
@@ -220,7 +221,6 @@ public:
   c_ecch(c_image_transform * image_transform, const c_ecch_options& opts);
 
   virtual ~c_ecch() = default;
-
 
   c_ecch_options& options()
   {
@@ -303,8 +303,13 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
+  const cv::Mat2f & current_remap() const;
+  const cv::Mat1f & remapped_current_image() const;
+  const cv::Mat1b & remapped_current_zmask() const;
+
   bool create_remap(cv::Mat2f & rmap) const;
   cv::Mat2f create_remap() const;
+
 
   static cv::Size compute_next_pyramid_layer_size(const cv::Size & currentSize)
   {
@@ -324,143 +329,62 @@ protected:
   double sigmaRef = 0, sigmaCur = 0;
   cv::Mat1f Gref, Gcur;
   int _total_iterations = -1;
+
+protected:
+  static const cv::Mat1f _empty_image;
+  static const cv::Mat1b _empty_mask;
+  static const cv::Mat2f _empty_remap;
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-// Forward additive ECC
-// "Lucas-Kanade 20 Years On: A Unifying Framework: Part 2",
-//          Simon Baker et.all.
-// "Parametric Image Alignment Using Enhanced Correlation Coefficient Maximization",
-//          Georgios D. Evangelidis and Emmanouil Z. Psarakis
-class c_ecc_forward_additive :
+/**
+ * Forward Additive Levenberg-Marquardt and Lucas-Kanade (1981)
+ *
+ * Lucas-Kanade 20 Years On: A Unifying Framework: Part 2,
+ *    Simon Baker et.all.
+ *
+ * Parametric Image Alignment Using Enhanced Correlation Coefficient Maximization,
+ *    Georgios D. Evangelidis and Emmanouil Z. Psarakis
+ */
+class c_ecclm_forward_additive :
     public c_ecc_align
 {
 public:
-  typedef c_ecc_forward_additive this_class;
+  typedef c_ecclm_forward_additive this_class;
   typedef c_ecc_align base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_ecc_forward_additive(c_image_transform * image_transform = nullptr);
+  c_ecclm_forward_additive(c_image_transform * image_transform = nullptr);
+
+  void release_cached_memory() final;
 
   bool set_reference_image(cv::InputArray reference_image,
-      cv::InputArray reference_mask = cv::noArray()) override;
+      cv::InputArray reference_mask = cv::noArray()) final;
 
   bool set_current_image(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
+      cv::InputArray current_mask = cv::noArray()) final;
 
-  bool align() override;
+  bool align() final;
 
   bool align(cv::InputArray current_image, cv::InputArray reference_image,
       cv::InputArray current_mask = cv::noArray(),
-      cv::InputArray reference_mask = cv::noArray()) override;
+      cv::InputArray reference_mask = cv::noArray()) final;
 
   bool align_to_reference(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
+      cv::InputArray current_mask = cv::noArray()) final;
 
 protected:
-  cv::Mat1b wmask, iwmask; // image masks
-  cv::Mat1f gw; // warped input image
-  cv::Mat1f gxw, gyw; // input image derivatives
-  cv::Mat1f H; // Hessian matrix and its inverse
-  cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1]
-  cv::Mat1f rhs, ep;  // error image and it's projection
-  std::vector<cv::Mat1f> jac;
+  double compute_rhs(const cv::Mat1f & params, double * K = nullptr);
+
+protected:
+  cv::Mat1b _current_zmask;
+  cv::Mat1b _reference_zmask;
+  cv::Mat1f _remapped_gx, _remapped_gy; // gradients of current remapped image
+  cv::Mat1f _rhs;     // Current rhs = reference - remapped_current
+  std::vector<cv::Mat1f> J; // Steepest descent images
 };
-
-// Inverse compositional ECC
-// "Lucas-Kanade 20 Years On: A Unifying Framework: Part 2", Simon Baker et.all.
-// Formula (5) from the paper
-//  "Fast, Robust and Accurate Digital Image Correlation Calculation Without Redundant Computations" B. Pan, K. Li, W. Tong
-//  <http://www.ncorr.com/download/publications/panfast.pdf>
-class c_ecc_inverse_compositional:
-    public c_ecc_align
-{
-public:
-  typedef c_ecc_inverse_compositional this_class;
-  typedef c_ecc_align base;
-  typedef std::shared_ptr<this_class> sptr;
-  typedef std::unique_ptr<this_class> uptr;
-
-  c_ecc_inverse_compositional(c_image_transform * image_transform = nullptr);
-
-  void set_image_transform(c_image_transform * image_transform) override;
-
-  bool set_reference_image(cv::InputArray reference_image,
-      cv::InputArray reference_mask = cv::noArray()) override;
-
-  bool set_current_image(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
-
-  bool align() override;
-
-  bool align(cv::InputArray current_image, cv::InputArray reference_image,
-      cv::InputArray current_mask = cv::noArray(),
-      cv::InputArray reference_mask = cv::noArray()) override;
-
-  bool align_to_reference(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
-
-protected:
-
-protected:
-  cv::Mat1f gx, gy;
-  std::vector<cv::Mat1f> jac;
-  cv::Mat1f H;
-};
-
 
 /**
- * Direct Levendberg-Marquedt
- * */
-class c_ecclm : public c_ecc_align
-{
-public:
-  typedef c_ecclm this_class;
-  typedef c_ecc_align base;
-  typedef std::shared_ptr<this_class> sptr;
-  typedef std::unique_ptr<this_class> uptr;
-
-  //c_ecclm();
-  c_ecclm(c_image_transform * transform = nullptr);
-  virtual ~c_ecclm() = default;
-
-  void set_image_transform(c_image_transform * image_transform) override;
-
-  bool set_reference_image(cv::InputArray reference_image,
-      cv::InputArray reference_mask = cv::noArray()) override;
-
-  bool set_current_image(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
-
-  bool align() override;
-
-  bool align(cv::InputArray current_image, cv::InputArray reference_image,
-      cv::InputArray current_mask = cv::noArray(),
-      cv::InputArray reference_mask = cv::noArray()) override;
-
-  bool align_to_reference(cv::InputArray current_image, cv::InputArray current_mask);
-
-protected:
-  double compute_rhs(const cv::Mat1f & params);
-  double compute_jac(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & H, cv::Mat1f & v);
-  double compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
-
-protected:
-  cv::Mat1f _gx, _gy;
-  std::vector<cv::Mat1f> J;
-  cv::Mat1f remapped_image;
-  cv::Mat1b remapped_mask;
-  cv::Mat1f rhs;
-  double rms = 0;
-};
-
-
-/**
- * Inverse compositional Levenberg-Marquardt based on Baker-Matthews Algorithm (2001)
+ * Inverse compositional Levenberg-Marquardt and Baker-Matthews (2001)
  */
 class c_ecclm_inverse_compositional:
     public c_ecc_align
@@ -473,47 +397,36 @@ public:
 
   c_ecclm_inverse_compositional(c_image_transform * image_transform = nullptr);
 
-  void set_image_transform(c_image_transform * image_transform) override;
+  void release_cached_memory() final;
+
+  void set_image_transform(c_image_transform * image_transform) final;
 
   bool set_reference_image(cv::InputArray reference_image,
-      cv::InputArray reference_mask = cv::noArray()) override;
+      cv::InputArray reference_mask = cv::noArray()) final;
 
   bool set_current_image(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
+      cv::InputArray current_mask = cv::noArray()) final;
 
-  void release_current_image() override;
 
-  bool align() override;
+  bool align() final;
 
   bool align(cv::InputArray current_image, cv::InputArray reference_image,
       cv::InputArray current_mask = cv::noArray(),
-      cv::InputArray reference_mask = cv::noArray()) override;
+      cv::InputArray reference_mask = cv::noArray()) final;
 
   bool align_to_reference(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray()) override;
+      cv::InputArray current_mask = cv::noArray()) final;
 
 protected:
-  double compute_rhs(const cv::Mat1f & params);
-  void compute_v(const cv::Mat1f & params, cv::Mat1f & v);
-  bool ecc_remap(const c_image_transform * image_transform, const cv::Mat1f & params, const cv::Size & size,
-      cv::InputArray src, cv::InputArray src_mask,
-      cv::OutputArray dst, cv::OutputArray dst_mask);
-  static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy,
-      cv::InputArray mask = cv::noArray() );
+  double compute_rhs(const cv::Mat1f & params, double * K = nullptr);
 
 protected:
+  cv::Mat1b _current_zmask;
+  cv::Mat1b _reference_zmask;
   cv::Mat1f gx, gy;
-  std::vector<cv::Mat1f> jac;
-  cv::Mat1f _remapped_image;
-  cv::Mat1b _inv_remapped_mask;
-  cv::Mat1b _inv_reference_mask;
-  cv::Mat1b _inv_current_mask;
-  cv::Mat2f _rmap;
+  std::vector<cv::Mat1f> J;
   cv::Mat1f _rhs;
   cv::Mat1f Hp;
-  double _last_rms = 0;
-  double RMA = 0;
-  double CMA = 0;
   bool _reference_image_changed = true;
 };
 
@@ -678,12 +591,17 @@ protected:
   mutable cv::Mat1f W;
 };
 
-bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy = true, bool scharr_gradient = false);
+//bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy = true, bool scharr_gradient = false);
 void ecc_normalize(cv::InputArray src, cv::InputArray src_mask, cv::OutputArray dst, int lvl, double eps);
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
-double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
-double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap);
+//double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
+//double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap);
+
+double ecc_compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
+double ecc_compute_correlation(cv::InputArray current_image, cv::InputArray current_mask,
+    cv::InputArray reference_image, cv::InputArray reference_mask,
+    const cv::Mat2f & rmap);
 
 
 bool serialize_ecch_options(c_config_setting section, bool save,

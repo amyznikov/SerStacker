@@ -150,6 +150,16 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, _output_options, output_weights_video_options);
     }
 
+    SERIALIZE_OPTION(section, save, _output_options, save_eccr_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_eccr_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_eccr_video_options);
+    }
+
+    SERIALIZE_OPTION(section, save, _output_options, save_eccc_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_eccc_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_eccc_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, _output_options, display_scale);
   }
 
@@ -256,10 +266,12 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   //  ctlbind_end_group(ctls);
 
   ctlbind(ctls, "Save substacks", ctx(&S::save_substacks), "Enable save substacks every substack_frames");
-  ctlbind(ctls, "Save input_video", ctx(&S::save_input_video), "");
-  ctlbind(ctls, "Save progress_video", ctx(&S::save_progress_video), "");
-  ctlbind(ctls, "Save reference_video", ctx(&S::save_reference_video), "");
-  ctlbind(ctls, "Save weights_video", ctx(&S::save_weights_video), "");
+  ctlbind(ctls, "Save input video", ctx(&S::save_input_video), "");
+  ctlbind(ctls, "Save progress video", ctx(&S::save_progress_video), "");
+  ctlbind(ctls, "Save reference video", ctx(&S::save_reference_video), "");
+  ctlbind(ctls, "Save weights video", ctx(&S::save_weights_video), "");
+  ctlbind(ctls, "Save ECCR video", ctx(&S::save_eccr_video), "");
+  ctlbind(ctls, "Save ECCC video", ctx(&S::save_eccc_video), "");
 
   ctlbind_expandable_group(ctls, "Save SubStacks options...", ctx(&S::save_substacks));
     ctlbind(ctls, "substack_frames", ctx(&S::substack_frames),
@@ -283,6 +295,13 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, ctx(&S::output_weights_video_options));
   ctlbind_end_group(ctls);
 
+  ctlbind_expandable_group(ctls, "Save ECCR video options...", ctx(&S::save_eccr_video));
+    ctlbind(ctls, ctx(&S::output_eccr_video_options));
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Save ECCC video options...", ctx(&S::save_eccc_video));
+    ctlbind(ctls, ctx(&S::output_eccc_video_options));
+  ctlbind_end_group(ctls);
 }
 
 const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontrols()
@@ -690,117 +709,25 @@ static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
     const cv::Size & current_image_size,
     const cv::Size & global_canvas_size)
 {
-  if( transform->invertible() ) {
-    std::vector<cv::Point2f> current_corners = {
-        cv::Point2f(0.f, 0.f),
-        cv::Point2f(float(current_image_size.width), 0.f),
-        cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
-        cv::Point2f(0.f, float(current_image_size.height))
-    };
+  std::vector<cv::Point2f> current_corners = {
+      cv::Point2f(0.f, 0.f),
+      cv::Point2f(float(current_image_size.width), 0.f),
+      cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
+      cv::Point2f(0.f, float(current_image_size.height))
+  };
 
-    std::vector<cv::Point2f> ref_corners_local;
+  std::vector<cv::Point2f> ref_corners_local;
 
-    transform->forward_remap(current_corners, ref_corners_local);
+  transform->forward_remap(current_corners, ref_corners_local);
 
-    cv::Point2f global_offset = last_canvas_bbox.tl();
-    std::vector<cv::Point2f> ref_corners_global(4);
-    for( size_t i = 0; i < 4; ++i ) {
-      ref_corners_global[i] = ref_corners_local[i] + global_offset;
-    }
-
-    cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
-    cv::Rect new_global_bbox = rbox.boundingRect();
-    return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+  cv::Point2f global_offset = last_canvas_bbox.tl();
+  std::vector<cv::Point2f> ref_corners_global(4);
+  for( size_t i = 0; i < 4; ++i ) {
+    ref_corners_global[i] = ref_corners_local[i] + global_offset;
   }
 
-
-//  if( transform->invertible() ) {
-//
-//    const cv::Mat1f inv_p = transform->invert(transform->parameters());
-//
-//    std::vector<cv::Point2f> current_corners = {
-//        cv::Point2f(0.f, 0.f),
-//        cv::Point2f(float(current_image_size.width), 0.f),
-//        cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
-//        cv::Point2f(0.f, float(current_image_size.height))
-//    };
-//
-//    std::vector<cv::Point2f> ref_corners_local;
-//
-//    if( transform->remap(inv_p, current_corners, ref_corners_local) && ref_corners_local.size() == 4 ) {
-//
-//      cv::Point2f global_offset = last_canvas_bbox.tl();
-//      std::vector<cv::Point2f> ref_corners_global(4);
-//      for( size_t i = 0; i < 4; ++i ) {
-//        ref_corners_global[i] = ref_corners_local[i] + global_offset;
-//      }
-//
-//      cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
-//      cv::Rect new_global_bbox = rbox.boundingRect();
-//      return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
-//    }
-//  }
-//
-  // FALLBACK for non-invertibla transformations
-  int margin = 32;
-  cv::Rect test_rect = cv::Rect(
-      last_canvas_bbox.x - margin,
-      last_canvas_bbox.y - margin,
-      last_canvas_bbox.width + 2 * margin,
-      last_canvas_bbox.height + 2 * margin
-          ) & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
-
-  if( test_rect.empty() ) {
-    return last_canvas_bbox;
-  }
-
-  cv::Mat2f test_rmap;
-  transform->create_remap(test_rect.size(), test_rmap);
-
-  int min_x = test_rect.width, max_x = 0;
-  int min_y = test_rect.height, max_y = 0;
-  bool found_any = false;
-  const int step = 4;
-
-  for( int y = 0; y < test_rmap.rows; y += step ) {
-    const cv::Point2f * row_ptr = test_rmap.ptr<cv::Point2f>(y);
-    for( int x = 0; x < test_rmap.cols; x += step ) {
-      cv::Point2f src_pt = row_ptr[x];
-      if( src_pt.x >= 0 && src_pt.x < current_image_size.width &&
-          src_pt.y >= 0 && src_pt.y < current_image_size.height ) {
-        if( x < min_x ) {
-          min_x = x;
-        }
-        if( x > max_x ) {
-          max_x = x;
-        }
-        if( y < min_y ) {
-          min_y = y;
-        }
-        if( y > max_y ) {
-          max_y = y;
-        }
-        found_any = true;
-      }
-    }
-  }
-
-  if( !found_any ) {
-    return last_canvas_bbox;
-  }
-
-  min_x = std::max(0, min_x - step);
-  min_y = std::max(0, min_y - step);
-  max_x = std::min(test_rect.width - 1, max_x + step);
-  max_y = std::min(test_rect.height - 1, max_y + step);
-
-  cv::Rect new_global_bbox(
-      test_rect.x + min_x,
-      test_rect.y + min_y,
-      max_x - min_x + 1,
-      max_y - min_y + 1
-          );
-
+  cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
+  cv::Rect new_global_bbox = rbox.boundingRect();
   return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
 }
 
@@ -1100,6 +1027,11 @@ bool c_canvas_average_pipeline::process_current_frame()
       const cv::Vec2f & Cr = _image_transform->destination_reference_point();
       const cv::Vec2f & Cc = _image_transform->source_reference_point();
       _image_transform->set_translation(-T + Cr - Cc);
+
+      T = _image_transform->translation();
+      CF_DEBUG("[F %d] pcorr: R=%g deg Tx=%g Ty=%g", _input_sequence->current_pos() - 1,
+        R * 180 / CV_PI, T(0), T(1));
+
     }
     else if( _registration_options.enable_feature2d_registration ) {
       INSTRUMENT_REGION("feature2d_registration");
@@ -1182,9 +1114,30 @@ bool c_canvas_average_pipeline::process_current_frame()
        * holds active pointer to the current _image_transform
        */
       _ecch.set_reference_image(reference_grayscale_image, reference_binary_mask);
-      if( !_ecch.align(_current_grayscale_image, current_binary_mask) ) {
+
+      const bool registered =
+          _ecch.align(_current_grayscale_image,
+              current_binary_mask);
+
+      if( !registered ) {
         CF_ERROR("_ecch.align() fails");
+      }
+      if ( _output_options.save_eccr_video && !save_eccr_video() ) {
+        CF_ERROR("save_eccr_video() fails");
         return false;
+      }
+      if ( _output_options.save_eccc_video && !save_eccc_video() ) {
+        CF_ERROR("save_eccc_video() fails");
+        return false;
+      }
+      if( !registered ) {
+        return false;
+      }
+
+      if ( true ) {
+        const cv::Vec2f T = _image_transform->translation();
+        CF_DEBUG("[F %d] ecch: eps = %g/%g %d iterations Tx=%g Ty=%g", _input_sequence->current_pos() - 1,
+            _ecch.eps(), _ecch.xtol(), _ecch.num_iterations(), T(0), T(1));
       }
     }
 
@@ -1337,28 +1290,6 @@ bool c_canvas_average_pipeline::process_current_frame()
 void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   INSTRUMENT_REGION("");
-
-//  static const auto createApodizationWindow = [](const cv::Size & size) -> cv::Mat {
-//
-//    const int B = std::max(4, std::min(size.width, size.height) / 64);
-//    const float P = 2.0f;
-//
-//    cv::Mat1f lut_x(1, size.width, 1.0f);
-//    cv::Mat1f lut_y(size.height, 1, 1.0f);
-//
-//    for( int x = 0, xmax = std::min(B, size.width / 2); x < xmax; ++x ) {
-//      const float shaped = 1 - std::pow((float)(B - x) / B, P);
-//      const float factor = shaped;
-//      lut_x(0, x) = lut_x(0, size.width - 1 - x) = factor;
-//    }
-//    for( int y = 0, ymax = std::min(B, size.height / 2); y < ymax; ++y ) {
-//      const float shaped = 1 - std::pow((float)(B - y) / B, P);
-//      const float factor = shaped;
-//      lut_y(y, 0) = lut_y(size.height - 1 - y, 0) = factor;
-//    }
-//
-//    return lut_y * lut_x;
-//  };
 
   static const auto createApodizationWindow = [](const cv::Size & size) -> cv::Mat {
       // B - the width of the anti-aliasing zone (8 pixels for size 512)
@@ -1560,6 +1491,84 @@ bool c_canvas_average_pipeline::write_progress_video()
     }
   }
 
+  return true;
+}
+
+bool c_canvas_average_pipeline::save_eccr_video()
+{
+  if( _output_options.save_eccr_video && _registration_options.enable_ecc_registration ) {
+
+    const cv::Mat1f & image = _ecch.reference_image();
+    const cv::Mat1b & bmask = _ecch.reference_mask();
+    if( !image.empty() ) {
+
+      if( !_eccr_writer.is_open() ) {
+
+        bool fOk =
+            add_output_writer(_eccr_writer,
+                _output_options.output_eccr_video_options,
+                "-eccr",
+                ".ser");
+
+        if( !fOk ) {
+          CF_ERROR("add_output_writer('%s') fails",
+              _eccr_writer.filename().c_str());
+          return false;
+        }
+      }
+
+      const cv::Size frameSize(_current_grayscale_image.cols + 8, _current_grayscale_image.rows + 8);
+      cv::Mat frame = cv::Mat::zeros(frameSize, image.type());
+      cv::Mat mask = bmask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
+
+      const cv::Size copySize(std::min(frameSize.width, image.cols), std::min(frameSize.height, image.rows));
+      const cv::Rect copyBox(0,0, copySize.width, copySize.height);
+
+      image(copyBox).copyTo(frame(copyBox));
+      if ( !bmask.empty() ) {
+        bmask(copyBox).copyTo(mask(copyBox));
+      }
+
+      if( !_eccr_writer.write(frame, mask) ) {
+        CF_ERROR("_eccr_writer.write('%s') fails.",
+            _eccr_writer.filename().c_str());
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool c_canvas_average_pipeline::save_eccc_video()
+{
+  if( _output_options.save_eccc_video && _registration_options.enable_ecc_registration ) {
+
+    const cv::Mat1f & image = _ecch.current_image();
+    const cv::Mat1b & mask = _ecch.current_mask();
+    if( !image.empty() ) {
+
+      if( !_eccc_writer.is_open() ) {
+
+        bool fOk =
+            add_output_writer(_eccc_writer,
+                _output_options.output_eccc_video_options,
+                "-eccc",
+                ".ser");
+
+        if( !fOk ) {
+          CF_ERROR("add_output_writer('%s') fails",
+              _eccc_writer.filename().c_str());
+          return false;
+        }
+      }
+
+      if( !_eccc_writer.write(image, mask) ) {
+        CF_ERROR("_eccc_writer.write('%s') fails.",
+            _eccc_writer.filename().c_str());
+        return false;
+      }
+    }
+  }
   return true;
 }
 

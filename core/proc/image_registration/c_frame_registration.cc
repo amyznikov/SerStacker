@@ -762,10 +762,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     if ( _ecc_image_preprocessor ) {
       _ecc_image_preprocessor(ecc_image, ecc_mask);
     }
-    //  if( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask) ) {
-    //    CF_ERROR("create_current_ecc_image() fails");
-    //    return false;
-    //  }
   }
   /////////////////////////////////////////////////////////////////////////////
 
@@ -798,14 +794,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
-        _ecch.reference_image(), _ecch.reference_mask(),
-        _ecch.create_remap());
-
-    CF_ERROR("image correlation: rho = %g / %g", rho, _options.ecc.min_rho);
-
+    rho = ecc_compute_correlation(_ecch.reference_image(), _ecch.remapped_current_image(),
+        ~_ecch.remapped_current_zmask());
     if( rho < _options.ecc.min_rho ) {
-      CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
+      CF_ERROR("Poor aligned image correlation: rho = %g / %g", rho, _options.ecc.min_rho);
       return false;
     }
 

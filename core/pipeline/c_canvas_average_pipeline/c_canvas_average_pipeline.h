@@ -79,11 +79,16 @@ struct c_canvas_average_output_options:
   bool save_input_video = false;
   bool save_reference_video = false;
   bool save_weights_video = false;
+  bool save_eccr_video = false;
+  bool save_eccc_video = false;
+
   c_output_frame_writer_options substack_output_options;
   c_output_frame_writer_options output_input_video_options;
   c_output_frame_writer_options output_progress_video_options;
   c_output_frame_writer_options output_reference_video_options;
   c_output_frame_writer_options output_weights_video_options;
+  c_output_frame_writer_options output_eccr_video_options;
+  c_output_frame_writer_options output_eccc_video_options;
   std::string output_file_name;
 
 };
@@ -121,6 +126,8 @@ protected:
   bool write_reference_video(cv::InputArray image, cv::InputArray mask);
   bool write_weights_video(cv::InputArray image, cv::InputArray mask);
   bool write_progress_video();
+  bool save_eccr_video();
+  bool save_eccc_video();
   bool save_averaged_image();
   bool save_substack_frame();
   bool flush_substack_frame();
@@ -152,6 +159,8 @@ protected:
   c_output_frame_writer _reference_video_writer;
   c_output_frame_writer _weights_video_writer;
   c_output_frame_writer _substack_writer;
+  c_output_frame_writer _eccr_writer;
+  c_output_frame_writer _eccc_writer;
 
   std::mutex _current_stars_lock;
   std::vector<cv::KeyPoint> _current_keypoints, _reference_keypoints;

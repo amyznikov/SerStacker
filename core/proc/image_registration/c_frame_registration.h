@@ -309,13 +309,6 @@ protected:
   virtual bool create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
       cv::OutputArray dst, cv::OutputArray dstmsk) const;
 
-//  virtual bool create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-//      cv::OutputArray dst, cv::OutputArray dstmsk) const;
-//  bool insert_planetary_disk_shape(const cv::Mat & src_ecc_image,
-//      const cv::Mat & src_mask,
-//      cv::Mat & dst_ecc_image,
-//      cv::Mat & dst_ecc_mask) const;
-
   virtual bool extract_reference_features(cv::InputArray reference_feature_image,
       cv::InputArray reference_feature_mask);
 

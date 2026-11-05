@@ -205,83 +205,6 @@ static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv
       });
 }
 
-//double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask)
-//{
-//  const cv::Size size = src1.size();
-//  const int cn = src1.channels();
-//
-//  cv::Mat img1, img2;
-//
-//  cv::Scalar m1, m2, s1, s2;
-//
-//  const int npix = mask.empty() ? size.area() : cv::countNonZero(mask);
-//
-//  cv::meanStdDev(src1, m1, s1, mask);
-//  cv::meanStdDev(src2, m2, s2, mask);
-//
-//  cv::subtract(src1, m1, img1, mask, CV_32F);
-//  cv::subtract(src2, m2, img2, mask, CV_32F);
-//
-//  if ( !mask.empty() ) {
-//    img1.setTo(0, ~mask.getMat());
-//    img2.setTo(0, ~mask.getMat());
-//  }
-//
-//  const double covar = img1.dot(img2) / (npix);
-//  double std1 = 0, std2 = 0;
-//
-//  for( int i = 0; i < cn; ++i ) {
-//    std1 += s1[i];
-//    std2 += s2[i];
-//  }
-//
-//  // CF_DEBUG("m1=%g m2=%g s1=%g s2=%g npix=%d covar=%g", m1[0], m2[0], s1[0], s2[0], npix, covar);
-//
-//  return covar * cn / (std1 * std2);
-//}
-
-
-//double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask,
-//    cv::InputArray reference_image, cv::InputArray reference_mask,
-//    const cv::Mat2f & rmap)
-//{
-//  cv::Mat remapped_image, remapped_mask;
-//
-//  cv::remap(current_image, remapped_image,
-//      rmap, cv::noArray(),
-//      cv::INTER_LINEAR,
-//      cv::BORDER_CONSTANT,
-//      cv::Scalar::all(0));
-//
-//  if ( current_mask.empty() ) {
-//
-//    cv::remap(cv::Mat1b(current_image.size(), (uint8_t) 255), remapped_mask,
-//        rmap, cv::noArray(),
-//        cv::INTER_NEAREST,
-//        cv::BORDER_CONSTANT,
-//        cv::Scalar::all(0));
-//
-//  }
-//  else {
-//
-//    cv::remap(current_mask, remapped_mask,
-//        rmap, cv::noArray(),
-//        cv::INTER_NEAREST,
-//        cv::BORDER_CONSTANT,
-//        cv::Scalar::all(0));
-//  }
-//
-////  cv::compare(remapped_mask, 254, remapped_mask,
-////      cv::CMP_GE);
-//
-//  if ( !reference_mask.empty() ) {
-//    cv::bitwise_and(reference_mask, remapped_mask,
-//        remapped_mask);
-//  }
-//
-//  return compute_correlation(reference_image, remapped_image, remapped_mask);
-//}
-
 
 template<class _Tp>
 static double _ecc_compute_correlation(cv::InputArray _src1, cv::InputArray _src2, cv::InputArray _mask)
@@ -573,11 +496,9 @@ static cv::Vec2f ecc_match_template_zncc(const cv::Mat1f & reference_image, cons
   return cv::Vec2f(maxLoc.x - maxShift, maxLoc.y- maxShift);
 }
 
-
 template<class _Tp>
-static bool _ecc_convert_input_image2(cv::InputArray _src, cv::InputArray _srcmask,
-    cv::OutputArray _dst, cv::OutputArray _dstmask,
-    bool scharr_gradient)
+static bool _ecc_convert_input_image(cv::InputArray _src, cv::InputArray _srcmask,
+    cv::OutputArray _dst, cv::OutputArray _dstmask)
 {
   if( !_srcmask.empty() ) {
     if ( _srcmask.size() != _src.size() || _srcmask.channels() != 1 ) {
@@ -643,129 +564,42 @@ static bool _ecc_convert_input_image2(cv::InputArray _src, cv::InputArray _srcma
     });
   }
 
-  if ( !scharr_gradient ) {
-    _dstmask.assign(mask);
-  }
-  else {
-    cv::Mat1f gx, gy;
-
-    parallel_invoke(
-        [&]{ cv::Scharr(_dst.getMat(), gx, CV_32F, 1, 0, 1.0, 0.0, cv::BORDER_REPLICATE); },
-        [&]{ cv::Scharr(_dst.getMat(), gy, CV_32F, 0, 1, 1.0, 0.0, cv::BORDER_REPLICATE); }
-    );
-
-    cv::magnitude(gx, gy, _dst);
-
-    if ( mask.empty() ) {
-      _dstmask.assign(mask);
-    }
-    else {
-      cv::erode(mask, _dstmask, morphse33());
-    }
-  }
+  _dstmask.assign(mask);
 
   return true;
 }
 
-static bool ecc_convert_input_image2(cv::InputArray _src, cv::InputArray _srcmask,
+static bool ecc_convert_input_image(cv::InputArray _src, cv::InputArray _srcmask,
     cv::OutputArray _dst, cv::OutputArray _dstmask,
     bool scharr_gradient)
 {
-  CV_DISPATCH(_src.depth(), _ecc_convert_input_image2, _src, _srcmask, _dst, _dstmask, scharr_gradient);
+  if ( !scharr_gradient ) {
+    CV_DISPATCH(_src.depth(), _ecc_convert_input_image, _src, _srcmask, _dst, _dstmask);
+    CF_ERROR("Not supported image depth=%d", _src.depth());
+    return false;
+  }
+
+  cv::Mat1f g;
+  cv::Mat1b m;
+
+  if( true ) {
+    cv::Mat1f gx, gy;
+    parallel_invoke(
+        [&] { cv::Scharr(_src, gx, CV_32F, 1, 0, 1.0, 0.0, cv::BORDER_REPLICATE); },
+        [&] { cv::Scharr(_src, gy, CV_32F, 0, 1, 1.0, 0.0, cv::BORDER_REPLICATE); }
+    );
+    cv::magnitude(gx, gy, g);
+  }
+
+  if ( !_srcmask.empty() ) {
+    cv::erode(_srcmask, m, morphse33());
+  }
+
+  CV_DISPATCH(g.depth(), _ecc_convert_input_image, g, m, _dst, _dstmask);
   CF_ERROR("Not supported image depth=%d", _src.depth());
   return false;
-}
 
-//bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
-//    cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy,
-//    bool scharr_gradient)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  if( !src_mask.empty() ) {
-//
-//    if ( src_mask.size() != src.size()  ) {
-//      CF_ERROR("Invalid input mask: %dx%d %d channels depth=%d. Must be %dx%d",
-//          src_mask.cols(), src_mask.rows(), src_mask.channels(), src_mask.depth(),
-//          src.cols(), src.rows());
-//      return false;
-//    }
-//  }
-//
-//  if (!scharr_gradient ) {
-//    if( src.channels() == 1 ) {
-//      if( src.depth() == dst.depth() ) {
-//        if ( force_copy ) {
-//          src.copyTo(dst);
-//        }
-//        else {
-//          dst = src.getMat();
-//        }
-//      }
-//      else {
-//        src.getMat().convertTo(dst, dst.depth());
-//      }
-//    }
-//    else {
-//      cv::Mat tmp;
-//      cv::cvtColor(src, tmp, cv::COLOR_BGR2GRAY);
-//      if( tmp.depth() == dst.depth() ) {
-//        dst = std::move(tmp);
-//      }
-//      else {
-//        tmp.convertTo(dst, dst.depth());
-//      }
-//    }
-//  }
-//  else {
-//    cv::Mat1f gx, gy;
-//    cv::Mat tmp;
-//
-//    if (src.channels() == 1) {
-//      tmp = src.getMat();
-//    }
-//    else {
-//      cv::cvtColor(src, tmp, cv::COLOR_BGR2GRAY);
-//    }
-//
-//    parallel_invoke(
-//        [&]{ cv::Scharr(src, gx, CV_32F, 1, 0, 1.0, 0.0, cv::BORDER_REPLICATE); },
-//        [&]{ cv::Scharr(src, gy, CV_32F, 0, 1, 1.0, 0.0, cv::BORDER_REPLICATE); }
-//    );
-//
-//    cv::magnitude(gx, gy, dst);
-//  }
-//
-//  if( src_mask.empty() ) {
-//    dst_mask.release();
-//  }
-//  else if( src_mask.channels() == 1 ) {
-//    if( src_mask.depth() == CV_8U ) {
-//      if ( force_copy ) {
-//        src_mask.copyTo(dst_mask);
-//      }
-//      else {
-//        dst_mask = src_mask.getMat();
-//      }
-//    }
-//    else {
-//      cv::compare(src_mask, 0, dst_mask, cv::CMP_GT);
-//    }
-//  }
-//  else {
-//    cv::Mat tmp;
-//    reduce_color_channels(src_mask, tmp, cv::REDUCE_MIN);
-//    if( tmp.depth() == CV_8U ) {
-//      dst_mask = std::move(tmp);
-//    }
-//    else {
-//      cv::compare(tmp, 0, dst_mask, cv::CMP_GT);
-//    }
-//  }
-//
-//  return true;
-//}
-//
+}
 
 void ecc_normalize(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray _dst, int lvl, double /*eps*/)
 {
@@ -1433,7 +1267,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
   _total_iterations = -1;
 
-  if( !ecc_convert_input_image2(reference_image, reference_mask, image, mask/*, false*/, scharr_gradient) ) {
+  if( !ecc_convert_input_image(reference_image, reference_mask, image, mask, scharr_gradient) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }
@@ -1527,7 +1361,7 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
 
   _total_iterations = -1;
 
-  if( !ecc_convert_input_image2(current_image, current_mask, image, mask/*, false*/, scharr_gradient) ) {
+  if( !ecc_convert_input_image(current_image, current_mask, image, mask, scharr_gradient) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }

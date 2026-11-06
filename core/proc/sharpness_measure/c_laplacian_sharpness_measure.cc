@@ -64,7 +64,6 @@ bool c_laplacian_sharpness_measure::create_map(cv::InputArray image,
   }
 
   static thread_local cv::Mat1b SE;
-
   if( SE.size() != se_size ) {
     SE.create(se_size);
     SE.setTo(255);

@@ -7,6 +7,7 @@
 
 #include "c_local_contrast_measure.h"
 #include <core/proc/reduce_channels.h>
+#include <core/proc/morphse.h>
 #include <core/debug.h>
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
@@ -79,7 +80,7 @@ bool c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask
 
   const cv::Size src_size = src.size();
 
-  static const cv::Mat1b SE(5, 5, 255);
+  const cv::Mat1b & SE = morphse55();
 
   cv::Mat s1, s2, e, d, mg, gg, map;
 

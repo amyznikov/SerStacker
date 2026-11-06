@@ -6,10 +6,11 @@
  */
 
 #include "c_melp_stereo_matcher.h"
-#include <core/debug.h>
+#include <core/proc/morphse.h>
 #include <tbb/tbb.h>
 #include <xmmintrin.h>
 #include <immintrin.h>
+#include <core/debug.h>
 
 using c_blockarray = c_melp_stereo_matcher::c_blockarray;
 using c_blockdesc = c_melp_stereo_matcher::c_blockdesc;
@@ -246,7 +247,8 @@ void compute_matches(const c_block_pyramid::sptr & lp, const c_block_pyramid::sp
     compute_matches(lp->g, rp->g);
     compute_matches(lp->m, rp->m);
 
-    static const cv::Mat1b SE(3, 3, 255);
+    // static const cv::Mat1b SE(3, 3, 255);
+    const cv::Mat1b & SE = morphse33();
 
     cv::Mat1w tmp[2];
 

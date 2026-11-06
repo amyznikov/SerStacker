@@ -10,6 +10,7 @@
 #include <core/ssprintf.h>
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/morphology.h>
+#include <core/proc/morphse.h>
 #include <core/proc/stereo/scale_sweep.h>
 #include <core/proc/colormap.h>
 #include <core/proc/camera_calibration/camera_pose.h>
@@ -892,16 +893,17 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_sparse()
 
 bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
 {
+  INSTRUMENT_REGION("");
+
   if ( _previous_frame.empty() ) {
     // silently ignore if still wait for next frame
     return true;
   }
 
-  static const cv::Mat1b SE(3, 3, (uint8_t) 255);
+  //static const cv::Mat1b SE(3, 3, (uint8_t) 255);
+  const cv::Mat1b & SE = morphse33();
 
   lock_guard lock(mutex());
-
-  INSTRUMENT_REGION("");
 
   if( _current_frame.channels() == 1 ) {
     cv::morphologyEx(_current_frame, current_mg, cv::MORPH_GRADIENT,

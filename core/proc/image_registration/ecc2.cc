@@ -6,9 +6,11 @@
  */
 #include "ecc2.h"
 #include <core/settings/opencv_settings.h>
-#include <core/proc/reduce_channels.h>
+//#include <core/proc/reduce_channels.h>
 #include <core/proc/run-loop.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/morphse.h>
+
 //#include <core/io/save_image.h>
 #include <core/debug.h>
 
@@ -66,18 +68,6 @@ const c_enum_member * members_of<ECCH_PYRAMID_TYPE>()
     {ECCH_PYRAMID_PYRDOWN},
   };
   return members;
-}
-
-static inline const cv::Mat1b & morphse33()
-{
-  static const cv::Mat1b SE(3, 3, 255);
-  return SE;
-}
-
-static inline const cv::Mat1b & morphse55()
-{
-  static const cv::Mat1b SE(5, 5, 255);
-  return SE;
 }
 
 // Ugly construction to avoid throw exceptions back to the calling code.

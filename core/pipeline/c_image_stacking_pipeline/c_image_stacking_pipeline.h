@@ -78,7 +78,7 @@ struct c_image_processing_options
   c_image_processor::sptr feature_image_processor;
   c_image_processor::sptr ecc_image_processor;
   c_image_processor::sptr aligned_image_processor;
-  c_image_processor::sptr incremental_frame_processor;
+  // c_image_processor::sptr incremental_frame_processor;
   c_image_processor::sptr accumulated_image_processor;
 
   bool serialize(c_config_setting settings) const;
@@ -95,16 +95,15 @@ struct c_image_stacking_output_options  :
     c_image_processing_pipeline_output_options
 {
   std::string output_file_name;
+  int substack_frames = 50;
+  bool update_substack_reference = true;
 
-  //bool dump_reference_data_for_debug = false;
-  //bool debug_frame_registration = false;
-  //std::vector<int> debug_frame_registration_frame_indexes;
-
+  bool save_substacks = false;
   bool save_preprocessed_frames = false;
   bool save_feature_frames = false;
   bool save_ecc_frames = false;
   bool save_aligned_frames = false;
-  bool save_incremental_frames = false;
+  // bool save_incremental_frames = false;
   bool save_eccflow_frames = false;
   bool save_sparse_match_blend_frames = false;
   bool save_sparse_matches_video = false;
@@ -113,11 +112,12 @@ struct c_image_stacking_output_options  :
   bool save_accm = false;
   bool save_accw = false;
 
+  c_output_frame_writer_options substack_output_options;
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_feature_video_options;
   c_output_frame_writer_options output_ecc_video_options;
   c_output_frame_writer_options output_aligned_video_options;
-  c_output_frame_writer_options output_incremental_video_options;
+  //c_output_frame_writer_options output_incremental_video_options;
   c_output_frame_writer_options output_sparse_match_blend_options;
   c_output_frame_writer_options output_sparse_matches_video_options;
   c_eccflow_output_frame_writer_options output_eccflow_options;
@@ -237,9 +237,11 @@ protected:
   bool save_ecc_video(int seqindex);
   bool save_eccflow_video(int seqindex);
   bool save_aligned_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
-  bool save_incremental_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
+  //bool save_incremental_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_accumulation_masks_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_sparse_matches_video(int seqindex);
+  //bool save_substack_frame();
+  bool flush_substack_frame(const cv::Mat & avg, const cv::Mat & msk);
 
   std::string generate_output_file_name() const;
 
@@ -258,7 +260,7 @@ protected:
   bool weights_required(const c_frame_accumulation_options & opts) const;
   void compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
-  static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
+  //static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
   bool upscale_required(bool generating_master_frame) const;
 
@@ -282,13 +284,14 @@ protected:
 
   mutable std::string _output_file_name_postfix;
 
+  c_output_frame_writer _substack_writer;
   c_output_frame_writer _preprocessed_video_writer;
   c_output_frame_writer _sparse_match_blend_writer;
   c_output_frame_writer _feaure_writer;
   c_output_frame_writer _ecc_writer;
   c_output_frame_writer _eccflow_writer;
   c_output_frame_writer _aligned_video_writer;
-  c_output_frame_writer _incremental_video_writer;
+  // c_output_frame_writer _incremental_video_writer;
   c_output_frame_writer _accumulation_masks_writer;
   c_output_frame_writer _sparse_matches_video_writer;
 

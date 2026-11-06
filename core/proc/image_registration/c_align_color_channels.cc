@@ -9,6 +9,7 @@
 
 #include "c_align_color_channels.h"
 #include "ecc2.h"
+#include <core/proc/morphse.h>
 #include <core/debug.h>
 
 const c_image_transform::sptr & c_align_color_channels::computed_transform(int channel_index) const
@@ -250,8 +251,8 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
         _srcmask.copyTo(_dstmask);
       }
       else {
-        static const cv::Mat1b SE(3, 3, 255);
-        cv::erode(cumulative_mask, _dstmask, SE, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+        cv::erode(cumulative_mask, _dstmask, morphse33(), cv::Point(-1,-1), 1,
+            cv::BORDER_REPLICATE);
       }
     }
 
@@ -322,8 +323,8 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
         cv::merge(mask_channels, w);
       }
 
-      static const cv::Mat1b SE(3, 3, 255);
-      cv::erode(cumulative_edge_mask, b, SE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+      cv::erode(cumulative_edge_mask, b, morphse33(), cv::Point(-1, -1), 1,
+          cv::BORDER_REPLICATE);
 
       _dstmask.assign(cv::Mat::zeros(imageSize, _srcmask.type()));
       w.copyTo(_dstmask, b);

@@ -101,7 +101,6 @@ void c_morph_features_extractor::detect(cv::InputArray _src, std::vector<cv::Key
       2 * std::max(1, _opts.se_radius) + 1;
 
   static thread_local cv::Mat1b SE;
-
   if( SE.rows != ksize ) {
     SE = cv::Mat1b(ksize, ksize, 255);
   }

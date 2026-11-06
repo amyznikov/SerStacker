@@ -1011,9 +1011,9 @@ bool c_canvas_average_pipeline::process_current_frame()
 
       cv::Vec2f T;
       double R;
-      //const double score = _phase_correlate.compute(T);
       bool pcok = _phase_correlate.compute(R, T);
 
+      //const double score = _phase_correlate.compute(T);
 //      if ( score < _registration_options.minAcceptablePhaseCorrelation ) {
 //        CF_ERROR("_phase_correlate.compute() : bad correlation = %g < acceptable = %g",
 //            score, _registration_options.minAcceptablePhaseCorrelation);
@@ -1024,9 +1024,12 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      const cv::Vec2f & Cr = _image_transform->destination_reference_point();
       const cv::Vec2f & Cc = _image_transform->source_reference_point();
+      const cv::Vec2f & Cr = _image_transform->destination_reference_point();
       _image_transform->set_translation(-T + Cr - Cc);
+      if ( _registration_options.phase_correlate.estimateRotation ) {
+        _image_transform->set_rotation(-R);
+      }
 
       T = _image_transform->translation();
       CF_DEBUG("[F %d] pcorr: R=%g deg Tx=%g Ty=%g", _input_sequence->current_pos() - 1,
@@ -1136,8 +1139,10 @@ bool c_canvas_average_pipeline::process_current_frame()
 
       if ( true ) {
         const cv::Vec2f T = _image_transform->translation();
-        CF_DEBUG("[F %d] ecch: eps = %g/%g %d iterations Tx=%g Ty=%g", _input_sequence->current_pos() - 1,
-            _ecch.eps(), _ecch.xtol(), _ecch.num_iterations(), T(0), T(1));
+        const double R = _image_transform->rotation();
+        CF_DEBUG("[F %d] ecch: eps = %g/%g %d iterations Tx=%g Ty=%g R=%g deg", _input_sequence->current_pos() - 1,
+            _ecch.eps(), _ecch.xtol(), _ecch.num_iterations(),
+            T(0), T(1), R * 180 / CV_PI);
       }
     }
 

@@ -60,13 +60,18 @@ public:
 
   virtual void reset() = 0;
   virtual bool set_parameters(const cv::Mat1f & p) = 0;
+
+  virtual void set_translation(const cv::Vec2f & T) = 0;
+  virtual cv::Vec2f translation() const = 0;
+
+  virtual void set_rotation(float angle) = 0;
+  virtual float rotation() const = 0;
+
   virtual void scale_transfrom(double factor) = 0;
   virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const = 0;
   virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
   virtual double eps(const cv::Mat1f & dp, const cv::Size & image_size) = 0;
 
-  virtual void set_translation(const cv::Vec2f & T) = 0;
-  virtual cv::Vec2f translation() const = 0;
 
   virtual bool remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const = 0;
   virtual bool forward_remap(const cv::Mat1f & params, const std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts) const = 0;
@@ -185,6 +190,9 @@ public:
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
 
+  void set_rotation(float /*angle*/) final;
+  float rotation() const final;
+
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
   double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
@@ -239,8 +247,8 @@ public:
   void set_center(const cv::Vec2f & v);
   cv::Vec2f center() const;
 
-  void set_rotation(float v);
-  float rotation() const;
+  void set_rotation(float v) final;
+  float rotation() const final;
 
   void set_scale(float v);
   float scale() const;
@@ -328,6 +336,9 @@ public:
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
 
+  void set_rotation(float v) final;
+  float rotation() const final;
+
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
   double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
@@ -383,6 +394,9 @@ public:
 
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
+
+  void set_rotation(float v) final;
+  float rotation() const final;
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
@@ -445,6 +459,9 @@ public:
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
 
+  void set_rotation(float v) final;
+  float rotation() const final;
+
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
   double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
@@ -498,6 +515,9 @@ public:
 
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
+
+  void set_rotation(float v) final;
+  float rotation() const final;
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;

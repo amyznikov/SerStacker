@@ -407,42 +407,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
 
   _output_path = create_output_path(_output_options.output_directory);
 
-
-//  if ( !_input_options.darkbayer_filename.empty() ) {
-//    cv::Mat ignored_optional_mask;
-//    if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
-//      CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//  if ( !_input_options.flatbayer_filename.empty() ) {
-//    cv::Mat ignored_optional_mask;
-//    if ( !load_image(_input_options.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
-//      CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//  if ( !_input_options.missing_pixel_mask_filename.empty() ) {
-//    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask, cv::noArray()) ) {
-//      CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
-//      return false;
-//    }
-//
-//    if ( _missing_pixel_mask.type() != CV_8UC1 ) {
-//      CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-//          _input_options.missing_pixel_mask_filename.c_str());
-//      return false;
-//    }
-//
-//    if ( !_input_options.missing_pixels_marked_black ) {
-//      cv::invert(_missing_pixel_mask, _missing_pixel_mask);
-//    }
-//  }
-
   CF_DEBUG("Output path='%s'", this->_output_path.c_str());
-
 
   return true;
 }
@@ -529,6 +494,10 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   if ( !_master_options.generate_master_frame || !_master_options.stop_after_master_frame_generation ) {
 
+    c_scope_guard auto_close_video_writers([this]() {
+      close_all_writers();
+    });
+
     if( _stack_options.accumulation.accumulation_method != frame_accumulation_none ) {
       lock_guard lock(mutex());
       if( !(_frame_accumulation = create_frame_accumulation(_stack_options.accumulation)) ) {
@@ -541,7 +510,6 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
     set_pipeline_stage(stacking_stage_in_progress);
 
-
     if ( !_input_sequence->open() ) {
       set_status_msg("ERROR: input_sequence->open() fails");
       return false;
@@ -550,7 +518,6 @@ bool c_image_stacking_pipeline::run_image_stacking()
     CF_DEBUG("input_sequence->size()=%d", _input_sequence->size());
 
     set_status_msg("RUNNING ...");
-
 
 
     const int start_pos =
@@ -581,17 +548,18 @@ bool c_image_stacking_pipeline::run_image_stacking()
         lock_guard lock(mutex());
 
         if( !_frame_accumulation->compute(avg, msk) ) {
-          CF_ERROR("ERROR: frame_accumulation_->compute() fails");
-          return false;
+          CF_ERROR("ERROR: frame_accumulation->compute() fails");
         }
-        if( _output_options.save_acc ) {
-          if( (acc = _frame_accumulation->get_accumulator()).empty() ) {
-            CF_ERROR("frame_accumulation->get_accumulator() returned empty acc image");
+        else {
+          if( _output_options.save_acc ) {
+            if( (acc = _frame_accumulation->get_accumulator()).empty() ) {
+              CF_ERROR("frame_accumulation->get_accumulator() returned empty acc image");
+            }
           }
-        }
-        if( _output_options.save_accw || _output_options.save_substacks ) {
-          if( (accw = _frame_accumulation->get_counter()).empty() ) {
-            CF_ERROR("frame_accumulation->get_acc_counters() returned empty accw image");
+          if( _output_options.save_accw || _output_options.save_substacks ) {
+            if( (accw = _frame_accumulation->get_counter()).empty() ) {
+              CF_ERROR("frame_accumulation->get_acc_counters() returned empty accw image");
+            }
           }
         }
       }
@@ -601,8 +569,10 @@ bool c_image_stacking_pipeline::run_image_stacking()
       }
       else {
 
-        if (  _output_options.save_substacks && !flush_substack_frame(avg, accw) ) {
-          CF_ERROR("ERROR: flush_substack_frame() fails");
+        if (  _output_options.save_substacks && _substack_writer.is_open() ) {
+          if ( !flush_substack_frame(avg, accw) ) {
+            CF_ERROR("ERROR: flush_substack_frame() fails");
+          }
         }
 
         output_file_name = generate_output_file_name();
@@ -925,9 +895,14 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
         startpos,
         endpos);
 
-    if( !process_input_sequence(input_sequence, startpos, endpos) ) {
-      CF_ERROR("process_input_sequence() fails");
-      return false;
+    if ( true ) {
+      c_scope_guard auto_close_video_writers([this]() {
+        close_all_writers();
+      });
+      if( !process_input_sequence(input_sequence, startpos, endpos) ) {
+        CF_ERROR("process_input_sequence() fails");
+        return false;
+      }
     }
 
     // Reset master index indicator because master frame was generated from a sequence, not just a single frame
@@ -991,9 +966,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 {
   INSTRUMENT_REGION("");
 
-  c_scope_guard auto_close_video_writers([this]() {
-    close_all_writers();
-  });
+//  c_scope_guard auto_close_video_writers([this]() {
+//    close_all_writers();
+//  });
 
   cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
@@ -1397,7 +1372,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      if( !_generating_master_frame && _output_options.save_substacks ) {
+      if( !_generating_master_frame && _output_options.save_substacks && _output_options.substack_frames > 0 ) {
 
         const int nframes = _frame_accumulation->accumulated_frames();
         if( nframes >= _output_options.substack_frames ) {
@@ -1784,6 +1759,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _output_options, save_substacks);
     if( (subsection = SERIALIZE_GROUP(section, save, "substack_output_options")) ) {
       SERIALIZE_OPTION(subsection, save, _output_options, substack_frames);
+      SERIALIZE_OPTION(subsection, save, _output_options, update_substack_reference);
       SERIALIZE_OPTION(subsection, save, _output_options, substack_output_options);
     }
 
@@ -2082,6 +2058,8 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
           ctlbind_expandable_group(ctls, "Save SubStacks ..", CTL_CONTEXT(cctx, save_substacks));
             ctlbind(ctls, "substack_frames", CTL_CONTEXT(cctx, substack_frames),
                 "Save substack every substack_frames accumulated and reset accumulator");
+            ctlbind(ctls, "update_substack_reference", CTL_CONTEXT(cctx, update_substack_reference),
+                "Update registration reference frame after flushing substack");
             ctlbind(ctls, CTL_CONTEXT(cctx, substack_output_options));
           ctlbind_end_group(ctls);
 
@@ -2637,7 +2615,7 @@ bool c_image_stacking_pipeline::flush_substack_frame(const cv::Mat & avg, const 
     CF_DEBUG("Call _substack_writer.write");
 
     if( !_substack_writer.write(avg, msk) ) {
-      CF_ERROR("_progress_writer.write('%s') fails.", _substack_writer.filename().c_str());
+      CF_ERROR("_substack_writer.write('%s') fails.", _substack_writer.filename().c_str());
       // Critical error, may be disk full ?
       return false;
     }

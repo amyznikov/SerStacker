@@ -102,6 +102,15 @@ cv::Vec2f c_translation_image_transform::translation() const
   return cv::Vec2f((const float*)_parameters.data);
 }
 
+void c_translation_image_transform::set_rotation(float /*angle*/)
+{
+}
+
+float c_translation_image_transform::rotation() const
+{
+  return 0.0f;
+}
+
 bool c_translation_image_transform::set_parameters(const cv::Mat1f & p)
 {
   if ( p.rows != 2 || p.cols != 1 ) {
@@ -851,6 +860,26 @@ cv::Vec2f c_affine_image_transform::translation() const
   return cv::Vec2f(_parameters(2, 0), _parameters(5, 0));
 }
 
+void c_affine_image_transform::set_rotation(float angle)
+{
+  const float ca = std::cos(angle);
+  const float sa = std::sin(angle);
+
+  // Backup current scale from the matrix to avoid resetting it when setting the angle
+  const float s0 = std::sqrt(_parameters(0, 0) * _parameters(0, 0) + _parameters(1, 0) * _parameters(1, 0));
+  const float s1 = std::sqrt(_parameters(3, 0) * _parameters(3, 0) + _parameters(4, 0) * _parameters(4, 0));
+  _parameters(0, 0) =  ca * s0; // a00
+  _parameters(1, 0) = -sa * s0; // a01
+  _parameters(3, 0) =  sa * s1; // a10
+  _parameters(4, 0) =  ca * s1; // a11
+}
+
+float c_affine_image_transform::rotation() const
+{
+  // atan2 from a10 and a00
+  return std::atan2(_parameters(3, 0), _parameters(0, 0));
+}
+
 void c_affine_image_transform::set_matrix(const cv::Matx23f & a)
 {
   if ( _parameters.rows != 6 || _parameters.cols != 1 ) {
@@ -1147,6 +1176,26 @@ cv::Vec2f c_homography_image_transform::translation() const
   constexpr float safe_min = std::numeric_limits<float>::min();
   const float den = std::abs(_matrix(2, 2)) > safe_min ? _matrix(2, 2) : 1.0f;
   return cv::Vec2f(_matrix(0, 2) / den, _matrix(1, 2) / den);
+}
+
+void c_homography_image_transform::set_rotation(float angle)
+{
+  const float ca = std::cos(angle);
+  const float sa = std::sin(angle);
+  const float s0 = std::sqrt(_matrix(0, 0) * _matrix(0, 0) + _matrix(0, 1) * _matrix(0, 1));
+  const float s1 = std::sqrt(_matrix(1, 0) * _matrix(1, 0) + _matrix(1, 1) * _matrix(1, 1));
+
+  _matrix(0, 0) =  ca * s0;
+  _matrix(0, 1) = -sa * s0;
+  _matrix(1, 0) =  sa * s1;
+  _matrix(1, 1) =  ca * s1;
+
+  update_parameters();
+}
+
+float c_homography_image_transform::rotation() const
+{
+  return std::atan2(_matrix(1, 0), _matrix(0, 0));
 }
 
 
@@ -1456,6 +1505,28 @@ cv::Vec2f c_semi_quadratic_image_transform::translation() const
 {
   return cv::Vec2f ((const float*)_parameters.data);
 }
+
+void c_semi_quadratic_image_transform::set_rotation(float angle)
+{
+  const float ca = std::cos(angle);
+  const float sa = std::sin(angle);
+
+  float s0 = std::sqrt(_parameters(0, 0) * _parameters(0, 0) + _parameters(1, 0) * _parameters(1, 0));
+  float s1 = std::sqrt(_parameters(4, 0) * _parameters(4, 0) + _parameters(5, 0) * _parameters(5, 0));
+  if (s0 < 1e-5f) s0 = 1.0f;
+  if (s1 < 1e-5f) s1 = 1.0f;
+
+  _parameters(0, 0) =  ca * s0; // a00
+  _parameters(1, 0) = -sa * s0; // a01
+  _parameters(4, 0) =  sa * s1; // a10
+  _parameters(5, 0) =  ca * s1; // a11
+}
+
+float c_semi_quadratic_image_transform::rotation() const
+{
+  return std::atan2(_parameters(4, 0), _parameters(0, 0));
+}
+
 
 void c_semi_quadratic_image_transform::set_matrix(const cv::Matx24f & a)
 {
@@ -1852,6 +1923,27 @@ void c_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 cv::Vec2f c_quadratic_image_transform::translation() const
 {
   return cv::Vec2f(_parameters(2, 0), _parameters(8, 0));
+}
+
+void c_quadratic_image_transform::set_rotation(float angle)
+{
+  const float ca = std::cos(angle);
+  const float sa = std::sin(angle);
+
+  float s0 = std::sqrt(_parameters(0, 0) * _parameters(0, 0) + _parameters(1, 0) * _parameters(1, 0));
+  float s1 = std::sqrt(_parameters(6, 0) * _parameters(6, 0) + _parameters(7, 0) * _parameters(7, 0));
+  if (s0 < 1e-5f) s0 = 1.0f;
+  if (s1 < 1e-5f) s1 = 1.0f;
+
+  _parameters(0, 0) =  ca * s0; // a00
+  _parameters(1, 0) = -sa * s0; // a01
+  _parameters(6, 0) =  sa * s1; // a10
+  _parameters(7, 0) =  ca * s1; // a11
+}
+
+float c_quadratic_image_transform::rotation() const
+{
+  return std::atan2(_parameters(6, 0), _parameters(0, 0));
 }
 
 void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)

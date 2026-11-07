@@ -95,7 +95,8 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
   const uint8_t * G_base = G.ptr();
   const size_t G_stride = G.step;
 
-  alignas(64) std::atomic<float> total_sum(0.0f);
+  alignas(std::hardware_destructive_interference_size)
+  std::atomic<float> total_sum(0.0f);
 
   parallel_for(0, rows, [=, &total_sum](const auto& range) {
 
@@ -147,13 +148,13 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
     float local_sum = 0.0f;
 
     for (int y = rbegin(range); y != rend(range); ++y) {
-      const _Tp* g_row = G[y];
+      const _Tp* gp = G[y];
       float* __restrict dstp = dst[y];
 
       for (int x = 0; x < cols; ++x) {
-        const float val = g_row[x];
-        dstp[x] = val * val * val * mapScale;
-        local_sum += val * val * val * val;
+        const float g = gp[x];
+        dstp[x] = g * g * g * mapScale;
+        local_sum += g * g * g * g;
       }
     }
 
@@ -198,9 +199,13 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   INSTRUMENT_REGION("");
   cv::Mat M, G;
 
-  const int ksize = 2 * std::max(1, opts.kradius) + 1;
-  const cv::Mat1b SE(ksize, ksize, 255);
   const double depthScale = 20 * getMaxValForPixelDepth(CV_32F) / getMaxValForPixelDepth(image.depth());
+  const int ksize = 2 * std::max(1, opts.kradius) + 1;
+
+  static thread_local cv::Mat1b SE;
+  if ( SE.rows != ksize ) {
+    SE = cv::Mat1b(ksize, ksize, 255);
+  }
 
   if ( image.channels() == 1 ) {
     M = image.getMat();
@@ -208,6 +213,9 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   else {
     extract_channel(image, M, cv::noArray(), cv::noArray(), opts.channel, -1, false);
   }
+
+  // ensure no hot pixels can destroy estimate
+  cv::medianBlur(M, M, 3);
 
   if( opts.dscale > 0 ) {
     pdownscale(M, M, opts.dscale);
@@ -237,7 +245,8 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
     cv::resize(M, M, dscaleSize(M.size(), opts.uscale), 0, 0, cv::INTER_AREA);
   }
 
-  cv::add(M, 0.05 * Q, M);
+  // cv::add(M, 0.05 * Q, M);
+  cv::add(M, 1e-3, M);
 
   if ( returnFullResoltionMap && G.size() != image.size() ) {
     upscale_local_variance_map(M, image.size());

@@ -55,6 +55,7 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _registration_options, canvasSize);
     SERIALIZE_OPTION(section, save, _registration_options, eccUnsharpMaskSigma);
     SERIALIZE_OPTION(section, save, _registration_options, eccUnsharpMaskAlpha);
+    SERIALIZE_OPTION(section, save, _registration_options, registration_scale);
 
     SERIALIZE_OPTION(section, save, _registration_options, motion_type);
     SERIALIZE_OPTION(section, save, _registration_options, enable_phase_correlate);
@@ -185,6 +186,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "eccUnsharpMaskAlpha", ctx(&S::eccUnsharpMaskAlpha), "");
 
   ctlbind(ctls, "motion_type", ctx(&S::motion_type), "");
+  ctlbind(ctls, "registration_scale", ctx(&S::registration_scale), "");
 
   ctlbind_expandable_group(ctls, "Phase Correlate", "");
   ctlbind(ctls, "Enable phase correlate", ctx(&S::enable_phase_correlate), "");
@@ -901,6 +903,12 @@ bool c_canvas_average_pipeline::process_current_frame()
   cv::Mat current_binary_mask;
   cv::Mat current_weights;
 
+  const bool enable_registration =
+      _registration_options.enable_phase_correlate ||
+      _registration_options.enable_star_registration ||
+          _registration_options.enable_ecc_registration ||
+          _registration_options.enable_eccflow_registration;
+
   if ( !_current_mask.empty() ) {
     if ( _current_mask.depth() == CV_8U ) {
       current_binary_mask = _current_mask;
@@ -919,23 +927,14 @@ bool c_canvas_average_pipeline::process_current_frame()
 
 
   if( _registration_options.enable_phase_correlate ) {
-    //if( _registration_options.motion_type == IMAGE_MOTION_TRANSLATION )
-    {
-      //if( !_phase_correlate.initialized() ) {
-      if ( _average.accumulated_frames() < 1 ) {
-        if( !_phase_correlate.setup(_current_image.size(), _registration_options.phase_correlate) ) {
-          CF_ERROR("_phase_correlate.setup() fails");
-          return false;
-        }
+    if( _average.accumulated_frames() < 1 ) {
+      if( !_phase_correlate.setup(_current_image.size(), _registration_options.phase_correlate) ) {
+        CF_ERROR("_phase_correlate.setup() fails");
+        return false;
       }
     }
   }
 
-  const bool enable_registration =
-      _registration_options.enable_phase_correlate ||
-      _registration_options.enable_star_registration ||
-          _registration_options.enable_ecc_registration ||
-          _registration_options.enable_eccflow_registration;
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
     // Very first frame or no registration requested
@@ -969,6 +968,16 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     mkgrayscale(reference_image, reference_grayscale_image);
     mkgrayscale(_current_image, _current_grayscale_image);
+
+//    const double regscale =  _registration_options.registration_scale;
+//    const double downscale = regscale > 0 && std::abs(1 - regscale) > 1e-3 ? 1. / regscale : 1.0;
+//    if( downscale != 1.0 ) {
+//      cv::resize(reference_grayscale_image, reference_grayscale_image, cv::Size(),
+//          downscale, downscale, cv::INTER_AREA);
+//      cv::resize(_current_grayscale_image, _current_grayscale_image, cv::Size(),
+//          downscale, downscale, cv::INTER_AREA);
+//    }
+
 
     if ( _output_options.save_reference_video ) {
 

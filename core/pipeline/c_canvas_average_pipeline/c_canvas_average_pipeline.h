@@ -34,6 +34,7 @@ struct c_canvas_average_registration_options
   double eccUnsharpMaskSigma = 1;
   double eccUnsharpMaskAlpha = 0.9;
   double minAcceptablePhaseCorrelation = 0.08;
+  double registration_scale = 0.5;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 

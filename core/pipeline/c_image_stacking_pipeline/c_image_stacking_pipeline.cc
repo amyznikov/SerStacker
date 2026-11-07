@@ -2455,7 +2455,7 @@ bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & cu
   const bool fOK =
       add_output_writer(writer, output_opts,
           ssprintf(".acc_masks%s",_generating_master_frame ? "-master" : ""),
-          ".avi");
+          ".ser");
 
   if( !fOK ) {
     CF_ERROR("Can not open output writer '%s'",

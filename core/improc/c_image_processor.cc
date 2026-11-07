@@ -85,6 +85,7 @@
 #include "generic/c_fft_unsharp_filter_routine.h"
 #include "generic/c_fft_autosharp_routine.h"
 #include "generic/c_fft_auto_correlation_routine.h"
+#include "generic/c_fft_phase_correlate_routine.h"
 #include "generic/c_fft_polar_phase_correlate_routine.h"
 #include "generic/c_dct_auto_correlation_routine.h"
 #include "generic/c_radon_transfrom_routine.h"
@@ -132,7 +133,6 @@
 #include "feature2d/c_roi_tracker_routine.h"
 #include "feature2d/c_barycenter_routine.h"
 #include "feature2d/c_connected_component_selection_routine.h"
-#include "feature2d/c_phase_correlate_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -159,7 +159,6 @@
 #include "quicktests/c_alpha_test_routine.h"
 
 #include <atomic>
-
 #include <core/readdir.h>
 #include <core/debug.h>
 
@@ -328,7 +327,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_roi_tracker_routine::class_factory_instance());
     register_class_factory(c_barycenter_routine::class_factory_instance());
     register_class_factory(c_connected_component_selection_routine::class_factory_instance());
-    register_class_factory(c_phase_correlate_routine::class_factory_instance());
 
     register_class_factory(c_alpha_test_routine::class_factory_instance());
 
@@ -371,6 +369,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_fft_unsharp_filter_routine::class_factory_instance());
     register_class_factory(c_fft_autosharp_routine::class_factory_instance());
     register_class_factory(c_fft_auto_correlation_routine::class_factory_instance());
+    register_class_factory(c_fft_phase_correlate_routine::class_factory_instance());
     register_class_factory(c_fft_polar_phase_correlate_routine::class_factory_instance());
     register_class_factory(c_dct_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_radon_transfrom_routine::class_factory_instance());

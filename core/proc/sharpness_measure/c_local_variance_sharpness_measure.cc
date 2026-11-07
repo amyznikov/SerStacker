@@ -1,5 +1,5 @@
 /*
- * c_mgmap_sharpness_measure.cc
+ * c_local_variance_sharpness_measure.cc
  *
  *  Created on: Jul 30, 2026
  *      Author: amyznikov
@@ -28,6 +28,9 @@ static cv::Size dscaleSize(cv::Size srcSize, int level)
 static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level,
     int border_mode = cv::BORDER_DEFAULT)
 {
+  // Don't use cv::resize(cv::INTER_AREA); because it can create pixel
+  // discretization artifacts still not recoverable by followed pyrUp()
+
   if( std::min(src.cols(), src.rows()) < 4 ) {
     src.copyTo(dst);
   }
@@ -108,7 +111,7 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
       const _Tp* gp = (const _Tp* )gp_base; // G[y];
       for (int x = 0; x < cols; ++x) {
         const float g = *gp ++;
-        local_sum += g * g * g * g; // g^4
+        local_sum += g * g * g; // g^3
       }
     }
 
@@ -117,8 +120,10 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
         std::memory_order_relaxed));
   });
 
-  const double scale3 = depthScale * depthScale * depthScale / W;
-  return total_sum.load() * scale3;
+  //  const double scale3 = depthScale * depthScale * depthScale / W;
+  //  return total_sum.load() * scale3;
+  const double scale2 = depthScale * depthScale / W;
+  return total_sum.load() * scale2;
 }
 
 static double compute_sharpness_norm(cv::InputArray src, double depthScale, double W)
@@ -153,8 +158,10 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
 
       for (int x = 0; x < cols; ++x) {
         const float g = gp[x];
-        dstp[x] = g * g * g * mapScale;
-        local_sum += g * g * g * g;
+        // dstp[x] = g * g * g * mapScale; // g^3 * mapScale
+        // local_sum += g * g * g * g; // g ^ 4
+        dstp[x] = g * g * mapScale; // g^2 * mapScale
+        local_sum += g * g * g;     // g ^3
       }
     }
 
@@ -163,8 +170,10 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
         std::memory_order_relaxed));
   });
 
-  const double scale3 = depthScale * depthScale * depthScale / W;
-  return scale3 * total_sum.load();
+  //  const double scale3 = depthScale * depthScale * depthScale / W;
+  //  return scale3 * total_sum.load();
+  const double scale2 = depthScale * depthScale / W;
+  return scale2 * total_sum.load();
 }
 
 static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, double depthScale, double W)
@@ -214,7 +223,7 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
     extract_channel(image, M, cv::noArray(), cv::noArray(), opts.channel, -1, false);
   }
 
-  // ensure no hot pixels can destroy estimate
+  // ensure hot pixels will not destroy the estimate
   cv::medianBlur(M, M, 3);
 
   if( opts.dscale > 0 ) {
@@ -238,15 +247,13 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   }
 
   // Little slower path for Q with map
-  // Add some minimal feasible weight to the map for totally flat areas
   const double Q = compute_sharpness_map(G, M, depthScale, W);
   if( opts.uscale > 0 ) {
-    // pdownscale(M, M, opts.uscale);
-    cv::resize(M, M, dscaleSize(M.size(), opts.uscale), 0, 0, cv::INTER_AREA);
+    pdownscale(M, M, opts.uscale);
   }
 
-  // cv::add(M, 0.05 * Q, M);
-  cv::add(M, 1e-3, M);
+  // Add some minimal feasible weight to the map for totally flat areas
+  cv::add(M, 1. / 32768., M);
 
   if ( returnFullResoltionMap && G.size() != image.size() ) {
     upscale_local_variance_map(M, image.size());

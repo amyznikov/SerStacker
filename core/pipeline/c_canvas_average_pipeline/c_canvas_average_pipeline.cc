@@ -818,69 +818,6 @@ static void remapCurrentFrame(cv::InputArray currentFrame,
   }
 }
 
-//static bool applyPhotometrcAlignment(cv::InputArray remapped_current_image, cv::InputArray remapped_current_weights,
-//    cv::InputArray reference_image, cv::InputArray reference_binary_mask,
-//    const cv::Rect & commonCurrentROI, const cv::Rect & commonReferenceROI,
-//    cv::OutputArray updated_current_image,
-//    bool includeBrightness, bool includeContrast, bool separateChannels, double eps)
-//{
-//  if( !includeBrightness && !includeContrast ) {
-//    remapped_current_image.copyTo(updated_current_image);
-//    return true;
-//  }
-//
-//  cv::Scalar brightness, contrast;
-//  cv::Mat common_pixels_mask;
-//
-//  cv::compare(remapped_current_weights, 0, common_pixels_mask, cv::CMP_GT);
-//  cv::bitwise_and(common_pixels_mask(commonCurrentROI),
-//      reference_binary_mask.getMat()(commonReferenceROI),
-//      common_pixels_mask);
-//
-//  const cv::Mat currentImage = remapped_current_image.getMat();
-//  const cv::Mat referenceImage = reference_image.getMat();
-//
-//  const bool fOK =
-//      estimatePhotometricAlignment(currentImage(commonCurrentROI),
-//          referenceImage(commonReferenceROI),
-//          common_pixels_mask,
-//          brightness, contrast,
-//          includeBrightness,
-//          includeContrast,
-//          separateChannels,
-//          eps);
-//
-//  if( !fOK ) {
-//    CF_ERROR("estimatePhotometricAlignment() fails");
-//    return false;
-//  }
-//
-//  CF_DEBUG("\nestimatePhotometricAlignment:\n"
-//      "brightness = {%g %g %g %g }\n"
-//      "contrast   = {%g %g %g %g }",
-//      brightness[0], brightness[1], brightness[2], brightness[3],
-//      contrast[0], contrast[1], contrast[2], contrast[3]);
-//
-//  if( includeBrightness && includeContrast ) {
-//    if( currentImage.channels() == 1 ) {
-//      currentImage.convertTo(updated_current_image, currentImage.depth(),
-//          contrast[0], brightness[0]);
-//    }
-//    else {
-//      cv::multiply(currentImage, contrast, updated_current_image);
-//      cv::add(updated_current_image, brightness, updated_current_image);
-//    }
-//  }
-//  else if( includeContrast ) {
-//    cv::multiply(currentImage, contrast, updated_current_image);
-//  }
-//  else {
-//    cv::add(currentImage, brightness, updated_current_image);
-//  }
-//
-//  return true;
-//}
-
 bool c_canvas_average_pipeline::process_current_frame()
 {
   INSTRUMENT_REGION("");
@@ -1098,11 +1035,13 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
+      CF_DEBUG("call estimate_image_transform(): matches.size=%zu", _current_matches.size());
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
               _current_keypoints, _reference_keypoints, _current_matches,
               _registration_options.transform_estimation);
 
+      CF_DEBUG("transformEstimated=%d", transformEstimated);
       if( !transformEstimated ) {
         CF_ERROR("estimate_image_transform() fails");
         return !canceled();
@@ -1194,7 +1133,7 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     if ( true ) {
       const cv::Vec2f T = _image_transform->translation();
-      CF_DEBUG("[F %d] newCanvasBBox: x=%d y%d w=%d h=%d Tx=%g Ty=%g", _input_sequence->current_pos()-1,
+      CF_DEBUG("[F %d] newCanvasBBox: x=%d y=%d w=%d h=%d Tx=%g Ty=%g", _input_sequence->current_pos()-1,
           newCanvasBBox.x, newCanvasBBox.y, newCanvasBBox.width, newCanvasBBox.height,
           T(0), T(1));
     }

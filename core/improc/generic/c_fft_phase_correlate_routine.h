@@ -1,5 +1,5 @@
 /*
- * c_phase_correlate_routine.h
+ * c_fft_phase_correlate_routine.h
  *
  *  Created on: Sep 8, 2026
  *      Author: amyznikov
@@ -14,12 +14,12 @@
 #include <core/proc/extract_channel.h>
 #include <core/proc/pixtype.h>
 
-class c_phase_correlate_routine :
+class c_fft_phase_correlate_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_phase_correlate_routine,
-      "c_phase_correlate", "c_phase_correlate tester");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_phase_correlate_routine,
+      "c_fft_phase_correlate", "c_phase_correlate tester");
 
   enum DISPLAY {
     DISPLAY_CURRENT_IMAGE,

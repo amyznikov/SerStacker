@@ -689,7 +689,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     return false;
   }
 
-  CF_DEBUG("RESET IMAGE TRANSFORM");
+  //   CF_DEBUG("RESET IMAGE TRANSFORM");
 
   _image_transform->set_reference_points(cv::Vec2f(_reference_frame_size.width / 2, _reference_frame_size.height / 2),
       cv::Vec2f(_current_frame_size.width / 2, _current_frame_size.height / 2));

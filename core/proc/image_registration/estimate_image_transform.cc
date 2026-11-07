@@ -179,8 +179,9 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
   transform->set_scale(scale);
   return true;
 }
-
-// Find optimal rotation and translation between corresponding 3D points
+//
+// Find optimal rotation and translation between corresponding 3D points.
+// Uses Kabsch analytical algorithm without SVD.
 // <http://nghiaho.com/?page_id=671>
 // @sa: https://en.wikipedia.org/wiki/Kabsch_algorithm
 // @sa: https://math.stackexchange.com/questions/77462/finding-transformation-matrix-between-two-2d-coordinate-frames-pixel-plane-to
@@ -189,27 +190,29 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
-  const int npts = static_cast<int>(matched_current_positions.size());
+  const int npts = int(matched_current_positions.size());
   if (npts < 3) {
     CF_ERROR("ERROR: At least 3 points required. Given: %d\n", npts);
     return false;
   }
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
   const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->destination_reference_point();
 
+  std::vector<cv::Point2f> remaped_positions;
   std::vector<uint8_t> inliers(npts, uint8_t(1));
   std::vector<float> residuals(npts, 0.0f);
 
   for ( int iteration = 0; iteration < opts.euclidean.max_iterations; ++iteration ) {
 
-    cv::Vec2f sum_r(0.0f, 0.0f), sum_c(0.0f, 0.0f);
+    cv::Vec2f rsum(0.0f, 0.0f), csum(0.0f, 0.0f);
     int num_inliers = 0;
 
+    // Offset relative to reference points Cr and Cc
     for( int k = 0; k < npts; ++k ) {
       if( inliers[k] ) {
-        sum_r += cv::Vec2f(matched_reference_positions[k].x, matched_reference_positions[k].y) - Cr;
-        sum_c += cv::Vec2f(matched_current_positions[k].x, matched_current_positions[k].y) - Cc;
+        rsum += cv::Vec2f(matched_reference_positions[k].x, matched_reference_positions[k].y) - Cr;
+        csum += cv::Vec2f(matched_current_positions[k].x, matched_current_positions[k].y) - Cc;
         ++num_inliers;
       }
     }
@@ -219,50 +222,49 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
       return false;
     }
 
+    // Centroids in local coordinates relative to Cr and Cc
+    const cv::Vec2f Tr = rsum / num_inliers;
+    const cv::Vec2f Tc = csum / num_inliers;
+
+    // Transfer local centroids to the origin (0,0) and build a covariance matrix
     cv::Matx22f C = cv::Matx22f::zeros();
     float cloud_scale = 0.0f;
 
-    const cv::Vec2f t1 = sum_r / num_inliers;
-    const cv::Vec2f t2 = sum_c / num_inliers;
-
     for ( int k = 0; k < npts; ++k ) {
       if ( inliers[k] ) {
-
-        const cv::Vec2f p1 = cv::Vec2f(matched_reference_positions[k].x, matched_reference_positions[k].y) - Cr - t1;
-        const cv::Vec2f p2 = cv::Vec2f(matched_current_positions[k].x, matched_current_positions[k].y) - Cc - t2;
-
-        cloud_scale += (p1[0] * p1[0] + p1[1] * p1[1]);
-        cloud_scale += (p2[0] * p2[0] + p2[1] * p2[1]);
-
-        C(0, 0) += p2[0] * p1[0]; // 0
-        C(0, 1) += p2[0] * p1[1]; // 1
-        C(1, 0) += p2[1] * p1[0]; // 2
-        C(1, 1) += p2[1] * p1[1]; // 3
+        const cv::Vec2f pr = cv::Vec2f(matched_reference_positions[k].x, matched_reference_positions[k].y) - Cr - Tr;
+        const cv::Vec2f pc = cv::Vec2f(matched_current_positions[k].x, matched_current_positions[k].y) - Cc - Tc;
+        cloud_scale += (pr[0] * pr[0] + pr[1] * pr[1]);
+        cloud_scale += (pc[0] * pc[0] + pc[1] * pc[1]);
+        C(0, 0) += pc[0] * pr[0];
+        C(0, 1) += pc[0] * pr[1];
+        C(1, 0) += pc[1] * pr[0];
+        C(1, 1) += pc[1] * pr[1];
       }
     }
     cloud_scale /= (2.0f * num_inliers);
 
     // Kabsch analytical algorithm without SVD
-    const float det = C(0, 0) * C(1, 1) - C(0, 1) * C(1, 0);
-    const float angle = det >= 0.0f ? std::atan2(C(1, 0) - C(0, 1), C(0, 0) * C(1, 1)) :
-        std::atan2(-C(1, 0) - C(0, 1), -C(0, 0) * C(1, 1));
+
+    const float A = C(0, 0) + C(1, 1);
+    const float B = C(1, 0) - C(0, 1);
+    const float angle = std::atan2(B, A);
 
     const cv::Matx22f Rotation(std::cos(angle), -std::sin(angle),
         std::sin(angle), std::cos(angle));
 
-    const cv::Vec2f Translation = (t2 + Cc) - Rotation * (t1 + Cr);
-    transform->set_translation(Translation);
+    // Translation _T adjusted for c_euclidean_image_transform
+    const cv::Vec2f Translation = Tc - Rotation * Tr;
     transform->set_rotation(angle);
+    transform->set_translation(Translation);
 
-    // Compute RMSE to check for outliers
+
+    transform->remap(matched_reference_positions, remaped_positions);
     float rmse = 0.0f;
     for ( int k = 0; k < npts; ++k ) {
       if ( inliers[k] ) {
-        const cv::Vec2f p1(matched_reference_positions[k].x, matched_reference_positions[k].y);
-        const cv::Vec2f p2(matched_current_positions[k].x, matched_current_positions[k].y);
-        const cv::Vec2f prediction = Rotation * p1 + Translation;
-        const float diff_x = p2[0] - prediction[0];
-        const float diff_y = p2[1] - prediction[1];
+        const float diff_x = matched_current_positions[k].x - remaped_positions[k].x;
+        const float diff_y = matched_current_positions[k].y - remaped_positions[k].y;
         const float residual = diff_x * diff_x + diff_y * diff_y;
         rmse += residual;
         residuals[k] = residual;
@@ -275,7 +277,6 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
       break;
     }
 
-    // Label outliers
     int num_outliers = 0;
     const float max_allowed_residual = 8.0f * rmse;
     for ( int k = 0; k < npts; ++k ) {
@@ -284,6 +285,10 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
         ++num_outliers;
       }
     }
+
+    //  CF_DEBUG("angle=%g deg Tx=%g Ty=%g rmse=%g sqrt(rmse)=%g num_inliers=%d/%d",
+    //    angle * 180 / CV_PI, Translation(0), Translation(1), rmse, std::sqrt(rmse),
+    //    num_inliers, npts);
 
     if ( num_outliers < 1 ) {
       break;
@@ -298,7 +303,6 @@ bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_reference_positions,
     const c_estimate_image_transform_options & opts)
 {
-
   const bool estimate_translation_only =
       !transform->fix_translation() && transform->fix_rotation() && transform->fix_scale();
 
@@ -842,7 +846,7 @@ bool estimate_image_transform(c_image_transform * transform,
           current_positions, reference_positions,
           opts);
 
-  if ( transformEstimated ) {
+  if ( true ) {
 
     const size_t num_current_keypoints = current_keypoints.size();
     const size_t num_referece_keypoints = reference_keypoints.size();
@@ -888,12 +892,14 @@ bool estimate_image_transform(c_image_transform * transform,
         }
       }
 
+
       transformEstimated =
           estimate_image_transform(transform,
               current_positions, reference_positions,
               opts);
+
       if( !transformEstimated ) {
-        CF_ERROR("Re-estimate image transform using %zu points fails", current_positions.size());
+        CF_ERROR("FAILED Re-estimate image transform using %zu points", current_positions.size());
       }
       else {
         CF_DEBUG("Re-estimated using %zu point pairs", current_positions.size());

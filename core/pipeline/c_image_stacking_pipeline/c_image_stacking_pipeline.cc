@@ -2606,21 +2606,26 @@ bool c_image_stacking_pipeline::flush_substack_frame(const cv::Mat & avg, const 
               ".ser"); // User .ser as default if not specified by user
 
       if( !fOk ) {
-        CF_ERROR("add_output_writer('%s') fails", _substack_writer.filename().c_str());
         // This is critical error, may be disk full or incorrect user parameters
+        CF_ERROR("add_output_writer('%s') fails", _substack_writer.filename().c_str());
         return false;
       }
     }
 
-    CF_DEBUG("Call _substack_writer.write");
+    cv::Mat w;
+    if ( msk.channels() == 1 ) {
+      w = msk;
+    }
+    else {
+      static const thread_local cv::Matx13f mtx(1.0f, 1.0f, 1.0f);
+      cv::transform(msk, w, mtx);
+    }
 
-    if( !_substack_writer.write(avg, msk) ) {
-      CF_ERROR("_substack_writer.write('%s') fails.", _substack_writer.filename().c_str());
-      // Critical error, may be disk full ?
+    if( !_substack_writer.write(avg, w) ) {
+      CF_ERROR("_substack_writer.write('%s') fails. disk full?", _substack_writer.filename().c_str());
       return false;
     }
 
-    CF_DEBUG("_substack_writer.write OK");
   }
   return true;
 }

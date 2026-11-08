@@ -352,7 +352,16 @@ bool c_canvas_average::add(cv::InputArray remapped_image, cv::InputArray remappe
     }
     else {
       cv::Rect ROI = cv::Rect(boxpos.x, boxpos.y, img.cols, img.rows);
+
+      const cv::Rect backupROI = ROI;
       maintainCanvasBoundaries(ROI);
+
+      if( backupROI != ROI ) {
+        CF_DEBUG("ROI CHANGE: ROI={x=%d y=%d w=%d h=%d} --> {x=%d y=%d w=%d h=%d} ",
+            backupROI.x, backupROI.y, backupROI.width, backupROI.height,
+            ROI.x, ROI.y, ROI.width, ROI.height);
+      }
+
       if ( ROI.width != img.cols || ROI.height != img.rows ) {
         CF_ERROR("APP BUG: Bad ROI size from maintainCanvasBoundaries()");
         return false;
@@ -364,11 +373,23 @@ bool c_canvas_average::add(cv::InputArray remapped_image, cv::InputArray remappe
         return false;
       }
 
-      const cv::Rect CROP(CLIPPED_ROI.x - ROI.x, CLIPPED_ROI.y - ROI.y, CLIPPED_ROI.width, CLIPPED_ROI.height);
-      img = img(CROP);
-      if ( !weights.empty() ) {
-        weights = weights(CROP);
-      }
+//      const cv::Rect CROP(CLIPPED_ROI.x - ROI.x, CLIPPED_ROI.y - ROI.y, CLIPPED_ROI.width, CLIPPED_ROI.height);
+//
+//      if ( CLIPPED_ROI != ROI ) {
+//        CF_DEBUG("ROI CLIPPED: ROI={x=%d y=%d w=%d h=%d} --> {x=%d y=%d w=%d h=%d} CROP: {x=%d y=%d w=%d h=%d}",
+//            ROI.x, ROI.y, ROI.width, ROI.height,
+//            CLIPPED_ROI.x, CLIPPED_ROI.y, CLIPPED_ROI.width, CLIPPED_ROI.height,
+//            CROP.x, CROP.y, CROP.width, CROP.height);
+//      }
+//
+//      if ( CROP != cv::Rect(0, 0, img.cols, img.rows) ) {
+//        CF_DEBUG("CROP: {x=%d y=%d w=%d h=%d}", CROP.x, CROP.y, CROP.width, CROP.height);
+//      }
+
+//      img = img(CROP);
+//      if ( !weights.empty() ) {
+//        weights = weights(CROP);
+//      }
       _last_bbox = CLIPPED_ROI;
     }
   };

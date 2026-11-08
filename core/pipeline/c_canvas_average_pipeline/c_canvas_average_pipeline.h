@@ -28,7 +28,6 @@ struct c_canvas_average_registration_options
   bool enable_feature2d_registration = false;
   bool enable_star_registration = false;
   bool enable_ecc_registration = false;
-  bool enable_eccflow_registration = false;
 
   cv::Size canvasSize;
   double eccUnsharpMaskSigma = 1;
@@ -46,7 +45,6 @@ struct c_canvas_average_registration_options
   //c_phase_correlate_options phase_correlate;
   c_polar_phase_correlate_options phase_correlate;
   c_ecch_options ecch;
-  c_eccflow_options eccflow;
   c_estimate_image_transform_options transform_estimation;
 
   c_image_processor::sptr ecc_cimage_preprocessor;

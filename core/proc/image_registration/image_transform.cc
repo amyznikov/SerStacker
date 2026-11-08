@@ -75,8 +75,8 @@ bool get_image_transform_params(const c_image_transform::sptr & transform, c_ima
 {
   if ( transform ) {
     opts.motionType = IMAGE_MOTION_UNKNOWN;
-    opts.Cr = transform->destination_reference_point();
-    opts.Cc = transform->source_reference_point();
+    opts.Cr = transform->Cr();
+    opts.Cc = transform->Cc();
     transform->parameters().copyTo(opts.params);
 
     if( dynamic_cast<const c_translation_image_transform*>(transform.get()) ) {

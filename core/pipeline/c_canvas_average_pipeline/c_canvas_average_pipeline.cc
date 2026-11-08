@@ -11,7 +11,10 @@
 #include <core/proc/pixtype.h>
 #include <core/io/load_image.h>
 #include <core/io/save_image.h>
+#include <core/io/c_stdio_file.h>
 #include <core/readdir.h>
+
+extern void set_dump_transfrom_estimation(bool v);
 
 c_canvas_average_pipeline::c_canvas_average_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -62,7 +65,6 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _registration_options, enable_feature2d_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_star_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_ecc_registration);
-    SERIALIZE_OPTION(section, save, _registration_options, enable_eccflow_registration);
 
 //    if( auto group = SERIALIZE_GROUP(section, save, "phase_correlate") ) {
 //      SERIALIZE_OPTION(group, save, _registration_options, minAcceptablePhaseCorrelation);
@@ -93,10 +95,6 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
       serialize_ecch_options(group, save, _registration_options.ecch);
       serialize_image_processor(group, save, "ecc_cimage_preprocessor", _registration_options.ecc_cimage_preprocessor);
       serialize_image_processor(group, save, "ecc_rimage_preprocessor", _registration_options.ecc_rimage_preprocessor);
-    }
-
-    if ( auto group = SERIALIZE_GROUP(section, save, "eccflow") ) {
-      serialize_eccflow_options(group, save, _registration_options.eccflow);
     }
   }
 
@@ -218,11 +216,6 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, ctx(&S::ecch));
     ctlbind(ctls, "cimage_preprocessor", ctx(&S::ecc_cimage_preprocessor), "");
     ctlbind(ctls, "rimage_preprocessor", ctx(&S::ecc_rimage_preprocessor), "");
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "ECCFLOW", "");
-    ctlbind(ctls, "Enable eccflow", ctx(&S::enable_eccflow_registration), "");
-    ctlbind(ctls, ctx(&S::eccflow));
   ctlbind_end_group(ctls);
 }
 
@@ -581,8 +574,7 @@ bool c_canvas_average_pipeline::initialize_pipeline()
   const bool enable_registration =
       _registration_options.enable_phase_correlate ||
       _registration_options.enable_star_registration ||
-          _registration_options.enable_ecc_registration ||
-          _registration_options.enable_eccflow_registration;
+          _registration_options.enable_ecc_registration;
 
   if ( enable_registration ) {
 
@@ -601,10 +593,6 @@ bool c_canvas_average_pipeline::initialize_pipeline()
     if ( _registration_options.enable_ecc_registration ) {
       _ecch.set_image_transform(_image_transform.get());
       _ecch.set_options(_registration_options.ecch);
-    }
-
-    if( _registration_options.enable_eccflow_registration ) {
-      _eccflow.set_options(_registration_options.eccflow);
     }
   }
 
@@ -638,7 +626,8 @@ bool c_canvas_average_pipeline::run_pipeline()
     return false;
   }
 
-  set_status_msg("RUNNING ...");
+  set_status_msg("RUNNING:...");
+  CF_DEBUG("BADFRAMES().SIZE()=%zu", _input_sequence->badframes().size());
 
   bool fOK = true;
   for( ; _processed_frames < _total_frames; ++_processed_frames, ++_accumulated_frames, on_frame_processed() ) {
@@ -706,32 +695,60 @@ bool c_canvas_average_pipeline::run_pipeline()
   return fOK;
 }
 
-static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
-    const cv::Rect & last_canvas_bbox,
-    const cv::Size & current_image_size,
-    const cv::Size & global_canvas_size)
+static cv::Rect computeReferenceBBox(const c_image_transform::sptr & transform,
+    const cv::Size & current_image_size)
 {
   std::vector<cv::Point2f> current_corners = {
-      cv::Point2f(0.f, 0.f),
-      cv::Point2f(float(current_image_size.width), 0.f),
-      cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
-      cv::Point2f(0.f, float(current_image_size.height))
+      cv::Point2f(0, 0),
+      cv::Point2f(current_image_size.width, 0),
+      cv::Point2f(current_image_size.width, current_image_size.height),
+      cv::Point2f(0, current_image_size.height)
   };
 
-  std::vector<cv::Point2f> ref_corners_local;
+  std::vector<cv::Point2f> ref_corners;
+  transform->forward_remap(current_corners, ref_corners);
 
-  transform->forward_remap(current_corners, ref_corners_local);
-
-  cv::Point2f global_offset = last_canvas_bbox.tl();
-  std::vector<cv::Point2f> ref_corners_global(4);
-  for( size_t i = 0; i < 4; ++i ) {
-    ref_corners_global[i] = ref_corners_local[i] + global_offset;
-  }
-
-  cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
-  cv::Rect new_global_bbox = rbox.boundingRect();
-  return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+  const cv::RotatedRect rbox = cv::minAreaRect(ref_corners);
+  const cv::Rect bbox = rbox.boundingRect();
+  return bbox;
 }
+
+static cv::Vec2f commpueNewCr(const c_image_transform::sptr & transform,
+    const cv::Size & current_image_size)
+{
+  std::vector<cv::Point2f> ccv(1, cv::Point2f(current_image_size.width/2, current_image_size.height/2));
+  std::vector<cv::Point2f> ccrv;
+  transform->forward_remap(ccv, ccrv);
+  return cv::Vec2f(ccrv[0].x, ccrv[0].y);
+}
+
+
+
+//static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
+//    const cv::Rect & last_canvas_bbox,
+//    const cv::Size & current_image_size,
+//    const cv::Size & global_canvas_size)
+//{
+//  std::vector<cv::Point2f> current_corners = {
+//      cv::Point2f(0.f, 0.f),
+//      cv::Point2f(float(current_image_size.width), 0.f),
+//      cv::Point2f(float(current_image_size.width), float(current_image_size.height)),
+//      cv::Point2f(0.f, float(current_image_size.height))
+//  };
+//
+//  std::vector<cv::Point2f> ref_corners_local;
+//  transform->forward_remap(current_corners, ref_corners_local);
+//
+//  cv::Point2f global_offset = last_canvas_bbox.tl();
+//  std::vector<cv::Point2f> ref_corners_global(4);
+//  for( size_t i = 0; i < 4; ++i ) {
+//    ref_corners_global[i] = ref_corners_local[i] + global_offset;
+//  }
+//
+//  cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
+//  cv::Rect new_global_bbox = rbox.boundingRect();
+//  return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+//}
 
 static void remapCurrentFrame(cv::InputArray currentFrame,
     cv::InputArray currentWeights,
@@ -843,8 +860,7 @@ bool c_canvas_average_pipeline::process_current_frame()
   const bool enable_registration =
       _registration_options.enable_phase_correlate ||
       _registration_options.enable_star_registration ||
-          _registration_options.enable_ecc_registration ||
-          _registration_options.enable_eccflow_registration;
+          _registration_options.enable_ecc_registration;
 
   if ( !_current_mask.empty() ) {
     if ( _current_mask.depth() == CV_8U ) {
@@ -862,7 +878,6 @@ bool c_canvas_average_pipeline::process_current_frame()
     compute_weights(_current_image, current_binary_mask, current_weights);
   }
 
-
   if( _registration_options.enable_phase_correlate ) {
     if( _average.accumulated_frames() < 1 ) {
       if( !_phase_correlate.setup(_current_image.size(), _registration_options.phase_correlate) ) {
@@ -871,7 +886,6 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
   }
-
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
     // Very first frame or no registration requested
@@ -890,7 +904,7 @@ bool c_canvas_average_pipeline::process_current_frame()
     cv::Mat reference_image, reference_grayscale_image, reference_binary_mask;
     cv::Mat remapped_current_image, remapped_current_weights;
     cv::Rect commonCurrentROI, commonReferenceROI;
-    cv::Mat2f rmap, uv;
+    cv::Mat2f rmap;
 
     if ( !_average.compute(reference_image, reference_binary_mask, 1, -1, _average.last_bbox())) {
       CF_ERROR("_average.compute() fails");
@@ -937,7 +951,8 @@ bool c_canvas_average_pipeline::process_current_frame()
     }
 
     _image_transform->reset();
-    _image_transform->set_reference_point(cv::Vec2f(_current_image.cols / 2, _current_image.rows / 2));
+    _image_transform->set_Cc(cv::Vec2f(_current_grayscale_image.cols / 2, _current_grayscale_image.rows / 2));
+    _image_transform->set_Cr(cv::Vec2f(reference_grayscale_image.cols / 2, reference_grayscale_image.rows / 2));
 
     // Special stress test:
     //    _image_transform->set_reference_points(cv::Vec2f(_current_image.cols / 4, _current_image.rows / 4),
@@ -970,8 +985,8 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      const cv::Vec2f & Cc = _image_transform->source_reference_point();
-      const cv::Vec2f & Cr = _image_transform->destination_reference_point();
+      const cv::Vec2f & Cc = _image_transform->Cc();
+      const cv::Vec2f & Cr = _image_transform->Cr();
       _image_transform->set_translation(-T + Cr - Cc);
       if ( _registration_options.phase_correlate.estimateRotation ) {
         _image_transform->set_rotation(-R);
@@ -1035,17 +1050,120 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      CF_DEBUG("call estimate_image_transform(): matches.size=%zu", _current_matches.size());
+//      CF_DEBUG("call estimate_image_transform(): matches.size=%zu", _current_matches.size());
+//      const bool debug_estimate = _input_sequence->current_pos() - 1 == 60;
+//      if (debug_estimate) {
+//        CF_DEBUG("WILL DUMP HERE");
+//        //c_stdio_file fp;
+//      }
+//      set_dump_transfrom_estimation(debug_estimate);
+
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
               _current_keypoints, _reference_keypoints, _current_matches,
               _registration_options.transform_estimation);
 
-      CF_DEBUG("transformEstimated=%d", transformEstimated);
+      const double R = _image_transform->rotation() * 180 / CV_PI;
+      const cv::Vec2f T = _image_transform->translation();
+
+      CF_DEBUG("[F %d] matches.size=%zu transformEstimated=%d R=%g deg Tx=%g Ty=%g",
+          _input_sequence->current_pos() - 1,
+          _current_matches.size(),
+          transformEstimated,
+          R, T(0), T(1));
+
       if( !transformEstimated ) {
         CF_ERROR("estimate_image_transform() fails");
         return !canceled();
       }
+
+      if ( false ) {
+
+        cv::Mat2f rmp;
+        cv::Mat display;
+
+        std::vector<cv::Point2f> cpts, rpts, crpts;
+
+        for( const cv::DMatch &m : _current_matches ) {
+          const cv::KeyPoint & rkp = _reference_keypoints[m.trainIdx];
+          const cv::KeyPoint & ckp = _current_keypoints[m.queryIdx];
+          rpts.emplace_back(rkp.pt);
+          cpts.emplace_back(ckp.pt);
+        }
+
+        _image_transform->forward_remap(cpts, crpts);
+
+        _image_transform->create_remap(reference_grayscale_image.size(), rmp);
+        cv::remap(_current_grayscale_image, display,
+            rmp, cv::noArray(),
+            cv::INTER_LANCZOS4,
+            cv::BORDER_CONSTANT);
+
+        const auto draw_matches = [&](cv::Mat & image) {
+          for ( int i = 0; i < (int)(_current_matches.size()); ++i  ) {
+            const cv::Point2f & rpos = rpts[i];
+            const cv::Point2f & cpos = crpts[i];
+
+            cv::drawMarker(image,
+                cv::Point(rpos.x - 1, rpos.y - 1),
+                cv::Scalar(0, 255, 0),
+                cv::MARKER_CROSS,
+                8,
+                1,
+                cv::LINE_8
+            );
+            cv::putText(image,
+                ssprintf("%d", i),
+                cv::Point(rpos.x - 10, rpos.y - 10),
+                cv::FONT_HERSHEY_PLAIN,
+                0.8,
+                cv::Scalar(0, 255, 0),
+                1,
+                cv::LINE_8
+                );
+
+            cv::drawMarker(image,
+                cv::Point(cpos.x + 1, cpos.y + 1),
+                cv::Scalar(0, 180, 255),
+                cv::MARKER_CROSS,
+                8,
+                1,
+                cv::LINE_8
+            );
+            cv::putText(image,
+                ssprintf("%d", i),
+                cv::Point(cpos.x + 10, cpos.y + 10),
+                cv::FONT_HERSHEY_PLAIN,
+                0.8,
+                cv::Scalar(0, 180, 255),
+                1,
+                cv::LINE_8
+                );
+          }
+        };
+
+
+        //        cv::addWeighted(current_remapped_image, 0.5, reference_grayscale_image, 0.5, 0,
+        //            current_remapped_image);
+        cv::cvtColor(display, display, cv::COLOR_GRAY2BGR);
+          display.convertTo(display, CV_8U, 2500, 0);
+        draw_matches(display);
+
+        save_image(display,
+            ssprintf("/home/projects/temp/TE/TE.%03d.c.fits",
+                _input_sequence->current_pos()-1));
+
+        reference_grayscale_image.copyTo(display);
+        cv::cvtColor(display, display, cv::COLOR_GRAY2BGR);
+          display.convertTo(display, CV_8U, 2500, 0);
+        draw_matches(display);
+
+        save_image(display,
+            ssprintf("/home/projects/temp/TE/TE.%03d.r.fits",
+                _input_sequence->current_pos()-1));
+
+      }
+
     }
 
     if( _registration_options.enable_ecc_registration ) {
@@ -1094,106 +1212,131 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
-    if( _registration_options.enable_eccflow_registration ) {
-      INSTRUMENT_REGION("eccflow_registration");
-      // FIXME: This ugly stiff does not work yet as expected, just start the experimentation
 
-      // create temporary rmap of reference image size for optflow computation
 
-      bool fOk = false;
-      if ( reference_grayscale_image.size() == _current_grayscale_image.size() ) {
-        _image_transform->create_remap(reference_grayscale_image.size(), rmap);
-        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_grayscale_image, rmap, current_binary_mask, reference_binary_mask);
-      }
-      else {
-        const cv::Rect roi(0, 0, std::min(reference_grayscale_image.cols, _current_grayscale_image.cols),
-            std::min(reference_grayscale_image.rows, _current_grayscale_image.rows));
-        const cv::Mat cimage = _current_grayscale_image(roi);
-        const cv::Mat cmask = current_binary_mask.empty() ? cv::Mat() : current_binary_mask(roi);
-        const cv::Mat rimage = reference_grayscale_image(roi);
-        const cv::Mat rmask = reference_binary_mask.empty() ? cv::Mat() : reference_binary_mask(roi);
+//    const cv::Rect newCanvasBBox =
+//        computeNewCanvasBBox(_image_transform,
+//            _average.last_bbox(),
+//            _current_image.size(),
+//            _average.accumulator_size());
+//
+//    if ( true ) {
+//
+//      CF_DEBUG("[F %d] newCanvasBBox: {x=%d y=%d w=%d h=%d} rbox: {x=%d y=%d w=%d h=%d}",
+//          _input_sequence->current_pos() - 1,
+//          newCanvasBBox.x, newCanvasBBox.y, newCanvasBBox.width, newCanvasBBox.height);
+//
+////      std::vector<cv::Point2f> Ccv(1, _image_transform->destination_reference_point());
+////      std::vector<cv::Point2f> Ccrv(1);
+////      _image_transform->forward_remap(Ccv, Ccrv);
+////      CF_DEBUG("1) Ccv: {%g %g} --> Ccrv: {%g %g}", Ccv[0].x, Ccv[0].y, Ccrv[0].x, Ccrv[0].y);
+////
+////      Ccrv[0].x = Ccrv[0].x - newCanvasBBox.x + _average.last_bbox().x;
+////      Ccrv[0].y = Ccrv[0].y - newCanvasBBox.y + _average.last_bbox().y;
+////      _image_transform->remap(Ccrv, Ccv);
+////      CF_DEBUG("2) Ccrv: {%g %g} --> Ccv: {%g %g}", Ccrv[0].x, Ccrv[0].y, Ccv[0].x, Ccv[0].y);
+////      _image_transform->set_destination_reference_point(Ccv[0]);
+//    }
+//
+//    if( newCanvasBBox.empty() ) {
+//      CF_ERROR("BAD Bounding Box from computeNewCanvasBBox()");
+//      return false;
+//    }
 
-        _image_transform->create_remap(rimage.size(), rmap);
-        fOk = _eccflow.compute_uv(cimage, rimage, rmap, cmask, rmask);
-      }
+//    const cv::Point old_global_offset = _average.last_bbox().tl();
+//    const cv::Vec2f delta_T = cv::Vec2f(newCanvasBBox.x - old_global_offset.x,
+//        newCanvasBBox.y - old_global_offset.y);
 
-      if( fOk ) {
-        uv = _eccflow.current_uv();
-      }
-      else {
-        CF_ERROR("_eccflow.compute_uv() fails");
-      }
-    }
+//    if ( true ) {
+//      //_image_transform->set_translation(_image_transform->translation() + delta_T);
+//      _image_transform->create_remap(newCanvasBBox.size(), rmap);
+//      //cv::add(rmap, cv::Scalar(delta_T(0), delta_T(1)), rmap);
+//    }
+//
+//    remapCurrentFrame(_current_image,
+//        current_weights,
+//        rmap,
+//        _average.last_bbox(),
+//        newCanvasBBox,
+//        remapped_current_image,
+//        remapped_current_weights,
+//        &commonCurrentROI,
+//        &commonReferenceROI,
+//        _average_options.interpolation);
+//
+//    if ( _average_options.applyPhotometrcAlignment ) {
+//      if ( _average_options.includeBrightness || _average_options.includeContrast ) {
+//
+//        cv::Scalar brightness, contrast;
+//
+//        const bool fOK =
+//            estimateAndApplyPhotometricAlignment(remapped_current_image, remapped_current_weights,
+//                reference_image, reference_binary_mask,
+//                commonCurrentROI, commonReferenceROI,
+//                remapped_current_image,
+//                _average_options.includeBrightness,
+//                _average_options.includeContrast,
+//                _average_options.separateChannels,
+//                _average_options.eps,
+//                &brightness,
+//                &contrast);
+//
+//        if( !fOK ) {
+//          CF_ERROR("estimatePhotometricAlignment() fails");
+//          return !canceled();
+//        }
+//
+//        CF_DEBUG("\nPhotometricAlignment: brightness = { %g %g %g %g } contrast = { %g %g %g %g }",
+//            brightness[0], brightness[1], brightness[2], brightness[3],
+//            contrast[0], contrast[1], contrast[2], contrast[3]);
+//      }
+//    }
+//
+//    if( !_average.add(remapped_current_image, remapped_current_weights, newCanvasBBox.tl()) ) {
+//      CF_ERROR("average_add() fails");
+//      return false;
+//    }
 
-    const cv::Rect newCanvasBBox =
-        computeNewCanvasBBox(_image_transform,
-            _average.last_bbox(),
-            _current_image.size(),
-            _average.accumulator_size());
+    const cv::Rect rbox = _average.last_bbox();
+    const cv::Rect newReferenceBBox = computeReferenceBBox(_image_transform, _current_image.size());
 
-    if ( true ) {
-      const cv::Vec2f T = _image_transform->translation();
-      CF_DEBUG("[F %d] newCanvasBBox: x=%d y=%d w=%d h=%d Tx=%g Ty=%g", _input_sequence->current_pos()-1,
-          newCanvasBBox.x, newCanvasBBox.y, newCanvasBBox.width, newCanvasBBox.height,
-          T(0), T(1));
-    }
+    CF_DEBUG("[F %d] rbox: {x=%d y=%d w=%d h=%d}", _input_sequence->current_pos() - 1,
+        rbox.x, rbox.y,
+        rbox.width, rbox.height);
 
-    if( newCanvasBBox.empty() ) {
-      CF_ERROR("BAD Bounding Box from computeNewCanvasBBox()");
-      return false;
-    }
+    const cv::Vec2f oldCr = _image_transform->Cr();
+    const cv::Vec2f newCr = oldCr - cv::Vec2f(newReferenceBBox.x, newReferenceBBox.y);
 
-    const cv::Point old_global_offset = _average.last_bbox().tl();
-    const cv::Vec2f delta_T = cv::Vec2f(newCanvasBBox.x - old_global_offset.x,
-        newCanvasBBox.y - old_global_offset.y);
+    CF_DEBUG("[F %d] newReferenceBBox: {x=%d y=%d w=%d h=%d} Cr: {x=%g y=%g} -> {x=%g y=%g}",
+        _input_sequence->current_pos() - 1,
+        newReferenceBBox.x, newReferenceBBox.y,
+        newReferenceBBox.width, newReferenceBBox.height,
+        oldCr(0), oldCr(1),
+        newCr(0), newCr(1));
 
-    _image_transform->set_translation(_image_transform->translation() + delta_T);
-    _image_transform->create_remap(newCanvasBBox.size(), rmap);
+    const cv::Rect newCanvasBox(newReferenceBBox.x + rbox.x, newReferenceBBox.y + rbox.y,
+        newReferenceBBox.width, newReferenceBBox.height);
 
-    if( !uv.empty() ) {
-      INSTRUMENT_REGION("embed_uv");
+    CF_DEBUG("[F %d] newCanvasBox: {x=%d y=%d w=%d h=%d}", _input_sequence->current_pos() - 1,
+        newCanvasBox.x, newCanvasBox.y,
+        newCanvasBox.width, newCanvasBox.height);
 
-      // Compute position of the old uv within the coordinates of the new rmap
-      // delta_T = new_offset - old_offset -> old_offset = -delta_T
-      cv::Rect old_uv_roi_in_new_rmap(
-          static_cast<int>(-delta_T.val[0]),
-          static_cast<int>(-delta_T.val[1]),
-          uv.cols,
-          uv.rows);
-
-      // intersection to ensure don't miss the memory
-      cv::Rect dst_roi = old_uv_roi_in_new_rmap & cv::Rect(0, 0, rmap.cols, rmap.rows);
-
-      if (dst_roi.width > 0 && dst_roi.height > 0) {
-
-        // corresponding box inside the uv matrix
-        cv::Rect src_roi(
-            dst_roi.x - old_uv_roi_in_new_rmap.x,
-            dst_roi.y - old_uv_roi_in_new_rmap.y,
-            dst_roi.width,
-            dst_roi.height
-        );
-
-        // Add uv from ROI
-        cv::Mat2f rmap_sub = rmap(dst_roi);
-        cv::Mat2f uv_sub = uv(src_roi);
-        cv::add(rmap_sub, uv_sub, rmap_sub);
-      }
-    }
+    _image_transform->set_Cr(newCr);
+    _image_transform->create_remap(newCanvasBox.size(), rmap);
 
     remapCurrentFrame(_current_image,
         current_weights,
         rmap,
         _average.last_bbox(),
-        newCanvasBBox,
+        newCanvasBox,
         remapped_current_image,
         remapped_current_weights,
         &commonCurrentROI,
         &commonReferenceROI,
         _average_options.interpolation);
 
-    if ( _average_options.applyPhotometrcAlignment ) {
-      if ( _average_options.includeBrightness || _average_options.includeContrast ) {
+    if( _average_options.applyPhotometrcAlignment ) {
+      if( _average_options.includeBrightness || _average_options.includeContrast ) {
 
         cv::Scalar brightness, contrast;
 
@@ -1220,20 +1363,54 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
-    if( !_average.add(remapped_current_image, remapped_current_weights, newCanvasBBox.tl()) ) {
+//    cv::remap(_current_image, remapped_current_image,
+//        rmap, cv::noArray(),
+//        _average_options.interpolation,
+//        cv::BORDER_CONSTANT);
+//
+//    cv::remap(current_weights, remapped_current_weights,
+//        rmap, cv::noArray(),
+//        _average_options.interpolation,
+//        cv::BORDER_CONSTANT);
+
+    if( !_average.add(remapped_current_image, remapped_current_weights, newCanvasBox.tl()) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
 
-    if ( !write_progress_video() ) {
-      CF_ERROR("write_progress_video() fails");
-      return false;
+    if ( false ) {
+      cv::Mat3f display = cv::Mat3f::zeros(_average.accumulator_size());
+      remapped_current_image.copyTo(display(newCanvasBox));
+
+      save_image(display,
+          ssprintf("/home/projects/temp/TE/TE.%03d.rmp.fits",
+              _input_sequence->current_pos()-1));
+
+//      _average.compute(display, cv::noArray());
+//
+//      save_image(display,
+//          ssprintf("/home/projects/temp/TE/TE.%03d.avg.fits",
+//              _input_sequence->current_pos()-1));
     }
 
-    if ( !save_substack_frame() ) {
-      CF_ERROR("save_substack_frame() fails");
-      return false;
-    }
+  }
+
+  if ( false) {
+    cv::Mat3f display = cv::Mat3f::zeros(_average.accumulator_size());
+    _average.compute(display, cv::noArray());
+    save_image(display,
+        ssprintf("/home/projects/temp/TE/TE.%03d.avg.fits",
+            _input_sequence->current_pos()-1));
+  }
+
+  if ( !write_progress_video() ) {
+    CF_ERROR("write_progress_video() fails");
+    return false;
+  }
+
+  if ( !save_substack_frame() ) {
+    CF_ERROR("save_substack_frame() fails");
+    return false;
   }
 
   return true;

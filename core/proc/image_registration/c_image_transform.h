@@ -91,25 +91,25 @@ public:
   }
 
   // Set reference point on reference (destination) image Cr
-  inline void set_destination_reference_point(const cv::Vec2f & Cr)
+  inline void set_Cr(const cv::Vec2f & Cr)
   {
     _Cr = Cr;
   }
 
   // Get reference point on destination image Cr
-  inline const cv::Vec2f & destination_reference_point() const
+  inline const cv::Vec2f & Cr() const
   {
     return _Cr;
   }
 
   // Set reference point on source image Cc
-  inline void set_source_reference_point(const cv::Vec2f & Cc)
+  inline void set_Cc(const cv::Vec2f & Cc)
   {
     _Cc = Cc;
   }
 
   // Get reference point on source image Cc
-  inline const cv::Vec2f & source_reference_point() const
+  inline const cv::Vec2f & Cc() const
   {
     return _Cc;
   }

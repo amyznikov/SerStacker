@@ -352,8 +352,10 @@ void c_input_sequence::gather_badframes()
 
     for( size_t source_index = 0, n = _all_sources.size(); source_index < n; ++source_index ) {
 
-      const c_input_source::sptr & source =  _all_sources[source_index];
+      const c_input_source::sptr & source = _all_sources[source_index];
       if( source ) {
+
+        source->load_badframes();
 
         for( int source_frame_index : source->badframes() ) {
 

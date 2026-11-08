@@ -117,8 +117,8 @@ bool estimate_translation(c_image_transform * transform,
     T[1] = my;
   }
 
-  const cv::Vec2f & Cr = transform->destination_reference_point();
-  const cv::Vec2f & Cc = transform->source_reference_point();
+  const cv::Vec2f & Cr = transform->Cr();
+  const cv::Vec2f & Cc = transform->Cc();
   transform->set_translation(T + Cr - Cc);
   return true;
 }
@@ -133,8 +133,8 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
     return false;
   }
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
-  const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->Cr();
+  const cv::Vec2f Cc = transform->Cc();
 
   const cv::Mat affine_matrix =
       cv::estimateAffinePartial2D(matched_reference_positions, matched_current_positions,
@@ -179,6 +179,15 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
   transform->set_scale(scale);
   return true;
 }
+
+#include <core/io/c_stdio_file.h>
+
+static bool _dump_transfrom_estimation = false;
+void set_dump_transfrom_estimation(bool v)
+{
+  _dump_transfrom_estimation = v;
+}
+
 //
 // Find optimal rotation and translation between corresponding 3D points.
 // Uses Kabsch analytical algorithm without SVD.
@@ -196,8 +205,8 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     return false;
   }
 
-  const cv::Vec2f Cc = transform->source_reference_point();
-  const cv::Vec2f Cr = transform->destination_reference_point();
+  const cv::Vec2f Cc = transform->Cc();
+  const cv::Vec2f Cr = transform->Cr();
 
   std::vector<cv::Point2f> remaped_positions;
   std::vector<uint8_t> inliers(npts, uint8_t(1));
@@ -258,18 +267,54 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     transform->set_rotation(angle);
     transform->set_translation(Translation);
 
+    c_stdio_file fp;
+
+    if ( _dump_transfrom_estimation ) {
+      if ( !fp.open(ssprintf("/home/projects/temp/TE/TE.%03d.txt", iteration), "w") ) {
+        CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
+      }
+      else {
+        fprintf(fp, "k\tRx\tRy\tCx\tCy\t\tRRx\tRRy\tdx\tdy\tresidual\n");
+      }
+    }
+
 
     transform->remap(matched_reference_positions, remaped_positions);
     float rmse = 0.0f;
     for ( int k = 0; k < npts; ++k ) {
       if ( inliers[k] ) {
-        const float diff_x = matched_current_positions[k].x - remaped_positions[k].x;
-        const float diff_y = matched_current_positions[k].y - remaped_positions[k].y;
-        const float residual = diff_x * diff_x + diff_y * diff_y;
+        const auto & cp = matched_current_positions[k];
+        const auto & rp = matched_reference_positions[k];
+        const auto & rrp = remaped_positions[k];
+        const float dx = cp.x - rrp.x;
+        const float dy = cp.y - rrp.y;
+        const float residual = dx * dx + dy * dy;
         rmse += residual;
         residuals[k] = residual;
+
+        if ( fp ) {
+          fprintf(fp, "%4d"
+              "\t%+9.3f\t%+9.3f"
+              "\t%+9.3f\t%+9.3f"
+              "\t%+9.3f\t%+9.3f"
+              "\t%+9.3f\t%+9.3f"
+              "\t%+9.3f"
+              "\n",
+              k,
+              rp.x, rp.y,
+              cp.x, cp.y,
+              rrp.x, rrp.y,
+              dx, dy,
+              std::sqrt(residual)
+              );
+        }
       }
     }
+
+    if ( fp ) {
+      fp.close();
+    }
+
     rmse /= num_inliers;
 
     const float rmse_threshold = opts.euclidean.rmse_threshold;
@@ -367,8 +412,8 @@ bool estimate_affine_transform(c_affine_image_transform * transform,
     return false;
   }
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
-  const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->Cr();
+  const cv::Vec2f Cc = transform->Cc();
 
   const cv::Mat affine_matrix =
       cv::estimateAffine2D(matched_reference_positions, matched_current_positions_,
@@ -427,8 +472,8 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
     return false;
   }
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
-  const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->Cr();
+  const cv::Vec2f Cc = transform->Cc();
 
   const cv::Matx33f H =
       homography;
@@ -484,8 +529,8 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
 
   std::vector<uint8_t> inliers(N, true);
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
-  const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->Cr();
+  const cv::Vec2f Cc = transform->Cc();
 
   int n = N;
 
@@ -606,8 +651,8 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
 
   std::vector<uint8_t> inliers(N, true);
 
-  const cv::Vec2f Cr = transform->destination_reference_point();
-  const cv::Vec2f Cc = transform->source_reference_point();
+  const cv::Vec2f Cr = transform->Cr();
+  const cv::Vec2f Cc = transform->Cc();
 
   int n = N;
 
@@ -846,7 +891,7 @@ bool estimate_image_transform(c_image_transform * transform,
           current_positions, reference_positions,
           opts);
 
-  if ( true ) {
+  if ( false /*transformEstimated*/) {
 
     const size_t num_current_keypoints = current_keypoints.size();
     const size_t num_referece_keypoints = reference_keypoints.size();

@@ -318,7 +318,7 @@ void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox)
 }
 
 bool c_canvas_average::add(cv::InputArray remapped_image, cv::InputArray remapped_weights_or_mask,
-    const cv::Point & boxpos)
+    const cv::Point & tl /* top-left position in accumulator to insert image */)
 {
   INSTRUMENT_REGION("");
 
@@ -351,46 +351,24 @@ bool c_canvas_average::add(cv::InputArray remapped_image, cv::InputArray remappe
       _last_bbox = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
     }
     else {
-      cv::Rect ROI = cv::Rect(boxpos.x, boxpos.y, img.cols, img.rows);
+      cv::Rect dstRoi(tl.x, tl.y, img.cols, img.rows);
+      maintainCanvasBoundaries(dstRoi);
 
-      const cv::Rect backupROI = ROI;
-      maintainCanvasBoundaries(ROI);
-
-      if( backupROI != ROI ) {
-        CF_DEBUG("ROI CHANGE: ROI={x=%d y=%d w=%d h=%d} --> {x=%d y=%d w=%d h=%d} ",
-            backupROI.x, backupROI.y, backupROI.width, backupROI.height,
-            ROI.x, ROI.y, ROI.width, ROI.height);
+      const cv::Rect dstIntersect = dstRoi & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+      if( dstIntersect.empty() ) {
+        CF_ERROR("Bad Remapped image ROI: completely outside the canvas boundaries");
+        return true; // ignore this error
       }
 
-      if ( ROI.width != img.cols || ROI.height != img.rows ) {
-        CF_ERROR("APP BUG: Bad ROI size from maintainCanvasBoundaries()");
-        return false;
+      const cv::Rect srcRoi(dstIntersect.x - dstRoi.x, dstIntersect.y - dstRoi.y,
+          dstIntersect.width, dstIntersect.height);
+
+      img = img(srcRoi);
+      if( !weights.empty() ) {
+        weights = weights(srcRoi);
       }
 
-      const cv::Rect CLIPPED_ROI = ROI & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-      if( CLIPPED_ROI.empty() ) {
-        CF_ERROR("ROI is empty after canvas boundary check");
-        return false;
-      }
-
-//      const cv::Rect CROP(CLIPPED_ROI.x - ROI.x, CLIPPED_ROI.y - ROI.y, CLIPPED_ROI.width, CLIPPED_ROI.height);
-//
-//      if ( CLIPPED_ROI != ROI ) {
-//        CF_DEBUG("ROI CLIPPED: ROI={x=%d y=%d w=%d h=%d} --> {x=%d y=%d w=%d h=%d} CROP: {x=%d y=%d w=%d h=%d}",
-//            ROI.x, ROI.y, ROI.width, ROI.height,
-//            CLIPPED_ROI.x, CLIPPED_ROI.y, CLIPPED_ROI.width, CLIPPED_ROI.height,
-//            CROP.x, CROP.y, CROP.width, CROP.height);
-//      }
-//
-//      if ( CROP != cv::Rect(0, 0, img.cols, img.rows) ) {
-//        CF_DEBUG("CROP: {x=%d y=%d w=%d h=%d}", CROP.x, CROP.y, CROP.width, CROP.height);
-//      }
-
-//      img = img(CROP);
-//      if ( !weights.empty() ) {
-//        weights = weights(CROP);
-//      }
-      _last_bbox = CLIPPED_ROI;
+      _last_bbox = dstIntersect;
     }
   };
 
@@ -398,7 +376,6 @@ bool c_canvas_average::add(cv::InputArray remapped_image, cv::InputArray remappe
   ++_accumulated_frames;
   return true;
 }
-
 
 /*
  * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty

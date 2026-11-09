@@ -96,9 +96,9 @@ public:
     cv::Mat1f acm;
     cv::Mat1f acmp;
     cv::Mat1f acmpm;
+    cv::Mat1f polarSpec;
     cv::Rect srcROI;
     cv::Rect dstROI;
-    cv::Mat1f polarSpec;
   };
 
   static constexpr int numAngles = 512;

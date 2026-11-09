@@ -330,17 +330,35 @@ bool c_polar_phase_correlate::setup(const cv::Size & expectedFrameSize, c_polar_
 void c_polar_phase_correlate::release()
 {
   _fftSize = cv::Size(0, 0);
+  _referenceFrame.image.release();
+  _referenceFrame.mask.release();
+  _referenceFrame.spec.release();
+  _referenceFrame.autospec.release();
+  _referenceFrame.acm.release();
+  _referenceFrame.acmp.release();
+  _referenceFrame.acmpm.release();
+  _referenceFrame.polarSpec.release();
 
-//
-//  _scaledCurrentImage.release();
-//  _scaledReferenceImage.release();
-//  _scaledCurrentMask.release();
-//  _scaledReferenceMask.release();
-//  _currentSpectrum.release();
-//  _referenceSpectrum.release();
-//  _crossSpectrum.release();
-//  _correlationMap.release();
+  _currentFrame.image.release();
+  _currentFrame.mask.release();
+  _currentFrame.spec.release();
+  _currentFrame.autospec.release();
+  _currentFrame.acm.release();
+  _currentFrame.acmp.release();
+  _currentFrame.acmpm.release();
+  _currentFrame.polarSpec.release();
+
   _apodizationWindow.release();
+  _vlap2.release();
+  _bp1.release();
+  _bp2.release();
+  _bp3.release();
+  _crossSpectrumPolar.release();
+  _correlationMapPolar.release();
+  _derotatedCurrentImage.release();
+  _derotatedCurrentSpec.release();
+  _crossSpectrum.release();
+  _correlationMap.release();
   _initialized = false;
 }
 

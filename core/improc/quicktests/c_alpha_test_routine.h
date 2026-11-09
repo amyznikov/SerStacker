@@ -42,11 +42,6 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double sigma = 1;
-  double eps = 1e-3;
-  int kradius = 2;
-  int dscale = 1;
-  int uscale = 3;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

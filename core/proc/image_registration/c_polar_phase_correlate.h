@@ -16,6 +16,7 @@
 struct c_polar_phase_correlate_options
 {
   double downscale_factor = 1;
+  double drc = 0;
   double gsigma1 = 2;
   double gsigma2 = 2;
   double gsigma3 = 2;
@@ -49,20 +50,27 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor),
       "Image downscale factor >= 1");
 
-  ctlbind(ctls, "gsigma1 [px]:", ctx(&S::gsigma1),
-      "Rotation Estimate: Bandpass filter used to compute image AUTO correlation map before polar conversion");
+  ctlbind(ctls, "maxPooling:", ctx(&S:: maxPooling),
+      "Set true for max pooling - useful for low-contrast deep fields to prevent loss of faint stars");
 
-  ctlbind(ctls, "gsigma2 [px]:", ctx(&S::gsigma2),
-      "Rotation Estimate: Bandpass filter used to compute CROSS correlation of Polar maps");
-
-  ctlbind(ctls, "gsigma3 [px]:", ctx(&S::gsigma3),
-      "Translation Estimate: Bandpass filter used to compute CROSS correlation of reference and current derotated image");
+  ctlbind(ctls, "Dynamic range compression:", ctx(&S::drc),
+      "Dynamic range compression parameter: asinh(v * drc)\n"
+      "Use drc = 0.5 for deep sky fields");
 
   ctlbind(ctls, "apodization:", ctx(&S::apodization),
       "Optional Apodization window parameter [0..1]");
 
-  ctlbind(ctls, "maxPooling:", ctx(&S:: maxPooling),
-      "Set true for max pooling - useful for low-contrast deep fields to prevent loss of faint stars");
+  ctlbind(ctls, "gsigma1 [px]:", ctx(&S::gsigma1),
+      "Rotation Estimate:\n"
+      "Bandpass filter used to compute image AUTO correlation map before polar conversion");
+
+  ctlbind(ctls, "gsigma2 [px]:", ctx(&S::gsigma2),
+      "Rotation Estimate:\n"
+      "Bandpass filter used to compute CROSS correlation of Polar maps");
+
+  ctlbind(ctls, "gsigma3 [px]:", ctx(&S::gsigma3),
+      "Translation Estimate:\n"
+      "Bandpass filter used to compute CROSS correlation of reference and derotated current image");
 
   ctlbind(ctls, "whitenPolarSpecs:", ctx(&S:: whitenPolarSpecs),
       "Set true to apply pure phase correlation for rotation estimation");
@@ -90,7 +98,6 @@ public:
     cv::Mat1f acmpm;
     cv::Rect srcROI;
     cv::Rect dstROI;
-    //cv::Point cropOffset;
     cv::Mat1f polarSpec;
   };
 
@@ -105,7 +112,6 @@ public:
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   bool compute(double & outputEstimatedRotation, cv::Vec2f & outputEstimatedTranslation);
-
 
   const Frame & referenceFrame() const
   {
@@ -139,13 +145,21 @@ public:
   {
     return _correlationMap;
   }
+  double rotationScore() const
+  {
+    return _rotationScore;
+  }
+  double translationScore() const
+  {
+    return _translationScore;
+  }
 
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor);
 
 protected: // internal helpers
   void generateBandpassFilter(cv::Mat1f & filter, const cv::Size & size, double sigma, bool squared) const;
   bool setupInputFrame(cv::InputArray srcImage, cv::InputArray srcMask, Frame * frame);
-  bool computeOrientation(double & outAngleRadian);
+  bool computeRotation(double & outAngleRadian);
   bool computeTranslation(double orientationAngleRadian, cv::Vec2f & outTranslation);
 
   bool estimateRotationPeak(const cv::Mat1f & correlationMap, double crossEnergyScale,
@@ -163,11 +177,13 @@ protected: // internal data
   cv::Size _fftSize;
   cv::Size _expectedFrameSize;
   double _downscale_factor = 1;
+  double _drc = 0;
   double _gsigma1 = 2;
   double _gsigma2 = 2;
   double _gsigma3 = 2;
   double _aalpha = 0.2;
-  double _correlationScore = 0;
+  double _rotationScore = 0;
+  double _translationScore = 0;
   bool _maxPooling = false;
   bool _whitenPolarSpecs = true;
   bool _whitenTransSpecs = true;

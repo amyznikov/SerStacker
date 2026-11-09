@@ -47,89 +47,16 @@
 
 /////////////////////////////////////
 namespace {
-static cv::Size dscaleSize(cv::Size srcSize, int level)
-{
-  for( int l = 0; l < level; ++l ) {
-    const cv::Size nextSize = cv::Size((srcSize.width + 1) / 2, (srcSize.height + 1) / 2);
-    if( std::min(nextSize.width, nextSize.height) < 4 ) {
-      break;
-    }
-    srcSize = nextSize;
-  }
-  return srcSize;
-}
-
-
-static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level,
-    int border_mode = cv::BORDER_DEFAULT)
-{
-  if( std::min(src.cols(), src.rows()) < 4 ) {
-    src.copyTo(dst);
-  }
-  else {
-
-    cv::pyrDown(src, dst, cv::Size(), border_mode);
-
-    if( std::min(dst.cols, dst.rows) >= 4 ) {
-
-      for( int l = 1; l < level; ++l ) {
-
-        cv::pyrDown(dst, dst, cv::Size(), border_mode);
-
-        if( std::min(dst.cols, dst.rows) < 4 ) {
-          break;
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
-static bool pupscale(cv::Mat & image, cv::Size dstSize)
-{
-  const cv::Size inputSize = image.size();
-
-  if( inputSize != dstSize ) {
-
-    std::vector<cv::Size> sizes;
-
-    sizes.emplace_back(dstSize);
-
-    while (42) {
-      const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
-      if( nextSize == inputSize ) {
-        break;
-      }
-      if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
-            nextSize.width, nextSize.height,
-            inputSize.width, inputSize.height);
-        return false;
-      }
-      sizes.emplace_back(nextSize);
-    }
-
-    for( int i = sizes.size() - 1; i > 0; --i ) {
-      cv::pyrUp(image, image, sizes[i]);
-    }
-
-    cv::resize(image, image, sizes[0], 0, 0, cv::INTER_LINEAR);
-  }
-
-  return true;
-}
-
 }
 
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, sigma);
-    SERIALIZE_OPTION(settings, save, *this, eps);
-    SERIALIZE_OPTION(settings, save, *this, kradius);
-    SERIALIZE_OPTION(settings, save, *this, dscale);
-    SERIALIZE_OPTION(settings, save, *this, uscale);
+//    SERIALIZE_OPTION(settings, save, *this, sigma);
+//    SERIALIZE_OPTION(settings, save, *this, eps);
+//    SERIALIZE_OPTION(settings, save, *this, kradius);
+//    SERIALIZE_OPTION(settings, save, *this, dscale);
+//    SERIALIZE_OPTION(settings, save, *this, uscale);
     return true;
   }
   return false;
@@ -137,66 +64,47 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
-  ctlbind(ctls, "eps", CTL_CONTEXT(ctx, eps), "");
-  ctlbind(ctls, "kradius", CTL_CONTEXT(ctx, kradius), "");
-  ctlbind(ctls, "dscale", CTL_CONTEXT(ctx, dscale), "");
-  ctlbind(ctls, "uscale", CTL_CONTEXT(ctx, uscale), "");
+//  ctlbind(ctls, "sigma", CTL_CONTEXT(ctx, sigma), "");
+//  ctlbind(ctls, "eps", CTL_CONTEXT(ctx, eps), "");
+//  ctlbind(ctls, "kradius", CTL_CONTEXT(ctx, kradius), "");
+//  ctlbind(ctls, "dscale", CTL_CONTEXT(ctx, dscale), "");
+//  ctlbind(ctls, "uscale", CTL_CONTEXT(ctx, uscale), "");
 }
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-//  CF_DEBUG("enter");
+  cv::Mat msk;
+  cv::Scalar mv, sv;
 
-  cv::Mat M1, M2, G1, G2, G;
-  if ( image.channels() == 1 ) {
-    image.getMat().convertTo(M1, CV_32F);
-  }
-  else {
-    cv::cvtColor(image, M1, cv::COLOR_BGR2GRAY);
-    M1.convertTo(M1, CV_32F);
-  }
+  const int cn = image.channels();
 
-
-  if( dscale > 0 ) {
-    pdownscale(M1, M1, dscale);
+  if( !mask.empty() ) {
+    if( mask.depth() == CV_8U ) {
+      msk = mask.getMat();
+    }
+    else {
+      cv::compare(mask, 0, msk, cv::CMP_GT);
+    }
   }
 
-  const int ksize1 = 2 * std::max(1, kradius) + 1;
-//  const int ksize2 = 2 * ksize1 + 1;
-  static thread_local cv::Mat1b SE1;
-//  static thread_local cv::Mat1b SE2;
-  if ( SE1.rows != ksize1 ) {
-    SE1 = cv::Mat1b(ksize1, ksize1, 255);
-  }
-//  if ( SE2.rows != ksize2 ) {
-//    SE2 = cv::Mat1b(ksize2, ksize2, 255);
-//  }
 
-  cv::morphologyEx(M1, G, cv::MORPH_GRADIENT, SE1, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-//  cv::morphologyEx(M1, G2, cv::MORPH_GRADIENT, SE2, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-//  cv::absdiff(G1, G2, G);
-//  const float G1_mean = cv::norm(G1, cv::NORM_L1) / G1.size().area();
-//  cv::add(G2, eps * G1_mean, G1);
-//  divideImages(G1, G2, G);
+  cv::meanStdDev(image, mv, sv, msk);
 
-  if( uscale > dscale ) {
-    pdownscale(G, G, uscale - dscale);
-    //cv::resize(G, G, dscaleSize(G.size(), uscale), 0, 0, cv::INTER_AREA);
+  for ( int c = 0; c < cn; ++c ) {
+    if ( sv[c] != 0 ) {
+      sv[c] = 1.0 / sv[c];
+    }
   }
 
-  if ( G.size() != image.size() ) {
-    pupscale(G, image.size());
+  const cv::Scalar bias = -mv.mul(sv);
+
+  cv::Mat1f M = cv::Mat1f::zeros(cn, cn + 1);
+  for (int i = 0; i < cn; ++i) {
+    M(i, i) = sv[i];
+    M(i, cn) = bias[i];
   }
 
-  image.assign(G);
+  cv::transform(image, image, M);
 
-//  CF_DEBUG("leave");
   return true;
 }
-
-
-//  const float G1_mean = cv::norm(G1, cv::NORM_L1) / G1.size().area();
-//  cv::morphologyEx(M2, G2, cv::MORPH_GRADIENT, SE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-//  cv::add(G2, eps, G2);
-//  divideImages(G1, G2, G);

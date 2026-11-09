@@ -3,6 +3,8 @@
  *
  *  Created on: Oct 17, 2026
  *      Author: amyznikov
+ *
+ *
  */
 
 #include "c_polar_phase_correlate.h"
@@ -11,6 +13,8 @@
 #include <core/proc/fft.h>
 #include <core/proc/divide.h>
 #include <core/proc/multiply.h>
+#include <core/proc/asinh.h>
+#include <core/proc/morphse.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -23,9 +27,42 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
-#if 1
+static void normalzeMeanStd(cv::InputArray src, cv::OutputArray dst, cv::InputArray mask = cv::noArray())
+{
+  cv::Mat msk;
+  cv::Scalar mv, sv;
+
+  if( !mask.empty() ) {
+    if( mask.depth() == CV_8U ) {
+      msk = mask.getMat();
+    }
+    else {
+      cv::compare(mask, 0, msk, cv::CMP_GT);
+    }
+  }
+
+  cv::meanStdDev(src, mv, sv, msk);
+
+  const int cn = src.channels();
+  for ( int c = 0; c < cn; ++c ) {
+    if ( sv[c] != 0 ) {
+      sv[c] = 1.0 / sv[c];
+    }
+  }
+
+  const cv::Scalar bias = -mv.mul(sv);
+
+  cv::Mat1f M = cv::Mat1f::zeros(cn, cn + 1);
+  for (int i = 0; i < cn; ++i) {
+    M(i, i) = sv[i];
+    M(i, cn) = bias[i];
+  }
+
+  cv::transform(src, dst, M);
+}
 
 namespace {
+
 struct c_acm2polar_reducer
 {
   const cv::Mat1f & acm;
@@ -158,103 +195,7 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
   // y range is [0..acmSize.height / 2] inclusive:
   parallel_reduce(0, acmSize.height / 2 + 1, reducer);
   divideImages(reducer.acmplr, reducer.cntr, acmplr);
-
 }
-#else
-static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
-{
-  INSTRUMENT_REGION("");
-
-  const cv::Size acmSize = acm.size();
-  const float cx = acmSize.width / 2;
-  const float cy = acmSize.height / 2;
-
-  const int rmin = (int) (2 * nAngles / (3 * CV_PI));
-  const int rmax = std::max(acmSize.width, acmSize.height) / 2;
-
-  const float diff_sqrt = std::sqrt(float(rmax)) - std::sqrt(float(rmin));
-  const float mscale = (diff_sqrt > 0.01f) ? ((float(rmax) * rmax) / (4.f * diff_sqrt * diff_sqrt)) : 1.f;
-
-  const int sqrt_rmin = std::sqrt(rmin * mscale);
-  const int sqrt_rmax = std::sqrt(rmax * mscale);
-  const int sqrt_range = sqrt_rmax - sqrt_rmin;
-  const int nRadii = getOptimalFFTSizeDown((int)sqrt_range);
-
-  const float tscale = float((nAngles) / (CV_PI));
-  const float rscale = float (nRadii - 1) / (sqrt_rmax - sqrt_rmin);
-  const float rscale2 = rscale * std::sqrt(mscale);
-  const float rmin_offset = sqrt_rmin * rscale;
-
-  const cv::Size lpSize(nRadii, nAngles);
-
-  cv::Mat1f cntr(lpSize, 0.f);
-
-  acmplr.create(lpSize);
-  acmplr.setTo(0);
-
-  const uint8_t * const src_base = acm.ptr();
-  const size_t src_stride = acm.step;
-
-  uint8_t * const acmplr_base = acmplr.ptr();
-  const size_t acmplr_stride = acmplr.step;
-
-  uint8_t * const cntr_base = cntr.ptr();
-  const size_t cntr_stride = cntr.step;
-
-  for( int y = 0; y <= acmSize.height / 2; ++y ) {
-
-    const float * srcp = (const float * )(src_base + y * src_stride);
-
-    const float dy = y - cy;
-    const float dy2 = dy * dy;
-
-    const int xbeg = (y < acmSize.height / 2) ? 0 : acmSize.width / 2;
-    for( int x = xbeg; x < acmSize.width; ++x ) {
-
-      const float dx = x - cx;
-      const float dx2 = dx * dx;
-      const float r = std::sqrt(std::sqrt(dx2 + dy2)) * rscale2 - rmin_offset;
-      if ( r < 0 || r >= float(nRadii - 1) ) {
-        continue;
-      }
-
-      const float t = std::atan2(-dy, dx) * tscale;
-      //  if ( t < 0 ) {
-      //    //  must not happen
-      //    CF_ERROR("bad t=%g", t);
-      //    continue;
-      //  }
-
-      const int r0 = int(r);
-      const int r1 = r0 + 1;
-      const int t0 = int(t);
-      const int t1 = t0 + 1 < nAngles ? t0 + 1 : 0;
-      const float dr = r - float(r0);
-      const float dt = t - float(t0);
-
-      const float w00 = (1.f - dt) * (1.f - dr);
-      const float w10 = dt * (1.f - dr);
-      const float w01 = (1.f - dt) * dr;
-      const float w11 = dt * dr;
-
-      const float val = srcp[x];
-
-      float * __restrict acmplr_t0 = (float*) (acmplr_base + t0 * acmplr_stride);
-      float * __restrict acmplr_t1 = (float*) (acmplr_base + t1 * acmplr_stride);
-
-      float * __restrict cntr_t0   = (float*) (cntr_base + t0 * cntr_stride);
-      float * __restrict cntr_t1   = (float*) (cntr_base + t1 * cntr_stride);
-
-      acmplr_t0[r0] += val * w00;   cntr_t0[r0] += w00;
-      acmplr_t1[r0] += val * w10;   cntr_t1[r0] += w10;
-      acmplr_t0[r1] += val * w01;   cntr_t0[r1] += w01;
-      acmplr_t1[r1] += val * w11;   cntr_t1[r1] += w11;
-    }
-  }
-
-  divideImages(acmplr, cntr, acmplr);
-}
-#endif
 
 static double estimateMedian(cv::InputArray image, cv::InputArray mask = cv::noArray())
 {
@@ -361,6 +302,7 @@ bool c_polar_phase_correlate::setup(const cv::Size & expectedFrameSize, c_polar_
   _whitenTransSpecs = opts.whitenTransSpecs;
   _estimateRotation = opts.estimateRotation;
   _estimateTranslation = opts.estimateTranslation;
+  _drc = opts.drc;
 
   if ( opts.gsigma1 != _gsigma1 ) {
     _gsigma1 = opts.gsigma1;
@@ -498,7 +440,7 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
   cv::Mat src, msk;
 
   const double scale = 0.5 / _downscale_factor;
-  static const cv::Mat1b SE33(3, 3, 255);
+  const cv::Mat1b & SE33 = morphse33();
 
   if( !_maxPooling ) {
     cv::resize(srcImage, src, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
@@ -519,9 +461,13 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
 
     INSTRUMENT_REGION("windowed_apodization");
 
-    cv::add(src(frame->srcROI), -estimateMedian(src), frame->image(frame->dstROI), cv::noArray(), CV_32F);
+    normalzeMeanStd(src(frame->srcROI), frame->image(frame->dstROI));
+    if ( _drc > 0 ) {
+      asinh(frame->image(frame->dstROI), frame->image(frame->dstROI), _drc);
+      cv::add(frame->image(frame->dstROI), -estimateMedian(frame->image(frame->dstROI)), frame->image(frame->dstROI));
+    }
 
-    if ( _aalpha > 0 ) {
+    if ( _aalpha > 1 ) {
       const cv::Size apodizationSize((_fftSize.width + 1) / 2, (_fftSize.height + 1) / 2);
       if( _apodizationWindow.size() != apodizationSize ) {
         fftCreateSuperEllipticalApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
@@ -533,20 +479,27 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
 
   }
   else {
-    INSTRUMENT_REGION("mask_apodization");
+    INSTRUMENT_REGION("masked_apodization");
 
-    cv::add(src(frame->srcROI), -estimateMedian(src), frame->image(frame->dstROI), msk(frame->srcROI), CV_32F);
+    normalzeMeanStd(src(frame->srcROI), frame->image(frame->dstROI), msk(frame->srcROI));
+    if ( _drc > 0 ) {
+      asinh(frame->image(frame->dstROI), frame->image(frame->dstROI), _drc);
+      cv::add(frame->image(frame->dstROI), -estimateMedian(frame->image(frame->dstROI)), frame->image(frame->dstROI));
+    }
 
-    static constexpr double maskScale = 0.25;
+    if ( _aalpha > 1 ) {
+      //const double maskScale = std::max(1.0 / _aalpha, std::max(3.0 / msk.cols, 3.0 / msk.rows));
+      const double maskScale = std::clamp(2.0 / _aalpha, std::max(3.0 / msk.cols, 3.0 / msk.rows), 1.0);
 
-    cv::resize(msk, msk, cv::Size(), maskScale, maskScale, cv::INTER_NEAREST);
-    cv::erode(msk, msk, SE33, cv::Point(-1,-1), 1, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    cv::resize(msk, msk, src.size(), 0, 0, cv::INTER_LINEAR);
+      cv::resize(msk, msk, cv::Size(), maskScale, maskScale, cv::INTER_NEAREST);
+      cv::erode(msk, msk, SE33, cv::Point(-1,-1), 1, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+      cv::resize(msk, msk, src.size(), 0, 0, cv::INTER_LINEAR);
 
-    //const cv::Rect roi(dstROI.x, dstROI.y, _apodizationWindow.cols, _apodizationWindow.rows);
-    const cv::Rect roi(frame->dstROI.x, frame->dstROI.y, src.cols, src.rows);
-    multiplyImages(frame->image(roi), msk(frame->srcROI), frame->image(roi), CV_32F, 1. / 255);
+      const cv::Rect roi(frame->dstROI.x, frame->dstROI.y, src.cols, src.rows);
+      multiplyImages(frame->image(roi), msk(frame->srcROI), frame->image(roi), CV_32F, 1. / 255);
+    }
   }
+
 
   // CCS packed output
   if ( true ) {
@@ -688,7 +641,7 @@ bool c_polar_phase_correlate::estimateTranslationPeak(const cv::Mat1f & correlat
 
 
 
-bool c_polar_phase_correlate::computeOrientation(double & outAngleRadian)
+bool c_polar_phase_correlate::computeRotation(double & outAngleRadian)
 {
   INSTRUMENT_REGION("");
 
@@ -730,17 +683,17 @@ bool c_polar_phase_correlate::computeOrientation(double & outAngleRadian)
   }
 
   if (_whitenPolarSpecs) {
-    _correlationScore = peakVal;
+    _rotationScore = peakVal;
   }
   else {
-    _correlationScore = peakVal / std::sqrt(crossEnergy);
+    _rotationScore = peakVal / std::sqrt(crossEnergy);
   }
 
   const double deltaPixels = peakPos.y - _currentFrame.acmp.rows / 2;
   const double tscale = CV_PI / numAngles;
   outAngleRadian = deltaPixels * tscale;
 
-  CF_DEBUG("Rotation: X=%g Y=%g Val=%g delta: %g deg (%g px)", peakPos.x, peakPos.y, peakVal,
+  CF_DEBUG("Rotation: X=%g Y=%g Score=%g delta: %g deg (%g px)", peakPos.x, peakPos.y, _rotationScore,
       outAngleRadian * 180.0 / CV_PI, deltaPixels);
 
   return true;
@@ -814,6 +767,15 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
   double peakVal = 0;
 
   estimateTranslationPeak(_correlationMap, crossEnergyScale, peakPos, peakVal);
+
+  if (_whitenTransSpecs) {
+    _translationScore = peakVal;
+  }
+  else {
+    _translationScore = peakVal * crossEnergyScale;
+  }
+
+
   const float delta_x = peakPos.x - cols / 2;
   const float delta_y = peakPos.y - rows / 2;
 
@@ -838,8 +800,8 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
      outTranslation[1] = -float(tx_ref * sa + ty_ref * ca);
    }
 
-   CF_DEBUG("Translation: CUR: dX=%g dY=%g REF: dX=%g dY=%g, Peak=%g",
-       outTranslation[0], outTranslation[1], tx_ref, ty_ref, peakVal);
+   CF_DEBUG("Translation: Score=%g CUR: dX=%g dY=%g REF: dX=%g dY=%g",
+       _translationScore, outTranslation[0], outTranslation[1], tx_ref, ty_ref);
 
   return true;
 }
@@ -851,7 +813,7 @@ bool c_polar_phase_correlate::compute(double & outputEstimatedRotation, cv::Vec2
   outputEstimatedRotation = 0.0;
   outputEstimatedTranslation = cv::Vec2f(0.f, 0.f);
 
-  if (_estimateRotation && !computeOrientation(outputEstimatedRotation) ) {
+  if (_estimateRotation && !computeRotation(outputEstimatedRotation) ) {
     CF_ERROR("computeOrientation() failed");
     return false;
   }
@@ -869,6 +831,7 @@ bool serialize_polar_phase_correlate_options(c_config_setting section, bool save
     c_polar_phase_correlate_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, downscale_factor);
+  SERIALIZE_OPTION(section, save, opts, drc);
   SERIALIZE_OPTION(section, save, opts, gsigma1);
   SERIALIZE_OPTION(section, save, opts, gsigma2);
   SERIALIZE_OPTION(section, save, opts, gsigma3);

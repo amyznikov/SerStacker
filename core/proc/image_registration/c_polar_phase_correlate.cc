@@ -486,13 +486,23 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
     }
 
     if ( _aalpha > 1 ) {
-      const cv::Size apodizationSize((_fftSize.width + 1) / 2, (_fftSize.height + 1) / 2);
-      if( _apodizationWindow.size() != apodizationSize ) {
-        fftCreateSuperEllipticalApodizationWindow(_apodizationWindow, apodizationSize, _aalpha);
+      if( _apodizationWindow.size() != _fftSize ) {
+        _apodizationWindow.create(_fftSize);
+        _apodizationWindow.setTo(0);
+
+        const cv::Size apodizationSize(_fftSize.width/ 2, _fftSize.height / 2);
+        const int startX = (_fftSize.width - apodizationSize.width) / 2;
+        const int startY = (_fftSize.height - apodizationSize.height) / 2;
+        const cv::Rect centerROI(startX, startY, apodizationSize.width, apodizationSize.height);
+        fftCreateSuperEllipticalApodizationWindow(_apodizationWindow(centerROI), apodizationSize, _aalpha);
       }
 
-      const cv::Rect roi(frame->dstROI.x, frame->dstROI.y, _apodizationWindow.cols, _apodizationWindow.rows);
-      cv::multiply(frame->image(roi), _apodizationWindow, frame->image(roi));
+      //  CF_DEBUG("dstROI: x=%d y=%d w=%d h=%d: _apodizationWindow: %dx%d _fftSize: %dx%d",
+      //    frame->dstROI.x, frame->dstROI.y, frame->dstROI.width, frame->dstROI.height,
+      //    _apodizationWindow.cols, _apodizationWindow.rows,
+      //    _fftSize.width, _fftSize.height);
+
+      cv::multiply(frame->image, _apodizationWindow, frame->image);
     }
 
   }

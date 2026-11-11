@@ -12,7 +12,7 @@
 #include "c_feature2d_matcher.h"
 
 /**
- * Options for c_sorted_norm_based_feature2d_matcher
+ * Options for c_planetary_disk_matcher_options
  */
 struct c_planetary_disk_matcher_options :
     c_feature2d_matcher_base_options
@@ -42,6 +42,12 @@ protected:
   cv::Point2f _reference_planetary_disk_postion;
   cv::Size _reference_planetary_disk_size;
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_planetary_disk_matcher_options> & ctx)
+{
+}
 
 c_planetary_disk_matcher::ptr create_sparse_feature_matcher(const c_planetary_disk_matcher_options & opts);
 

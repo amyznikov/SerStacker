@@ -86,18 +86,6 @@ struct c_flann_autotuned_index_options
 };
 
 
-//struct c_flann_index_options
-//{
-//  FlannIndexType type = FlannIndex_kdtree;
-//  c_flann_linear_index_options linear;
-//  c_flann_kdtree_index_options kdtree;
-//  c_flann_kmeans_index_options kmeans;
-//  c_flann_composite_index_options composite;
-//  c_flann_hierarchical_index_options hierarchical;
-//  c_flann_lsh_index_options lsh;
-//  c_flann_autotuned_index_options autotuned;
-//};
-
 /**
  * Options for c_flann_based_feature2d_matcher
  * */
@@ -152,17 +140,105 @@ protected:
 };
 
 template<>
-const c_enum_member *
-  members_of<cvflann::flann_centers_init_t>();
+const c_enum_member * members_of<cvflann::flann_centers_init_t>();
+template<> const c_enum_member * members_of<cvflann::flann_distance_t>();
+template<> const c_enum_member * members_of<FlannIndexType>();
 
-template<>
-const c_enum_member *
-  members_of<cvflann::flann_distance_t>();
 
-template<>
-const c_enum_member *
-  members_of<FlannIndexType>();
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_linear_index_options> & ctx)
+{
+}
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_kdtree_index_options> & ctx)
+{
+  ctlbind(ctls, "max_distance [bits]:", CTL_CONTEXT(ctx, trees), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_kmeans_index_options> & ctx)
+{
+  ctlbind(ctls, "centers_init:", CTL_CONTEXT(ctx, centers_init), "");
+  ctlbind(ctls, "branching:", CTL_CONTEXT(ctx, branching), "");
+  ctlbind(ctls, "iterations:", CTL_CONTEXT(ctx, iterations), "");
+  ctlbind(ctls, "cb_index:", CTL_CONTEXT(ctx, cb_index), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_composite_index_options> & ctx)
+{
+  ctlbind(ctls, "centers_init:", CTL_CONTEXT(ctx, centers_init), "");
+  ctlbind(ctls, "trees:", CTL_CONTEXT(ctx, trees), "");
+  ctlbind(ctls, "branching:", CTL_CONTEXT(ctx, branching), "");
+  ctlbind(ctls, "iterations:", CTL_CONTEXT(ctx, iterations), "");
+  ctlbind(ctls, "cb_index:", CTL_CONTEXT(ctx, cb_index), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_hierarchical_index_options> & ctx)
+{
+  ctlbind(ctls, "centers_init:", CTL_CONTEXT(ctx, centers_init), "");
+  ctlbind(ctls, "branching:", CTL_CONTEXT(ctx, branching), "");
+  ctlbind(ctls, "trees:", CTL_CONTEXT(ctx, trees), "");
+  ctlbind(ctls, "leaf_size:", CTL_CONTEXT(ctx, leaf_size), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_lsh_index_options> & ctx)
+{
+  ctlbind(ctls, "table_number:", CTL_CONTEXT(ctx, table_number), "");
+  ctlbind(ctls, "key_size:", CTL_CONTEXT(ctx, key_size), "");
+  ctlbind(ctls, "multi_probe_level:", CTL_CONTEXT(ctx, multi_probe_level), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_autotuned_index_options> & ctx)
+{
+  ctlbind(ctls, "target_precision:", CTL_CONTEXT(ctx, target_precision), "");
+  ctlbind(ctls, "build_weight:", CTL_CONTEXT(ctx, build_weight), "");
+  ctlbind(ctls, "memory_weight:", CTL_CONTEXT(ctx, memory_weight), "");
+  ctlbind(ctls, "sample_fraction:", CTL_CONTEXT(ctx, sample_fraction), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_flann_based_feature2d_matcher_options> & ctx)
+{
+  ctlbind(ctls, "distance_type:", CTL_CONTEXT(ctx, distance_type), "");
+  ctlbind(ctls, "lowe_ratio:", CTL_CONTEXT(ctx, lowe_ratio), "");
+
+  ctlbind_stacked_group(ctls, "FLANN Index Type:", CTL_CONTEXT(ctx, index_type),  [&]() {
+    ctlbind_selectable_group(ctls, FlannIndex_linear, [&, ctx = CTL_CONTEXT(ctx, linear)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_kdtree, [&, ctx = CTL_CONTEXT(ctx, kdtree)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_kmeans, [&, ctx = CTL_CONTEXT(ctx, kmeans)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_composite, [&, ctx = CTL_CONTEXT(ctx, composite)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_hierarchical, [&, ctx = CTL_CONTEXT(ctx, hierarchical)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_lsh, [&, ctx = CTL_CONTEXT(ctx, lsh)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FlannIndex_autotuned, [&, ctx = CTL_CONTEXT(ctx, autotuned)] () {
+        ctlbind(ctls, ctx);
+    });
+  });
+}
 
 c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
     const c_flann_based_feature2d_matcher_options & options);

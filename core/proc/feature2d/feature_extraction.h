@@ -48,44 +48,6 @@
     CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
-//#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(4,4,0) )
-//#if HAVE_OpenCV_xfeatures2d
-//using SIFT = xfeatures2d::SIFT;
-//using SURF = xfeatures2d::SURF;
-//
-//#define HAVE_FEATURE2D_BRIEF  1
-//#define HAVE_FEATURE2D_SIFT   1
-//#define HAVE_FEATURE2D_SURF   1
-//#define HAVE_FEATURE2D_FREAK  1
-//#define HAVE_FEATURE2D_STAR   1
-//#define HAVE_FEATURE2D_LUCID  1
-//#define HAVE_FEATURE2D_LATCH  1
-//#define HAVE_FEATURE2D_DAISY  1
-//#define HAVE_FEATURE2D_MSD    1
-//#define HAVE_FEATURE2D_VGG    1
-//#define HAVE_FEATURE2D_BOOST  1
-//#define HAVE_FEATURE2D_HL     1
-//#endif
-//#else
-//using SIFT = cv::SIFT;
-//#define HAVE_FEATURE2D_SIFT 1
-//#if HAVE_OpenCV_xfeatures2d
-//using SURF = cv::xfeatures2d::SURF;
-//
-//#define HAVE_FEATURE2D_BRIEF  1
-//#define HAVE_FEATURE2D_SURF   1
-//#define HAVE_FEATURE2D_FREAK  1
-//#define HAVE_FEATURE2D_STAR   1
-//#define HAVE_FEATURE2D_LUCID  1
-//#define HAVE_FEATURE2D_LATCH  1
-//#define HAVE_FEATURE2D_DAISY  1
-//#define HAVE_FEATURE2D_MSD    1
-//#define HAVE_FEATURE2D_VGG    1
-//#define HAVE_FEATURE2D_BOOST  1
-//#define HAVE_FEATURE2D_HL     1
-//#endif
-//#endif
-
 #if (CV_VERSION_MAJOR >= 5)
   using SIFT = cv::SIFT;
   #define HAVE_FEATURE2D_SIFT 1
@@ -1809,26 +1771,26 @@ struct c_sparse_feature_detector_options
 #endif
 };
 
-template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_sparse_feature_detector_options> & ctx,
-    const std::string & cdesc = "")
-{
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_sparse_feature_detector_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::SparseFeatureDetector;
-
-  c.sparse_feature_detector =
-      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
-}
+//template<class RootObjectType>
+//void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+//    const c_ctlbind_context<RootObjectType, c_sparse_feature_detector_options> & ctx,
+//    const std::string & cdesc = "")
+//{
+//  using BindType = c_ctlbind<RootObjectType>;
+//  using FieldType = c_sparse_feature_detector_options;
+//
+//  BindType c;
+//  c.cname = cname;
+//  c.cdesc = cdesc;
+//  c.ctype = BindType::CtlType::SparseFeatureDetector;
+//
+//  c.sparse_feature_detector =
+//      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
+//        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+//      };
+//
+//  ctls.emplace_back(c);
+//}
 
 
 
@@ -1880,28 +1842,28 @@ struct c_sparse_feature_descriptor_options
 };
 
 
-template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_sparse_feature_descriptor_options> & ctx,
-    const std::string & cdesc = "")
-{
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_sparse_feature_descriptor_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::SparseFeatureDescriptor;
-
-  const size_t offset = ctx.offset;
-
-  c.sparse_feature_descriptor =
-      [offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
-}
+//template<class RootObjectType>
+//void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+//    const c_ctlbind_context<RootObjectType, c_sparse_feature_descriptor_options> & ctx,
+//    const std::string & cdesc = "")
+//{
+//  using BindType = c_ctlbind<RootObjectType>;
+//  using FieldType = c_sparse_feature_descriptor_options;
+//
+//  BindType c;
+//  c.cname = cname;
+//  c.cdesc = cdesc;
+//  c.ctype = BindType::CtlType::SparseFeatureDescriptor;
+//
+//  const size_t offset = ctx.offset;
+//
+//  c.sparse_feature_descriptor =
+//      [offset](RootObjectType * obj) -> FieldType *  {
+//        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+//      };
+//
+//  ctls.emplace_back(c);
+//}
 
 c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector_options & options);
 c_feature2d::sptr create_sparse_descriptor_extractor(const c_sparse_feature_descriptor_options & options);
@@ -1931,8 +1893,8 @@ template<class RootObjectType>
 void ctlbind_sparse_feature_detector(c_ctlist<RootObjectType> & ctls,
     const c_ctlbind_context<RootObjectType, c_sparse_feature_detector_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_sparse_feature_detector_options;
+//  using BindType = c_ctlbind<RootObjectType>;
+//  using FieldType = c_sparse_feature_detector_options;
 
   ctlbind_stacked_group(ctls, "Detector:", CTL_CONTEXT(ctx, type),  [&]() {
     ctlbind_selectable_group(ctls, SPARSE_FEATURE_DETECTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
@@ -2111,10 +2073,10 @@ template<class RootObjectType>
 void ctlbind_sparse_feature_descriptor(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
     c_sparse_feature_descriptor_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_sparse_feature_descriptor_options;
+//  using BindType = c_ctlbind<RootObjectType>;
+//  using FieldType = c_sparse_feature_descriptor_options;
 
-  ctlbind_stacked_group(ctls, "Descripoor:",  CTL_CONTEXT(ctx, type), [&]() {
+  ctlbind_stacked_group(ctls, "Descriptor:",  CTL_CONTEXT(ctx, type), [&]() {
     ctlbind_selectable_group(ctls, SPARSE_FEATURE_DESCRIPTOR_ORB, [&, ctx = CTL_CONTEXT(ctx, orb)] () {
       ctlbind(ctls, "nfeatures", CTL_CONTEXT(ctx, nfeatures), "");
       ctlbind(ctls, "scaleFactor", CTL_CONTEXT(ctx, scaleFactor), "");

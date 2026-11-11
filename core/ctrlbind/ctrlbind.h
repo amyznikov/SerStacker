@@ -67,11 +67,6 @@ struct c_ctlbind
 
     ImageProcessorCombobox,
     CameraIntrinsicts,
-    SparseFeatureDetector,
-    SparseFeatureDescriptor,
-    SparseFeatureMatcher,
-    FeatureRegistrationOptions,
-    // InputSourceSelection,
     MasterFrameSelection,
     StereoInputSourceSelection,
     DataAnnotationSelector,
@@ -99,10 +94,6 @@ struct c_ctlbind
   std::function<bool(const RootObjectType*, std::string*)> getvalue;
   std::function<bool(RootObjectType*, const std::string&)> setvalue;
   std::function<c_camera_intrinsics*(RootObjectType*)> camera_intrinsicts;
-  std::function<c_sparse_feature_detector_options*(RootObjectType*)> sparse_feature_detector;
-  std::function<c_sparse_feature_descriptor_options*(RootObjectType*)> sparse_feature_descriptor;
-  std::function<c_feature2d_matcher_options*(RootObjectType*)> sparse_feature_matcher;
-  std::function<c_feature_registration_options *(RootObjectType *)> feature_registration_options;
   std::function<c_master_frame_selection_options*(RootObjectType*)> master_frame_selection;
   std::function<c_stereo_input_source_options*(RootObjectType*)> stereo_input_source_options;
   std::function<bool(RootObjectType*, int cmap, int * label)> get_data_annotation;

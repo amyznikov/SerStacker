@@ -1892,6 +1892,7 @@ static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectTy
     ctlbind(ctls, "Save Generated Master Frame:", ctx(&S::save_master_frame), ""); //  _this->_master_options.generate_master_frame);
     ctlbind(ctls, "Stop after master generation:", ctx(&S::stop_after_master_frame_generation), "Finish pipeline after master frame generation" ); //   _this->_master_options.generate_master_frame);
     ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
+
     ctlbind(ctls, ctx(&S::registration));
 
     ctlbind_menu_button(ctls, "Options...", ctx);

@@ -45,34 +45,58 @@ struct c_feature2d_matcher_options {
   c_snorm_based_feature2d_matcher_options snorm;
 };
 
+//template<class RootObjectType>
+//void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+//    const c_ctlbind_context<RootObjectType, c_feature2d_matcher_options> & ctx,
+//    const std::string & cdesc = "")
+//{
+//  using BindType = c_ctlbind<RootObjectType>;
+//  using FieldType = c_feature2d_matcher_options;
+//
+//  BindType c;
+//  c.cname = cname;
+//  c.cdesc = cdesc;
+//  c.ctype = BindType::CtlType::SparseFeatureMatcher;
+//
+//  const size_t offset = ctx.offset;
+//  c.sparse_feature_matcher =
+//      [offset](RootObjectType * obj) -> FieldType *  {
+//        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+//      };
+//
+//  ctls.emplace_back(c);
+//}
+
 template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_feature2d_matcher_options> & ctx,
-    const std::string & cdesc = "")
+void ctlbind_feature2d_matcher_options(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_feature2d_matcher_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_feature2d_matcher_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::SparseFeatureMatcher;
-
-  const size_t offset = ctx.offset;
-  c.sparse_feature_matcher =
-      [offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
+  ctlbind_stacked_group(ctls, "Feature2D Matcher:", CTL_CONTEXT(ctx, type),  [&]() {
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_HAMMING, [&, ctx = CTL_CONTEXT(ctx, hamming)] () {
+        ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_FLANN, [&, ctx = CTL_CONTEXT(ctx, flann)] () {
+      ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_TRIANGLES, [&, ctx = CTL_CONTEXT(ctx, triangles)] () {
+      ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_SNORM, [&, ctx = CTL_CONTEXT(ctx, snorm)] () {
+      ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_OptFlowPyrLK, [&, ctx = CTL_CONTEXT(ctx, optflowpyrlk)] () {
+      ctlbind(ctls, ctx);
+    });
+    ctlbind_selectable_group(ctls, FEATURE2D_MATCHER_PLANETARY_DISK, [&, ctx = CTL_CONTEXT(ctx, planetary_disk)] () {
+      ctlbind(ctls, ctx);
+    });
+  });
 }
 
-c_feature2d_matcher::sptr create_sparse_feature_matcher(
-    const c_feature2d_matcher_options & options);
 
+c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_feature2d_matcher_options & options);
 c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_feature2d::sptr & descriptor,
     const c_feature2d_matcher_options & options);
-
 
 void dump_supported_feature2d_matchers(FILE * fp = stdout);
 

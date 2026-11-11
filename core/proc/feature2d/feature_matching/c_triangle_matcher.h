@@ -109,7 +109,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
     c_triangle_matcher_options> & ctx)
 {
   using S = c_triangle_matcher_options;
-  ctlbind(ctls, "eps", ctx(&S::eps), "");
+  ctlbind(ctls, "eps", CTL_CONTEXT(ctx, eps), "");
 }
 
 class c_triangle_matcher :

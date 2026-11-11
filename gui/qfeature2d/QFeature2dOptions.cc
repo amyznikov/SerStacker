@@ -387,249 +387,249 @@ static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_flann_au
 }
 
 
-template<class F>
-void QSparseFeatureDetectorOptions::addStackWidget(F c_sparse_feature_detector_options::* mp)
-{
-  auto w = new QSparseFeature2DOptionsTemplate<typename F::feature2d_class>(this);
-  _stack->addWidget(w);
-
-  QObject::connect(this, &ThisClass::populatecontrols,
-      [this, w, mp]() {
-        w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
-      });
-
-  QObject::connect(w, &QSettingsWidget::parameterChanged,
-      this, &ThisClass::parameterChanged);
-}
-
-
-QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
-    Base(parent)
-{
-
-  detectorType_ctl =
-      add_enum_combobox<SPARSE_FEATURE_DETECTOR_TYPE>(
-          "DETECTOR_TYPE",
-          "",
-          [this](SPARSE_FEATURE_DETECTOR_TYPE value) {
-            if ( _opts && _opts->type != value ) {
-              _opts->type = value;
-              updateDetectorSpecificControls();
-              Q_EMIT detectorTypeChanged();
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](SPARSE_FEATURE_DETECTOR_TYPE * value) {
-            if ( _opts ) {
-              *value = _opts->type;
-              return true;
-            }
-            return false;
-          });
-
-  max_keypoints_ctl =
-      add_numeric_box<int>("Max. key points:",
-          "",
-          [this](int value) {
-            if ( _opts && _opts->max_keypoints != value ) {
-              _opts->max_keypoints = value;
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](int * value) {
-            if ( _opts ) {
-              * value = _opts->max_keypoints;
-              return true;
-            }
-            return false;
-          });
-
-
-
-  ThisClass::addRow(_stack = new QStackedWidget(this));
-
-  addStackWidget(&c_sparse_feature_detector_options::orb);
-  addStackWidget(&c_sparse_feature_detector_options::brisk);
-  addStackWidget(&c_sparse_feature_detector_options::kaze);
-  addStackWidget(&c_sparse_feature_detector_options::akaze);
-  addStackWidget(&c_sparse_feature_detector_options::mser);
-  addStackWidget(&c_sparse_feature_detector_options::fast);
-  addStackWidget(&c_sparse_feature_detector_options::agast);
-  addStackWidget(&c_sparse_feature_detector_options::gftt);
-  addStackWidget(&c_sparse_feature_detector_options::blob);
-#if HAVE_FEATURE2D_SIFT
-  addStackWidget(&c_sparse_feature_detector_options::sift);
-#endif
-#if HAVE_FEATURE2D_SURF
-  addStackWidget(&c_sparse_feature_detector_options::surf);
-#endif
-#if HAVE_FEATURE2D_STAR
-  addStackWidget(&c_sparse_feature_detector_options::star);
-#endif
-#if HAVE_MORPH_EXTRACTOR
-  addStackWidget(&c_sparse_feature_detector_options::morph);
-#endif
-#if HAVE_STAR_EXTRACTOR
-  addStackWidget(&c_sparse_feature_detector_options::sex);
-#endif
-#if HAVE_FEATURE2D_MSD
-  addStackWidget(&c_sparse_feature_detector_options::msd);
-#endif
-#if HAVE_FEATURE2D_HL
-  addStackWidget(&c_sparse_feature_detector_options::hl);
-#endif
-#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
-  addStackWidget(&c_sparse_feature_detector_options::planetary_disk_detector);
-#endif
-
-  QObject::connect(this, &ThisClass::enablecontrols,
-      [this]() {
-        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
-        if ( currentSettings ) {
-          currentSettings->setEnabled(_opts != nullptr);
-          if ( _opts )  {
-            currentSettings->enablecontrols();
-          }
-        }
-  });
-
-  QObject::connect(this, &ThisClass::populatecontrols,
-      this, &ThisClass::updateDetectorSpecificControls);
-
-  updateControls();
-}
-
-void QSparseFeatureDetectorOptions::updateDetectorSpecificControls()
-{
-  if ( _opts ) {
-    QSettingsWidget * currentSettings =
-        _stack->findChild<QSettingsWidget*>(QString::fromStdString(toString(_opts->type)),
-            Qt::FindDirectChildrenOnly);
-
-    if ( !currentSettings ) {
-      _stack->setEnabled(false);
-    }
-    else {
-      _stack->setCurrentWidget(currentSettings);
-      _stack->setEnabled(true);
-    }
-  }
-}
+//template<class F>
+//void QSparseFeatureDetectorOptions::addStackWidget(F c_sparse_feature_detector_options::* mp)
+//{
+//  auto w = new QSparseFeature2DOptionsTemplate<typename F::feature2d_class>(this);
+//  _stack->addWidget(w);
+//
+//  QObject::connect(this, &ThisClass::populatecontrols,
+//      [this, w, mp]() {
+//        w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
+//      });
+//
+//  QObject::connect(w, &QSettingsWidget::parameterChanged,
+//      this, &ThisClass::parameterChanged);
+//}
+//
+//
+//QSparseFeatureDetectorOptions::QSparseFeatureDetectorOptions(QWidget * parent) :
+//    Base(parent)
+//{
+//
+//  detectorType_ctl =
+//      add_enum_combobox<SPARSE_FEATURE_DETECTOR_TYPE>(
+//          "DETECTOR_TYPE",
+//          "",
+//          [this](SPARSE_FEATURE_DETECTOR_TYPE value) {
+//            if ( _opts && _opts->type != value ) {
+//              _opts->type = value;
+//              updateDetectorSpecificControls();
+//              Q_EMIT detectorTypeChanged();
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](SPARSE_FEATURE_DETECTOR_TYPE * value) {
+//            if ( _opts ) {
+//              *value = _opts->type;
+//              return true;
+//            }
+//            return false;
+//          });
+//
+//  max_keypoints_ctl =
+//      add_numeric_box<int>("Max. key points:",
+//          "",
+//          [this](int value) {
+//            if ( _opts && _opts->max_keypoints != value ) {
+//              _opts->max_keypoints = value;
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](int * value) {
+//            if ( _opts ) {
+//              * value = _opts->max_keypoints;
+//              return true;
+//            }
+//            return false;
+//          });
+//
+//
+//
+//  ThisClass::addRow(_stack = new QStackedWidget(this));
+//
+//  addStackWidget(&c_sparse_feature_detector_options::orb);
+//  addStackWidget(&c_sparse_feature_detector_options::brisk);
+//  addStackWidget(&c_sparse_feature_detector_options::kaze);
+//  addStackWidget(&c_sparse_feature_detector_options::akaze);
+//  addStackWidget(&c_sparse_feature_detector_options::mser);
+//  addStackWidget(&c_sparse_feature_detector_options::fast);
+//  addStackWidget(&c_sparse_feature_detector_options::agast);
+//  addStackWidget(&c_sparse_feature_detector_options::gftt);
+//  addStackWidget(&c_sparse_feature_detector_options::blob);
+//#if HAVE_FEATURE2D_SIFT
+//  addStackWidget(&c_sparse_feature_detector_options::sift);
+//#endif
+//#if HAVE_FEATURE2D_SURF
+//  addStackWidget(&c_sparse_feature_detector_options::surf);
+//#endif
+//#if HAVE_FEATURE2D_STAR
+//  addStackWidget(&c_sparse_feature_detector_options::star);
+//#endif
+//#if HAVE_MORPH_EXTRACTOR
+//  addStackWidget(&c_sparse_feature_detector_options::morph);
+//#endif
+//#if HAVE_STAR_EXTRACTOR
+//  addStackWidget(&c_sparse_feature_detector_options::sex);
+//#endif
+//#if HAVE_FEATURE2D_MSD
+//  addStackWidget(&c_sparse_feature_detector_options::msd);
+//#endif
+//#if HAVE_FEATURE2D_HL
+//  addStackWidget(&c_sparse_feature_detector_options::hl);
+//#endif
+//#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+//  addStackWidget(&c_sparse_feature_detector_options::planetary_disk_detector);
+//#endif
+//
+//  QObject::connect(this, &ThisClass::enablecontrols,
+//      [this]() {
+//        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
+//        if ( currentSettings ) {
+//          currentSettings->setEnabled(_opts != nullptr);
+//          if ( _opts )  {
+//            currentSettings->enablecontrols();
+//          }
+//        }
+//  });
+//
+//  QObject::connect(this, &ThisClass::populatecontrols,
+//      this, &ThisClass::updateDetectorSpecificControls);
+//
+//  updateControls();
+//}
+//
+//void QSparseFeatureDetectorOptions::updateDetectorSpecificControls()
+//{
+//  if ( _opts ) {
+//    QSettingsWidget * currentSettings =
+//        _stack->findChild<QSettingsWidget*>(QString::fromStdString(toString(_opts->type)),
+//            Qt::FindDirectChildrenOnly);
+//
+//    if ( !currentSettings ) {
+//      _stack->setEnabled(false);
+//    }
+//    else {
+//      _stack->setCurrentWidget(currentSettings);
+//      _stack->setEnabled(true);
+//    }
+//  }
+//}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-template<class F>
-void QSparseFeatureDescriptorOptions::addStackWidget(F c_sparse_feature_descriptor_options::* mp)
-{
-  auto w = new QSparseFeature2DOptionsTemplate<typename F::feature2d_class>(this);
-  _stack->addWidget(w);
-
-  QObject::connect(this, &ThisClass::populatecontrols,
-      [this, w, mp]() {
-        w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
-      });
-
-  QObject::connect(w, &QSettingsWidget::parameterChanged,
-      this, &ThisClass::parameterChanged);
-}
-
-
-QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * parent) :
-    Base(parent)
-{
-  descriptorType_ctl =
-      add_enum_combobox<SPARSE_FEATURE_DESCRIPTOR_TYPE>(
-          "DESCRIPTOR_TYPE",
-          "",
-          [this](SPARSE_FEATURE_DESCRIPTOR_TYPE value) {
-            if ( _opts && _opts->type != value ) {
-              _opts->type = value;
-              updateDescriptorSpecificControls();
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](SPARSE_FEATURE_DESCRIPTOR_TYPE * value) {
-            if ( _opts ) {
-              *value = _opts->type;
-              return true;
-            }
-            return false;
-          }
-      );
-
-  ThisClass::addRow(_stack = new QStackedWidget(this));
-
-  addStackWidget(&c_sparse_feature_descriptor_options::orb);
-  addStackWidget(&c_sparse_feature_descriptor_options::brisk);
-  addStackWidget(&c_sparse_feature_descriptor_options::kaze);
-  addStackWidget(&c_sparse_feature_descriptor_options::akaze);
-#if HAVE_FEATURE2D_SIFT
-  addStackWidget(&c_sparse_feature_descriptor_options::sift);
-#endif
-#if HAVE_FEATURE2D_SURF
-  addStackWidget(&c_sparse_feature_descriptor_options::surf);
-#endif
-#if HAVE_FEATURE2D_FREAK
-  addStackWidget(&c_sparse_feature_descriptor_options::freak);
-#endif
-#if HAVE_FEATURE2D_BRIEF
-  addStackWidget(&c_sparse_feature_descriptor_options::brief);
-#endif
-#if HAVE_FEATURE2D_LUCID
-  addStackWidget(&c_sparse_feature_descriptor_options::lucid);
-#endif
-#if HAVE_FEATURE2D_LATCH
-  addStackWidget(&c_sparse_feature_descriptor_options::latch);
-#endif
-#if HAVE_FEATURE2D_DAISY
-  addStackWidget(&c_sparse_feature_descriptor_options::daisy);
-#endif
-#if HAVE_FEATURE2D_VGG
-  addStackWidget(&c_sparse_feature_descriptor_options::vgg);
-#endif
-#if HAVE_FEATURE2D_BOOST
-  addStackWidget(&c_sparse_feature_descriptor_options::boost);
-#endif
-#if HAVE_TRIANGLE_EXTRACTOR
-  addStackWidget(&c_sparse_feature_descriptor_options::triangles);
-#endif
-
-  QObject::connect(this, &ThisClass::enablecontrols,
-      [this]() {
-        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
-        if ( currentSettings ) {
-          currentSettings->setEnabled(_opts != nullptr);
-          if ( _opts )  {
-            currentSettings->enablecontrols();
-          }
-        }
-  });
-
-  QObject::connect(this, &ThisClass::populatecontrols,
-      this, &ThisClass::updateDescriptorSpecificControls);
-
-  updateControls();
-  //updateDescriptorSpecificControls();
-}
-
-void QSparseFeatureDescriptorOptions::updateDescriptorSpecificControls()
-{
-  if ( _opts ) {
-    QSettingsWidget * currentSettings =
-        _stack->findChild<QSettingsWidget*>(QString::fromStdString(toString(_opts->type)),
-            Qt::FindDirectChildrenOnly);
-
-    if ( !currentSettings ) {
-      _stack->setEnabled(false);
-    }
-    else {
-      _stack->setCurrentWidget(currentSettings);
-      _stack->setEnabled(true);
-    }
-  }
-}
+//
+//
+//template<class F>
+//void QSparseFeatureDescriptorOptions::addStackWidget(F c_sparse_feature_descriptor_options::* mp)
+//{
+//  auto w = new QSparseFeature2DOptionsTemplate<typename F::feature2d_class>(this);
+//  _stack->addWidget(w);
+//
+//  QObject::connect(this, &ThisClass::populatecontrols,
+//      [this, w, mp]() {
+//        w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
+//      });
+//
+//  QObject::connect(w, &QSettingsWidget::parameterChanged,
+//      this, &ThisClass::parameterChanged);
+//}
+//
+//
+//QSparseFeatureDescriptorOptions::QSparseFeatureDescriptorOptions(QWidget * parent) :
+//    Base(parent)
+//{
+//  descriptorType_ctl =
+//      add_enum_combobox<SPARSE_FEATURE_DESCRIPTOR_TYPE>(
+//          "DESCRIPTOR_TYPE",
+//          "",
+//          [this](SPARSE_FEATURE_DESCRIPTOR_TYPE value) {
+//            if ( _opts && _opts->type != value ) {
+//              _opts->type = value;
+//              updateDescriptorSpecificControls();
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](SPARSE_FEATURE_DESCRIPTOR_TYPE * value) {
+//            if ( _opts ) {
+//              *value = _opts->type;
+//              return true;
+//            }
+//            return false;
+//          }
+//      );
+//
+//  ThisClass::addRow(_stack = new QStackedWidget(this));
+//
+//  addStackWidget(&c_sparse_feature_descriptor_options::orb);
+//  addStackWidget(&c_sparse_feature_descriptor_options::brisk);
+//  addStackWidget(&c_sparse_feature_descriptor_options::kaze);
+//  addStackWidget(&c_sparse_feature_descriptor_options::akaze);
+//#if HAVE_FEATURE2D_SIFT
+//  addStackWidget(&c_sparse_feature_descriptor_options::sift);
+//#endif
+//#if HAVE_FEATURE2D_SURF
+//  addStackWidget(&c_sparse_feature_descriptor_options::surf);
+//#endif
+//#if HAVE_FEATURE2D_FREAK
+//  addStackWidget(&c_sparse_feature_descriptor_options::freak);
+//#endif
+//#if HAVE_FEATURE2D_BRIEF
+//  addStackWidget(&c_sparse_feature_descriptor_options::brief);
+//#endif
+//#if HAVE_FEATURE2D_LUCID
+//  addStackWidget(&c_sparse_feature_descriptor_options::lucid);
+//#endif
+//#if HAVE_FEATURE2D_LATCH
+//  addStackWidget(&c_sparse_feature_descriptor_options::latch);
+//#endif
+//#if HAVE_FEATURE2D_DAISY
+//  addStackWidget(&c_sparse_feature_descriptor_options::daisy);
+//#endif
+//#if HAVE_FEATURE2D_VGG
+//  addStackWidget(&c_sparse_feature_descriptor_options::vgg);
+//#endif
+//#if HAVE_FEATURE2D_BOOST
+//  addStackWidget(&c_sparse_feature_descriptor_options::boost);
+//#endif
+//#if HAVE_TRIANGLE_EXTRACTOR
+//  addStackWidget(&c_sparse_feature_descriptor_options::triangles);
+//#endif
+//
+//  QObject::connect(this, &ThisClass::enablecontrols,
+//      [this]() {
+//        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
+//        if ( currentSettings ) {
+//          currentSettings->setEnabled(_opts != nullptr);
+//          if ( _opts )  {
+//            currentSettings->enablecontrols();
+//          }
+//        }
+//  });
+//
+//  QObject::connect(this, &ThisClass::populatecontrols,
+//      this, &ThisClass::updateDescriptorSpecificControls);
+//
+//  updateControls();
+//  //updateDescriptorSpecificControls();
+//}
+//
+//void QSparseFeatureDescriptorOptions::updateDescriptorSpecificControls()
+//{
+//  if ( _opts ) {
+//    QSettingsWidget * currentSettings =
+//        _stack->findChild<QSettingsWidget*>(QString::fromStdString(toString(_opts->type)),
+//            Qt::FindDirectChildrenOnly);
+//
+//    if ( !currentSettings ) {
+//      _stack->setEnabled(false);
+//    }
+//    else {
+//      _stack->setCurrentWidget(currentSettings);
+//      _stack->setEnabled(true);
+//    }
+//  }
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1105,101 +1105,101 @@ QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget *
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
-    Base(parent)
-{
-  sparseFeatureMatcherType_ctl =
-      add_enum_combobox<FEATURE2D_MATCHER_TYPE>(
-          "Feature matcher:",
-          "",
-          [this](FEATURE2D_MATCHER_TYPE value) {
-            if ( _opts && _opts->type != value ) {
-              _opts->type = value;
-              showMatcherSpecificControls();
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](FEATURE2D_MATCHER_TYPE * value) {
-            if ( _opts ) {
-              * value = _opts->type;
-              return true;
-            }
-            return false;
-          });
-
-  _stack = new QStackedWidget(this);
-  ThisClass::addRow(_stack);
-
-  _stack->addWidget(hammingDistanceFeature2dMatcherOptions_ctl = new QHammingDistanceFeature2dMatcherOptions(this));
-  _stack->addWidget(flannBasedFeature2dMatcherOptions_ctl = new QFlannBasedFeature2dMatcherOptions(this));
-  _stack->addWidget(optFlowPyrLKMatcherOptions_ctl = new QOptFlowPyrLKMatcherOptions(this));
-  _stack->addWidget(triangleMatcherOptions_ctl = new QTriangleMatcherOptions(this));
-  _stack->addWidget(snormBasedFeature2dMatcherOptions_ctl = new QSnormBasedFeature2dMatcherOptions(this));
-  _stack->addWidget(planetaryDiskMatcherOptions_ctl = new QPlanetaryDiskMatcherOptions(this));
-
-  connect(hammingDistanceFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-  connect(flannBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-  connect(optFlowPyrLKMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-  connect(triangleMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-  connect(snormBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-  connect(planetaryDiskMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
-
-
-  QObject::connect(this, &ThisClass::enablecontrols,
-      [this]() {
-        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
-        if ( currentSettings ) {
-          currentSettings->setEnabled(_opts != nullptr);
-          if ( _opts )  {
-            currentSettings->enablecontrols();
-          }
-        }
-  });
-
-  QObject::connect(this, &ThisClass::populatecontrols,
-      [this]() {
-        hammingDistanceFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->hamming : nullptr);
-        flannBasedFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->flann : nullptr);
-        optFlowPyrLKMatcherOptions_ctl->setOpts(_opts? &_opts->optflowpyrlk : nullptr);
-        triangleMatcherOptions_ctl->setOpts(_opts? &_opts->triangles : nullptr);
-        snormBasedFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->snorm : nullptr);
-        planetaryDiskMatcherOptions_ctl->setOpts(_opts? &_opts->planetary_disk : nullptr);
-        showMatcherSpecificControls();
-      });
-
-  updateControls();
-}
-
-void QSparseFeatureMatcherOptions::showMatcherSpecificControls()
-{
-  if( _opts ) {
-    switch (_opts->type) {
-      case FEATURE2D_MATCHER_HAMMING:
-        _stack->setCurrentWidget(hammingDistanceFeature2dMatcherOptions_ctl);
-        break;
-      case FEATURE2D_MATCHER_FLANN:
-        _stack->setCurrentWidget(flannBasedFeature2dMatcherOptions_ctl);
-        break;
-      case FEATURE2D_MATCHER_OptFlowPyrLK:
-        _stack->setCurrentWidget(optFlowPyrLKMatcherOptions_ctl);
-        break;
-      case FEATURE2D_MATCHER_TRIANGLES:
-        _stack->setCurrentWidget(triangleMatcherOptions_ctl);
-        break;
-      case FEATURE2D_MATCHER_SNORM:
-        _stack->setCurrentWidget(snormBasedFeature2dMatcherOptions_ctl);
-        break;
-      case FEATURE2D_MATCHER_PLANETARY_DISK:
-        _stack->setCurrentWidget(planetaryDiskMatcherOptions_ctl);
-        break;
-      default:
-        _stack->setEnabled(false);
-        return;
-    }
-    _stack->setEnabled(true);
-  }
-}
+//
+//QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
+//    Base(parent)
+//{
+//  sparseFeatureMatcherType_ctl =
+//      add_enum_combobox<FEATURE2D_MATCHER_TYPE>(
+//          "Feature matcher:",
+//          "",
+//          [this](FEATURE2D_MATCHER_TYPE value) {
+//            if ( _opts && _opts->type != value ) {
+//              _opts->type = value;
+//              showMatcherSpecificControls();
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](FEATURE2D_MATCHER_TYPE * value) {
+//            if ( _opts ) {
+//              * value = _opts->type;
+//              return true;
+//            }
+//            return false;
+//          });
+//
+//  _stack = new QStackedWidget(this);
+//  ThisClass::addRow(_stack);
+//
+//  _stack->addWidget(hammingDistanceFeature2dMatcherOptions_ctl = new QHammingDistanceFeature2dMatcherOptions(this));
+//  _stack->addWidget(flannBasedFeature2dMatcherOptions_ctl = new QFlannBasedFeature2dMatcherOptions(this));
+//  _stack->addWidget(optFlowPyrLKMatcherOptions_ctl = new QOptFlowPyrLKMatcherOptions(this));
+//  _stack->addWidget(triangleMatcherOptions_ctl = new QTriangleMatcherOptions(this));
+//  _stack->addWidget(snormBasedFeature2dMatcherOptions_ctl = new QSnormBasedFeature2dMatcherOptions(this));
+//  _stack->addWidget(planetaryDiskMatcherOptions_ctl = new QPlanetaryDiskMatcherOptions(this));
+//
+//  connect(hammingDistanceFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//  connect(flannBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//  connect(optFlowPyrLKMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//  connect(triangleMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//  connect(snormBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//  connect(planetaryDiskMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+//
+//
+//  QObject::connect(this, &ThisClass::enablecontrols,
+//      [this]() {
+//        QSettingsWidget * currentSettings = dynamic_cast<QSettingsWidget * >(_stack->currentWidget());
+//        if ( currentSettings ) {
+//          currentSettings->setEnabled(_opts != nullptr);
+//          if ( _opts )  {
+//            currentSettings->enablecontrols();
+//          }
+//        }
+//  });
+//
+//  QObject::connect(this, &ThisClass::populatecontrols,
+//      [this]() {
+//        hammingDistanceFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->hamming : nullptr);
+//        flannBasedFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->flann : nullptr);
+//        optFlowPyrLKMatcherOptions_ctl->setOpts(_opts? &_opts->optflowpyrlk : nullptr);
+//        triangleMatcherOptions_ctl->setOpts(_opts? &_opts->triangles : nullptr);
+//        snormBasedFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->snorm : nullptr);
+//        planetaryDiskMatcherOptions_ctl->setOpts(_opts? &_opts->planetary_disk : nullptr);
+//        showMatcherSpecificControls();
+//      });
+//
+//  updateControls();
+//}
+//
+//void QSparseFeatureMatcherOptions::showMatcherSpecificControls()
+//{
+//  if( _opts ) {
+//    switch (_opts->type) {
+//      case FEATURE2D_MATCHER_HAMMING:
+//        _stack->setCurrentWidget(hammingDistanceFeature2dMatcherOptions_ctl);
+//        break;
+//      case FEATURE2D_MATCHER_FLANN:
+//        _stack->setCurrentWidget(flannBasedFeature2dMatcherOptions_ctl);
+//        break;
+//      case FEATURE2D_MATCHER_OptFlowPyrLK:
+//        _stack->setCurrentWidget(optFlowPyrLKMatcherOptions_ctl);
+//        break;
+//      case FEATURE2D_MATCHER_TRIANGLES:
+//        _stack->setCurrentWidget(triangleMatcherOptions_ctl);
+//        break;
+//      case FEATURE2D_MATCHER_SNORM:
+//        _stack->setCurrentWidget(snormBasedFeature2dMatcherOptions_ctl);
+//        break;
+//      case FEATURE2D_MATCHER_PLANETARY_DISK:
+//        _stack->setCurrentWidget(planetaryDiskMatcherOptions_ctl);
+//        break;
+//      default:
+//        _stack->setEnabled(false);
+//        return;
+//    }
+//    _stack->setEnabled(true);
+//  }
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -13,7 +13,6 @@
 #include <gui/widgets/QHFlowLayout.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QCameraIntrinsicsEditBox.h>
-#include <gui/qpipeline/QFrameRegistrationOptions.h>
 #include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
 #include <gui/qpipeline/QInputSourceSelection.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
@@ -145,6 +144,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                 std::string s;
                 if ( c.getvalue(_this->opts(), &s) ) {
                   const c_enum_member* memb = fromString(s, c.get_enum_members());
+                  // CF_DEBUG("CALL stackedGroup->setCurrentSelection(%d)", memb ? memb->value : -1);
                   stackedGroup->setCurrentSelection(memb ? memb->value : -1);
                 }
               });
@@ -157,6 +157,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                 }
               });
         }
+
+
         break;
       }
       ////////////////////////////////////////////////////////////////////////
@@ -626,135 +628,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                ctl->set_camera_intrinsics(c.camera_intrinsicts(_this->opts()));
               });
 
-          QObject::connect(ctl, &QSparseFeatureMatcherOptions::parameterChanged,
-              currentSettings, &QSettingsWidget::parameterChanged);
-        }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, ctl, enabled = c.enabled]() {
-                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
-          });
-        }
-        break;
-      }
-
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::SparseFeatureDetector: {
-        QSparseFeatureDetectorOptions * ctl = new QSparseFeatureDetectorOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.sparse_feature_detector ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.sparse_feature_detector(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QSparseFeatureMatcherOptions::parameterChanged,
-              currentSettings, &QSettingsWidget::parameterChanged);
-          }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, ctl, enabled = c.enabled]() {
-                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
-          });
-        }
-
-        break;
-      }
-
-
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::SparseFeatureDescriptor: {
-        QSparseFeatureDescriptorOptions * ctl = new QSparseFeatureDescriptorOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.sparse_feature_descriptor ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.sparse_feature_descriptor(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QSparseFeatureDescriptorOptions::parameterChanged,
-              _this, &QSettingsWidget::parameterChanged);
-        }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, ctl, enabled = c.enabled]() {
-                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
-          });
-        }
-
-        break;
-      }
-
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::SparseFeatureMatcher: {
-        QSparseFeatureMatcherOptions * ctl = new QSparseFeatureMatcherOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.sparse_feature_matcher ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.sparse_feature_matcher(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QSparseFeatureMatcherOptions::parameterChanged,
-              currentSettings, &QSettingsWidget::parameterChanged);
-        }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, ctl, enabled = c.enabled]() {
-                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
-          });
-        }
-
-        break;
-      }
-
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::FeatureRegistrationOptions: {
-        QFeatureBasedRegistrationOptions * ctl = new QFeatureBasedRegistrationOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.feature_registration_options ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.feature_registration_options(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QFeatureBasedRegistrationOptions::parameterChanged,
+          QObject::connect(ctl, &QCameraIntrinsicsEditBox::parameterChanged,
               currentSettings, &QSettingsWidget::parameterChanged);
         }
 
@@ -785,7 +659,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                 ctl->setOpts(c.stereo_input_source_options(_this->opts()));
           });
 
-          QObject::connect(ctl, &QFeatureBasedRegistrationOptions::parameterChanged,
+          QObject::connect(ctl, &QStereoInputSourceSelection::parameterChanged,
               currentSettings, &QSettingsWidget::parameterChanged);
         }
 
@@ -817,7 +691,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                 ctl->setOpts(c.master_frame_selection(_this->opts()));
               });
 
-          QObject::connect(ctl, &QFeatureBasedRegistrationOptions::parameterChanged,
+          QObject::connect(ctl, &QMasterFrameSelection::parameterChanged,
               currentSettings, &QSettingsWidget::parameterChanged);
         }
 

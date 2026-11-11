@@ -18,9 +18,14 @@ QStackedGroupBox::QStackedGroupBox(const QString & label, const c_enum_member * 
 {
   _vbox = new QVBoxLayout(this);
   _vbox->addLayout(_hbox = new QHBoxLayout(), 1);
-  _vbox->addWidget(_stack = new QStackedWidget(this), 100);
+//  _hbox->setMargin(0);
+//  _hbox->setContentsMargins(0,0,0,0);
   _hbox->addWidget(new QLabel(label, this));
   _hbox->addWidget(_combo = new QEnumComboBoxBase(this));
+  _hbox->addStretch();
+
+  _vbox->addWidget(_stack = new QStackedWidget(this), 100);
+
 
   setupComboboxItems(membs);
 

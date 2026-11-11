@@ -47,15 +47,17 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   using S = c_sparse_feature_extractor_and_matcher_options;
 
   ctlbind_expandable_group(ctls, "Feature2D detector", "");
-    ctlbind(ctls, "", ctx(&S::detector), "");
+    //ctlbind(ctls, "", ctx(&S::detector), "");
+    ctlbind_sparse_feature_detector(ctls, ctx(&S::detector));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Feature2D descriptor", "");
-    ctlbind(ctls, "", ctx(&S::descriptor), "");
+    // ctlbind(ctls, "", ctx(&S::descriptor), "");
+    ctlbind_sparse_feature_descriptor(ctls, ctx(&S::descriptor));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Feature2D matcher", "");
-    ctlbind(ctls, "", ctx(&S::matcher), "");
+    ctlbind_feature2d_matcher_options(ctls, ctx(&S::matcher));
   ctlbind_end_group(ctls);
 }
 

@@ -17,7 +17,7 @@
 struct c_hamming_distance_feature2d_matcher_options :
     c_feature2d_matcher_base_options
 {
-  int max_acceptable_distance = -1; // auto select
+  int max_acceptable_distance = 20; // -1 for auto select
   int octavedif = -1; // ignore by default
 };
 
@@ -57,6 +57,14 @@ protected:
   int _max_acceptable_distance = -1; // auto select
 };
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_hamming_distance_feature2d_matcher_options> & ctx)
+{
+  using S = c_hamming_distance_feature2d_matcher_options;
+  ctlbind(ctls, "max_distance [bits]:", CTL_CONTEXT(ctx, max_acceptable_distance), "");
+  ctlbind(ctls, "octavedif: ", CTL_CONTEXT(ctx, octavedif), "Max difference in octaves");
+}
 
 c_hamming_distance_feature2d_matcher::ptr create_sparse_feature_matcher(
     const c_hamming_distance_feature2d_matcher_options & options);

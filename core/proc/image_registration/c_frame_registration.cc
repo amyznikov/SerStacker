@@ -83,7 +83,7 @@ bool load_settings(c_config_setting settings, c_feature_registration_options * o
   c_config_setting section;
 
   LOAD_OPTION(settings, *opts, scale);
-  LOAD_OPTION(settings, *opts, triangle_eps);
+  LOAD_OPTION(settings, *opts, sp_eps);
   LOAD_OPTION(settings, *opts, registration_channel);
 
   if ( (section = settings["sparse_feature_detector"]).isGroup() ) {
@@ -106,7 +106,7 @@ bool save_settings(c_config_setting settings, const c_feature_registration_optio
   c_config_setting section;
 
   SAVE_OPTION(settings, opts, scale);
-  SAVE_OPTION(settings, opts, triangle_eps);
+  SAVE_OPTION(settings, opts, sp_eps);
   SAVE_OPTION(settings, opts, registration_channel);
 
   if ( (section = settings.add_group("sparse_feature_detector")).isGroup() ) {
@@ -1040,7 +1040,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
 
   // Special post-processing FEATURE2D_MATCHER_TRIANGLES
   if( _sparse_feature_extractor_and_matcher->matcher_type() == FEATURE2D_MATCHER_TRIANGLES ) {
-    if( _options.feature_registration.triangle_eps > 0 ) {
+    if( _options.feature_registration.sp_eps > 0 ) {
 
       CF_DEBUG("Estimated using %zu point pairs",
           _sparse_feature_extractor_and_matcher->matched_current_positions().size());
@@ -1067,7 +1067,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
         }
 
         const std::vector<cv::KeyPoint> & cpts = _sparse_feature_extractor_and_matcher->current_keypoints();
-        const double eps = _options.feature_registration.triangle_eps * _options.feature_registration.triangle_eps;
+        const double eps = _options.feature_registration.sp_eps * _options.feature_registration.sp_eps;
 
         for( int i = 0, ni = (int) rrpos.size(); i < ni; ++i ) {
           const cv::Point2f rrp = rrpos[i];

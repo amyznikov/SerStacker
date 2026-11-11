@@ -30,54 +30,54 @@ public:
   }
 };
 
+//
+//class QSparseFeatureDetectorOptions :
+//    public QSettingsWidgetTemplate<c_sparse_feature_detector_options>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QSparseFeatureDetectorOptions ThisClass;
+//  typedef QSettingsWidgetTemplate<c_sparse_feature_detector_options> Base;
+//  typedef QEnumComboBox<SPARSE_FEATURE_DETECTOR_TYPE> QSparseFeatureDetectorCombo;
+//
+//  QSparseFeatureDetectorOptions(QWidget * parent = nullptr);
+//
+//Q_SIGNALS:
+// void detectorTypeChanged();
+//
+//protected:
+// void updateDetectorSpecificControls();
+//
+// template<class F>
+// void addStackWidget(F c_sparse_feature_detector_options::* mp);
+//
+//protected:
+//  QSparseFeatureDetectorCombo * detectorType_ctl = nullptr;
+//  QNumericBox * max_keypoints_ctl = nullptr;
+//  QStackedWidget * _stack = nullptr;
+//};
 
-class QSparseFeatureDetectorOptions :
-    public QSettingsWidgetTemplate<c_sparse_feature_detector_options>
-{
-  Q_OBJECT;
-public:
-  typedef QSparseFeatureDetectorOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_sparse_feature_detector_options> Base;
-  typedef QEnumComboBox<SPARSE_FEATURE_DETECTOR_TYPE> QSparseFeatureDetectorCombo;
-
-  QSparseFeatureDetectorOptions(QWidget * parent = nullptr);
-
-Q_SIGNALS:
- void detectorTypeChanged();
-
-protected:
- void updateDetectorSpecificControls();
-
- template<class F>
- void addStackWidget(F c_sparse_feature_detector_options::* mp);
-
-protected:
-  QSparseFeatureDetectorCombo * detectorType_ctl = nullptr;
-  QNumericBox * max_keypoints_ctl = nullptr;
-  QStackedWidget * _stack = nullptr;
-};
-
-class QSparseFeatureDescriptorOptions:
-    public QSettingsWidgetTemplate<c_sparse_feature_descriptor_options>
-{
-  Q_OBJECT;
-public:
-  typedef QSparseFeatureDescriptorOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_sparse_feature_descriptor_options> Base;
-  typedef QEnumComboBox<SPARSE_FEATURE_DESCRIPTOR_TYPE> QSparseFeatureDecriptorCombo;
-
-  QSparseFeatureDescriptorOptions(QWidget * parent = nullptr);
-
-protected:
-  void updateDescriptorSpecificControls();
-
-  template<class F>
-  void addStackWidget(F c_sparse_feature_descriptor_options::* mp);
-
-protected:
-  QSparseFeatureDecriptorCombo * descriptorType_ctl = nullptr;
-  QStackedWidget * _stack = nullptr;
-};
+//class QSparseFeatureDescriptorOptions:
+//    public QSettingsWidgetTemplate<c_sparse_feature_descriptor_options>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QSparseFeatureDescriptorOptions ThisClass;
+//  typedef QSettingsWidgetTemplate<c_sparse_feature_descriptor_options> Base;
+//  typedef QEnumComboBox<SPARSE_FEATURE_DESCRIPTOR_TYPE> QSparseFeatureDecriptorCombo;
+//
+//  QSparseFeatureDescriptorOptions(QWidget * parent = nullptr);
+//
+//protected:
+//  void updateDescriptorSpecificControls();
+//
+//  template<class F>
+//  void addStackWidget(F c_sparse_feature_descriptor_options::* mp);
+//
+//protected:
+//  QSparseFeatureDecriptorCombo * descriptorType_ctl = nullptr;
+//  QStackedWidget * _stack = nullptr;
+//};
 
 class QHammingDistanceFeature2dMatcherOptions :
     public QSettingsWidgetTemplate<c_hamming_distance_feature2d_matcher_options>
@@ -206,30 +206,30 @@ protected:
 };
 
 
-class QSparseFeatureMatcherOptions :
-    public QSettingsWidgetTemplate<c_feature2d_matcher_options>
-{
-  Q_OBJECT;
-public:
-  typedef QSparseFeatureMatcherOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_feature2d_matcher_options> Base;
-  typedef QEnumComboBox<FEATURE2D_MATCHER_TYPE> QSparseFeatureMatcherTypeCombo;
-
-  QSparseFeatureMatcherOptions(QWidget * parent = nullptr);
-
-protected:
-  void showMatcherSpecificControls();
-
-protected:
-  QSparseFeatureMatcherTypeCombo * sparseFeatureMatcherType_ctl = nullptr;
-  QHammingDistanceFeature2dMatcherOptions * hammingDistanceFeature2dMatcherOptions_ctl = nullptr;
-  QFlannBasedFeature2dMatcherOptions * flannBasedFeature2dMatcherOptions_ctl = nullptr;
-  QOptFlowPyrLKMatcherOptions * optFlowPyrLKMatcherOptions_ctl = nullptr;
-  QTriangleMatcherOptions * triangleMatcherOptions_ctl = nullptr;
-  QSnormBasedFeature2dMatcherOptions * snormBasedFeature2dMatcherOptions_ctl = nullptr;
-  QPlanetaryDiskMatcherOptions * planetaryDiskMatcherOptions_ctl = nullptr;
-  QStackedWidget * _stack = nullptr;
-};
+//class QSparseFeatureMatcherOptions :
+//    public QSettingsWidgetTemplate<c_feature2d_matcher_options>
+//{
+//  Q_OBJECT;
+//public:
+//  typedef QSparseFeatureMatcherOptions ThisClass;
+//  typedef QSettingsWidgetTemplate<c_feature2d_matcher_options> Base;
+//  typedef QEnumComboBox<FEATURE2D_MATCHER_TYPE> QSparseFeatureMatcherTypeCombo;
+//
+//  QSparseFeatureMatcherOptions(QWidget * parent = nullptr);
+//
+//protected:
+//  void showMatcherSpecificControls();
+//
+//protected:
+//  QSparseFeatureMatcherTypeCombo * sparseFeatureMatcherType_ctl = nullptr;
+//  QHammingDistanceFeature2dMatcherOptions * hammingDistanceFeature2dMatcherOptions_ctl = nullptr;
+//  QFlannBasedFeature2dMatcherOptions * flannBasedFeature2dMatcherOptions_ctl = nullptr;
+//  QOptFlowPyrLKMatcherOptions * optFlowPyrLKMatcherOptions_ctl = nullptr;
+//  QTriangleMatcherOptions * triangleMatcherOptions_ctl = nullptr;
+//  QSnormBasedFeature2dMatcherOptions * snormBasedFeature2dMatcherOptions_ctl = nullptr;
+//  QPlanetaryDiskMatcherOptions * planetaryDiskMatcherOptions_ctl = nullptr;
+//  QStackedWidget * _stack = nullptr;
+//};
 
 
 #endif /* __QFeature2DOptions_h__ */

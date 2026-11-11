@@ -65,6 +65,13 @@ protected:
   float lowe_ratio_ = -1;
 };
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_snorm_based_feature2d_matcher_options> & ctx)
+{
+  ctlbind(ctls, "max_distance [bits]:", CTL_CONTEXT(ctx, max_acceptable_distance), "");
+  ctlbind(ctls, "lowe_ratio: ", CTL_CONTEXT(ctx, lowe_ratio), "");
+}
 
 c_snorm_based_feature2d_matcher::ptr create_sparse_feature_matcher(
     const c_snorm_based_feature2d_matcher_options & options);

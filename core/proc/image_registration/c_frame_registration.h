@@ -22,48 +22,28 @@ struct c_feature_registration_options
   c_sparse_feature_extractor_and_matcher_options sparse_feature_extractor_and_matcher;
   c_estimate_image_transform_options estimate_options;
   double scale = 0.5;
-  double triangle_eps = 5; // [px]
+  double sp_eps = 5; // [px]
   color_channel_type registration_channel = color_channel_gray;
 };
 
 template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_feature_registration_options> & ctx,
-    const std::string & cdesc = "")
+void ctlbind_sparse_feature_registration_options(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_feature_registration_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_feature_registration_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::FeatureRegistrationOptions;
-  c.feature_registration_options =
-      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
+  ctlbind(ctls, "Image scale:", CTL_CONTEXT(ctx, scale), "Downscale image for speedup and improve robustness to noise");
+  ctlbind(ctls, "Registration channel:", CTL_CONTEXT(ctx, registration_channel), "Image channel for feature detection");
+  ctlbind(ctls, "Second pass eps [px]:", CTL_CONTEXT(ctx, sp_eps), "Second pass tolerance in pixels");
+  ctlbind(ctls, CTL_CONTEXT(ctx, sparse_feature_extractor_and_matcher));
+  ctlbind_expandable_group(ctls, "Transform estimation..", "");
+    ctlbind(ctls, CTL_CONTEXT(ctx, estimate_options));
+  ctlbind_end_group(ctls);
 }
 
 struct c_ecc_registration_options
 {
   struct c_ecch_options ecch;
-
-  //double eps = 0.2;
-  //double input_smooth_sigma = 1.0;
-  //double reference_smooth_sigma = 1.0;
-  //double update_step_scale = 1.5;
-  //  int se_radius = 5;
-  //  ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
-  //  int max_iterations = 50;
-  //int ecch_max_level = 0;
-  //int ecch_minimum_image_size = 16;
   double image_scale = 0.5;
   double min_rho = 0.8;
-  //  double normalization_eps = 0.01;
-  //  int normalization_scale = 0;
-  //  bool ecch_estimate_translation_first = true;
 };
 
 template<class RootObjectType>
@@ -74,19 +54,6 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   ctlbind(ctls, "image scale", ctx(&S:: image_scale), "");
   ctlbind(ctls, ctx(&S:: ecch));
   ctlbind(ctls, "min_rho", ctx(&S:: min_rho), "");
-//  ctlbind(ctls, "ecc_method", ctx(&S:: ecc_method), "");
-//  ctlbind(ctls, "eps", ctx(&S:: eps), "");
-//  ctlbind(ctls, "input_smooth_sigma", ctx(&S:: input_smooth_sigma), "");
-//  ctlbind(ctls, "reference_smooth_sigma", ctx(&S:: reference_smooth_sigma), "");
-//  ctlbind(ctls, "normalization_scale", ctx(&S:: normalization_scale), "");
-//  ctlbind(ctls, "normalization_noise", ctx(&S:: normalization_noise), "");
-//  ctlbind(ctls, "update_step_scale", ctx(&S:: update_step_scale), "");
-//  ctlbind(ctls, "max_iterations", ctx(&S:: max_iterations), "");
-//  ctlbind(ctls, "ecch_max_level", ctx(&S:: ecch_max_level), "");
-//  ctlbind(ctls, "ecch_minimum_image_size", ctx(&S:: ecch_minimum_image_size), "");
-//  ctlbind(ctls, "Estimate translation first", ctx(&S:: ecch_estimate_translation_first), "");
-  // ctlbind(ctls, "replace_planetary_disk_with_mask", ctx(&S:: replace_planetary_disk_with_mask), "");
-  //ctlbind(ctls, "planetary_disk_se_close_size", ctx(&S:: se_radius), "");
 }
 
 struct c_eccflow_registration_options
@@ -175,7 +142,10 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind_expandable_group(ctls, "Feature Registration Options", "");
     ctlbind(ctls, "Enable Feature Registration", ctx(&S::enable_feature_registration), "");
     ctlbind_group(ctls, ctx(&S::enable_feature_registration));
-    ctlbind(ctls, "", ctx(&S::feature_registration), "");
+    //ctlbind(ctls, "", ctx(&S::feature_registration), "");
+    //ctlbind_expandable_group(ctls, "Registration Options...");
+    ctlbind_sparse_feature_registration_options(ctls,ctx(&S::feature_registration));
+    //ctlbind_end_group(ctls);
     ctlbind_end_group(ctls);
   ctlbind_end_group(ctls);
 

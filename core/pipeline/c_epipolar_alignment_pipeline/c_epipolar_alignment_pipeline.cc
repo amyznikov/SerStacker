@@ -248,8 +248,11 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, "feature2d_type", ctx(&S::feature2d_type), "Select feature2d type used for odometry estimation");
 
-  ctlbind_expandable_group(ctls, "Sparse feature2d Options", "");
-    ctlbind(ctls, "feature2d detector",  ctx(&S::sparse_detector_options), "");
+  ctlbind_expandable_group(ctls, "Sparse Feature2D Options", "");
+    //ctlbind(ctls, "feature2d detector",  ctx(&S::sparse_detector_options), "");
+    ctlbind_expandable_group(ctls, "Sparse feature detector", "");
+      ctlbind_sparse_feature_detector(ctls, ctx(&S::sparse_detector_options));
+    ctlbind_end_group(ctls);
     ctlbind_expandable_group(ctls, "optflowpyrlk_options", "");
       ctlbind(ctls, ctx(&S::optflowpyrlk_options));
     ctlbind_end_group(ctls);

@@ -30,7 +30,10 @@ void c_keypoins_detector_routine::getcontrols(c_control_list & ctls, const ctlbi
   ctlbind(ctls, "normalize_display", ctx(&this_class::_normalize_display), "");
   ctlbind(ctls, "black_background", ctx(&this_class::_black_background), "");
   ctlbind(ctls, "octave", ctx(&this_class::_octave), "Draw key points from selected octave only");
-  ctlbind(ctls, "Options", ctx(&this_class:: _opts), "Options for feature2D detector");
+  //ctlbind(ctls, "Options", ctx(&this_class:: _opts), "Options for feature2D detector");
+  ctlbind_expandable_group(ctls, "Options", "Options for feature2D detector");
+  ctlbind_sparse_feature_detector(ctls, ctx(&this_class:: _opts));
+  ctlbind_end_group(ctls);
 }
 
 bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save)

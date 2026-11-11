@@ -285,15 +285,17 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "image scale", ctx(&S::image_scale), "");
 
   ctlbind_expandable_group(ctls, "Feature2D Detector", "");
-  ctlbind(ctls, "Detector", ctx(&S::detector));
+    //ctlbind(ctls, "Detector", ctx(&S::detector));
+    ctlbind_sparse_feature_detector(ctls, ctx(&S::detector));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Feature2D Descriptor", "");
-  ctlbind(ctls, "Descriptor", ctx(&S::descriptor));
+  //  ctlbind(ctls, "Descriptor", ctx(&S::descriptor));
+  ctlbind_sparse_feature_descriptor(ctls, ctx(&S::descriptor));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Feature2D Matcher", "");
-  ctlbind(ctls, "Matcher", ctx(&S::matcher));
+  ctlbind_feature2d_matcher_options(ctls, ctx(&S::matcher));
   ctlbind_end_group(ctls);
 }
 

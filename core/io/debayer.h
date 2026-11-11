@@ -46,7 +46,7 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_NN2,      // SerStacker nearest-neighboor interpolation with nninterpolate()
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
-  DEBAYER_SP,     // 2x2 pixel binning
+  DEBAYER_SP,       // 2x2 pixel binning
   DEBAYER_MATRIX,   // Don't debayer but create BGR color bayer matrix image
 
   // Extract individual planes as monochrome images

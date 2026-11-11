@@ -252,6 +252,28 @@ int QLiveDisplay::pipelineUpdateInterval() const
   return _pipelineUpdateInterval;
 }
 
+void QLiveDisplay::setEnableBayerDenoise(bool v)
+{
+  _enableBayerDenoise = v;
+  saveSettings();
+}
+
+bool QLiveDisplay::enableBayerDenoise() const
+{
+  return _enableBayerDenoise;
+}
+
+void QLiveDisplay::setBadPixelsVariation(double v)
+{
+  _badPixelsVariation = v;
+  saveSettings();
+}
+
+double QLiveDisplay::badPixelsVariation() const
+{
+  return _badPixelsVariation;
+}
+
 void QLiveDisplay::toggleUpdateTimer()
 {
   int requiredUpdateInterval = 0;
@@ -322,8 +344,28 @@ void QLiveDisplay::timerEvent(QTimerEvent *e)
         Base::editImage(image, mask, false);
       }
       else {
+
+        if( _enableBayerDenoise && _badPixelsVariation > 0 ) {
+
+          const bool returnBayerPlanes =
+              _debayer_algo == DEBAYER_SP ||
+                  _debayer_algo == DEBAYER_AVGBP || (
+                  _debayer_algo >= DEBAYER_PLANE_0 &&
+                      _debayer_algo <= DEBAYER_PLANE_3);
+
+          bayer_denoise(image, _badPixelsVariation, colorid,
+              returnBayerPlanes);
+        }
+
         ::debayer(image, Base::_inputImage, colorid, _debayer_algo);
-        Base::_inputMask = mask;
+
+        if ( _debayer_algo == DEBAYER_SP && !mask.empty() && mask.size() != image.size()) {
+          cv::resize(mask, Base::_inputMask, image.size(), 0, 0, cv::INTER_NEAREST);
+        }
+        else {
+          Base::_inputMask = mask;
+        }
+
         Base::updateImage();
       }
     }
@@ -354,6 +396,8 @@ void QLiveDisplay::loadSettings(const QSettings & settings, const QString & pref
   _debayer_algo = (DEBAYER_ALGORITHM) settings.value(QString("%1/debayer").arg(prefix), (int) _debayer_algo).toInt();
   _cameraUpdateInterval = settings.value(QString("%1/cameraUpdateInterval").arg(prefix), (int) _cameraUpdateInterval).toInt();
   _pipelineUpdateInterval = settings.value(QString("%1/pipelineUpdateInterval").arg(prefix), (int) _pipelineUpdateInterval).toInt();
+  _enableBayerDenoise = settings.value(QString("%1/enableBayerDenoise").arg(prefix), (bool) _enableBayerDenoise).toBool();
+  _badPixelsVariation = settings.value(QString("%1/badPixelsVariation").arg(prefix), (int) _badPixelsVariation).toDouble();
 }
 
 void QLiveDisplay::saveSettings(QSettings & settings, const QString & prefix)
@@ -362,6 +406,8 @@ void QLiveDisplay::saveSettings(QSettings & settings, const QString & prefix)
   settings.setValue(QString("%1/debayer").arg(prefix), (int) _debayer_algo);
   settings.setValue(QString("%1/cameraUpdateInterval").arg(prefix), (int) _cameraUpdateInterval);
   settings.setValue(QString("%1/pipelineUpdateInterval").arg(prefix), (int) _pipelineUpdateInterval);
+  settings.setValue(QString("%1/enableBayerDenoise").arg(prefix), (bool) _enableBayerDenoise);
+  settings.setValue(QString("%1/badPixelsVariation").arg(prefix), (double) _badPixelsVariation);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1355,6 +1401,31 @@ QLiveDisplaySettingsWidget::QLiveDisplaySettingsWidget(QLiveDisplay * liveDispla
           [this](int * v) {
             return _opts ? *v = _opts->pipelineUpdateInterval(), true : false;
           });
+
+  bayer_denoise_ctl =
+      add_checkbox("Bayer denoise:", "Enable MAD-based noise filter for Bayer inputs",
+          [this](bool checked) {
+            if ( _opts && _opts->enableBayerDenoise() != checked ) {
+              _opts->setEnableBayerDenoise(checked);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+                return _opts ? *checked = _opts->enableBayerDenoise(), true : false;
+          });
+
+  badpixels_variation_ctl =
+    add_numeric_box<double>("Bad Pixels Variation:",
+      "Bad Pixels Variation threshold multiple of local MAD",
+      [this](double v) {
+        if ( _opts && _opts->badPixelsVariation() != v ) {
+          _opts->setBadPixelsVariation(v);
+          Q_EMIT parameterChanged();
+        }
+      },
+      [this](double * v) {
+        return _opts ? *v = _opts->badPixelsVariation(), true : false;
+      });
 
   updateControls();
 }

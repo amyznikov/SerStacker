@@ -74,6 +74,12 @@ public:
   void setPipelineUpdateInterval(int v);
   int pipelineUpdateInterval() const;
 
+  void setEnableBayerDenoise(bool v);
+  bool enableBayerDenoise() const;
+
+  void setBadPixelsVariation(double v);
+  double badPixelsVariation() const;
+
   void loadSettings(const QString & prefix = "");
   void loadSettings(const QSettings & settings, const QString & prefix = "");
   void saveSettings(const QString & prefix = "");
@@ -99,6 +105,9 @@ protected:
   DEBAYER_ALGORITHM _debayer_algo = DEBAYER_NN2;
   int _cameraUpdateInterval = 50; // [ms], ~20 fps
   int _pipelineUpdateInterval = 500; // [ms], ~2 fps
+
+  double _badPixelsVariation = 6;
+  bool _enableBayerDenoise = false;
 
   int _updateTimerId = -1;
   int _currentUpdateInterval = 0;
@@ -126,6 +135,8 @@ protected:
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
   QNumericBox * cameraUpdateInterval_ctl = nullptr;
   QNumericBox * pipelineUpdateInterval = nullptr;
+  QCheckBox * bayer_denoise_ctl = nullptr;
+  QNumericBox * badpixels_variation_ctl = nullptr;
 };
 
 class QLiveDisplaySettingsDialogBox :

@@ -16,11 +16,11 @@
 struct c_polar_phase_correlate_options
 {
   double downscale_factor = 1;
-  double drc = 0;
-  double gsigma1 = 2;
+  double drc = 0.05;
+  double gsigma1 = 0;
   double gsigma2 = 2;
-  double gsigma3 = 2;
-  double apodization = 0;
+  double gsigma3 = 3;
+  double apodization = 16;
   bool maxPooling = false;
   bool whitenPolarSpecs = true;
   bool whitenTransSpecs = true;
@@ -54,8 +54,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
       "Set true for max pooling - useful for low-contrast deep fields to prevent loss of faint stars");
 
   ctlbind(ctls, "Dynamic range compression:", ctx(&S::drc),
-      "Dynamic range compression parameter: asinh(v * drc)\n"
-      "Use drc = 0.5 for deep sky fields");
+      "Dynamic range compression parameter: tanh(v * drc)\n"
+      "Use drc = 0.05..0.1 for deep sky fields");
 
   ctlbind(ctls, "apodization:", ctx(&S::apodization),
       "Optional Apodization window parameter [0..1]");

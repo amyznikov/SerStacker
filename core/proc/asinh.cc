@@ -53,7 +53,8 @@ static bool _asinh(cv::InputArray _src, cv::OutputArray _dst, double _scale, dou
 
 bool asinh(cv::InputArray _src, cv::OutputArray _dst, double _scale, double _offset)
 {
-  CV_DISPATCH2(_src.depth(), _dst.depth(), _asinh, _src, _dst, _scale, _offset);
-  CF_ERROR("Not supported combination of src (%d) and dst (%d) types", _src.depth(), _dst.depth());
+  const int ddepth = _dst.fixedType() ? _dst.depth() : _src.depth();
+  CV_DISPATCH2(_src.depth(), ddepth, _asinh, _src, _dst, _scale, _offset);
+  CF_ERROR("Not supported combination of src (%d) and dst (%d) types", _src.depth(), ddepth);
   return false;
 }

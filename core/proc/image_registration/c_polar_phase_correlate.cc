@@ -14,6 +14,7 @@
 #include <core/proc/divide.h>
 #include <core/proc/multiply.h>
 #include <core/proc/asinh.h>
+#include <core/proc/tanh.h>
 #include <core/proc/morphse.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -27,9 +28,77 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
-static void normalzeMeanStd(cv::InputArray src, cv::OutputArray dst, cv::InputArray mask = cv::noArray())
+static void normalizeMedianMAD(cv::InputArray _src, cv::OutputArray dst, double drc, cv::InputArray mask = cv::noArray())
 {
-  cv::Mat msk;
+  const cv::Mat src = _src.getMat();
+  const int cn = src.channels();
+
+  if (_src.depth() != CV_32F) {
+    _src.copyTo(dst);
+    return;
+  }
+
+  const int step_y = 8;
+  const int step_x = 8;
+  std::vector<float> samples;
+  samples.reserve((src.rows / step_y) * (src.cols / step_x));
+
+  const cv::Mat msk = mask.empty() ? cv::Mat() : mask.getMat();
+  const uint8_t* const msk_base = msk.ptr();
+  const size_t msk_stride = msk.step;
+
+  const uint8_t* const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  for (int y = 0; y < src.rows; y += step_y) {
+    const float* srcp = (const float*)(src_base + y * src_stride);
+    const uint8_t* mskp = msk.empty() ? nullptr : (msk_base + y * msk_stride);
+
+    for (int x = 0; x < src.cols; x += step_x) {
+      if (mskp && !mskp[x]) {
+        continue;
+      }
+      samples.push_back(srcp[x * cn]);
+    }
+  }
+
+  if (samples.empty()) {
+    _src.copyTo(dst);
+    return;
+  }
+
+  const size_t mid_idx = samples.size() / 2;
+  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
+  const float median = samples[mid_idx];
+  for (float & v : samples) {
+    v = std::abs(v - median);
+  }
+
+  // median of absolute deviations in O(N) time
+  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
+  const float mad = samples[mid_idx];
+
+  CF_DEBUG("Median: %g, MAD: %g, Samples: %zu", median, mad, samples.size());
+
+  // Scaling factor 1.4826 for normal distribution
+  const float scale = mad > std::numeric_limits<float>::min() ? 1.0f / (1.4826f * mad) : 1.0f;
+  if ( std::abs(drc) > std::numeric_limits<float>::epsilon()) {
+    tanh(src, dst, scale * drc, -median * scale * drc);
+  }
+  else {
+    src.convertTo(dst, dst.fixedType() ? dst.depth() : src.depth(), scale, -median * scale);
+  }
+}
+
+static bool normalizeMeanStdev(cv::InputArray _src, cv::OutputArray _dst, double drc, cv::InputArray mask = cv::noArray())
+{
+  if (_src.depth() != CV_32F) {
+    CF_ERROR("Bad input image : CV_32FC1 expected");
+    return false;
+  }
+
+  cv::Mat1f src;
+  cv::Mat1b msk;
   cv::Scalar mv, sv;
 
   if( !mask.empty() ) {
@@ -41,28 +110,171 @@ static void normalzeMeanStd(cv::InputArray src, cv::OutputArray dst, cv::InputAr
     }
   }
 
+  if ( !(std::abs(drc) > std::numeric_limits<float>::epsilon()) ) {
+    src = _src.getMat();
+  }
+  else {
+    cv::meanStdDev(_src, mv, sv, msk);
+    // CF_DEBUG("RAW: Mean: %g Stdev: %g", mv[0], sv[0]);
+    tanh(_src, src, drc / sv[0], -mv[0] * drc / sv[0]);
+  }
+
+
   cv::meanStdDev(src, mv, sv, msk);
 
-  const int cn = src.channels();
-  for ( int c = 0; c < cn; ++c ) {
-    if ( sv[c] != 0 ) {
-      sv[c] = 1.0 / sv[c];
-    }
-  }
+  const double m = mv[0];
+  const double s = sv[0];
+  const double alpha = 1. / s;
+  const double beta = -m / s;
 
-  const cv::Scalar bias = -mv.mul(sv);
-
-  cv::Mat1f M = cv::Mat1f::zeros(cn, cn + 1);
-  for (int i = 0; i < cn; ++i) {
-    M(i, i) = sv[i];
-    M(i, cn) = bias[i];
-  }
-
-  cv::transform(src, dst, M);
+  // CF_DEBUG("Mean: %g Stdev: %g", m, s);
+  src.convertTo(_dst, _dst.fixedType() ? _dst.depth() : src.depth(), alpha, beta);
+  return true;
 }
 
 namespace {
 
+#if 1
+struct c_acm2logpolar_reducer
+{
+  const cv::Mat1f & acm;
+  cv::Mat1f acmplr;
+  cv::Mat1f cntr;
+  cv::Size acmSize;
+  float cx, cy;
+  float rscale, rmin_offset, tscale;
+  int nRadii, nAngles;
+
+  c_acm2logpolar_reducer(const cv::Mat1f & _acm, cv::Size _lpSize, cv::Size _acmSize,
+      float _cx, float _cy, float _rscale, float _rmin_offset, float _tscale,
+      int _nRadii, int _nAngles) :
+      acm(_acm), acmSize(_acmSize), cx(_cx), cy(_cy), rscale(_rscale),
+      rmin_offset(_rmin_offset), tscale(_tscale), nRadii(_nRadii), nAngles(_nAngles)
+  {
+    acmplr.create(_lpSize);
+    acmplr.setTo(0);
+    cntr.create(_lpSize);
+    cntr.setTo(0);
+  }
+
+  c_acm2logpolar_reducer(c_acm2logpolar_reducer & other, cv_reduction_splitter) :
+      acm(other.acm), acmSize(other.acmSize), cx(other.cx), cy(other.cy),
+      rscale(other.rscale), rmin_offset(other.rmin_offset), tscale(other.tscale),
+      nRadii(other.nRadii), nAngles(other.nAngles)
+  {
+    acmplr.create(other.acmplr.size());
+    acmplr.setTo(0);
+    cntr.create(other.cntr.size());
+    cntr.setTo(0);
+  }
+
+  template<typename RangeType>
+  void operator()(const RangeType & range)
+  {
+    const uint8_t * const src_base = acm.ptr();
+    const size_t src_stride = acm.step;
+
+    uint8_t * const acmplr_base = acmplr.ptr();
+    const size_t acmplr_stride = acmplr.step;
+
+    uint8_t * const cntr_base = cntr.ptr();
+    const size_t cntr_stride = cntr.step;
+
+    const int y_end = rend(range);
+    for( int y = rbegin(range); y < y_end; ++y ) {
+
+      const float * srcp = (const float * )(src_base + y * src_stride);
+      const float dy = y - cy;
+      const float dy2 = dy * dy;
+
+      const int xbeg = (y < acmSize.height / 2) ? 0 : acmSize.width / 2;
+      for( int x = xbeg; x < acmSize.width; ++x ) {
+
+        const float dx = x - cx;
+        const float dx2 = dx * dx;
+        const float r2 = dx2 + dy2;
+
+        if ( r2 <= 0.f ) {
+          continue;
+        }
+
+        // ln(r) = 0.5 * ln(r^2)
+        const float r = 0.5f * std::log(r2) * rscale - rmin_offset;
+
+        if ( r < 0 || r >= float(nRadii - 1) ) {
+          continue;
+        }
+
+        const float t = std::atan2(-dy, dx) * tscale;
+        const int r0 = int(r);
+        const int r1 = r0 + 1;
+        const int t0 = int(t);
+        const int t1 = t0 + 1 < nAngles ? t0 + 1 : 0;
+        const float dr = r - float(r0);
+        const float dt = t - float(t0);
+
+        const float w00 = (1.f - dt) * (1.f - dr);
+        const float w10 = dt * (1.f - dr);
+        const float w01 = (1.f - dt) * dr;
+        const float w11 = dt * dr;
+
+        const float val = srcp[x];
+
+        float * __restrict acmplr_t0 = (float*) (acmplr_base + t0 * acmplr_stride);
+        float * __restrict acmplr_t1 = (float*) (acmplr_base + t1 * acmplr_stride);
+
+        float * __restrict cntr_t0   = (float*) (cntr_base + t0 * cntr_stride);
+        float * __restrict cntr_t1   = (float*) (cntr_base + t1 * cntr_stride);
+
+        acmplr_t0[r0] += val * w00;   cntr_t0[r0] += w00;
+        acmplr_t1[r0] += val * w10;   cntr_t1[r0] += w10;
+        acmplr_t0[r1] += val * w01;   cntr_t0[r1] += w01;
+        acmplr_t1[r1] += val * w11;   cntr_t1[r1] += w11;
+      }
+    }
+  }
+
+  void join(const c_acm2logpolar_reducer & other)
+  {
+    cv::add(this->acmplr, other.acmplr, this->acmplr);
+    cv::add(this->cntr, other.cntr, this->cntr);
+  }
+};
+
+static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
+{
+  INSTRUMENT_REGION("");
+
+  const cv::Size acmSize = acm.size();
+  const float cx = acmSize.width / 2.f;
+  const float cy = acmSize.height / 2.f;
+
+  const float rmin = float(std::max(16.0, std::ceil(nAngles / CV_PI)));
+  const float rmax = std::max(acmSize.width, acmSize.height) / 2.f;
+  const float rmax_inscribed = std::min(acmSize.width, acmSize.height) / 2;
+  if (rmax <= rmin ) {
+    CF_ERROR("BAD rmax=%g <= rmin=%g", rmax, rmin);
+    acmplr.release();
+    return;
+  }
+
+  const float log_range = std::log(rmax) - std::log(rmin);
+  const float r_mid = std::sqrt(rmin * rmax_inscribed);
+  const int nRadii = getOptimalFFTSizeDown(cvRound(1.f + 0.75f * r_mid * log_range));
+
+  const float tscale = float(nAngles / CV_PI);
+  const float rscale = float(nRadii - 1) / log_range;
+  const float rmin_offset = std::log(rmin) * rscale;
+
+  const cv::Size lpSize(nRadii, nAngles);
+
+  c_acm2logpolar_reducer reducer(acm, lpSize, acmSize, cx, cy, rscale, rmin_offset, tscale, nRadii, nAngles);
+
+  parallel_reduce(0, acmSize.height / 2 + 1, reducer);
+  divideImages(reducer.acmplr, reducer.cntr, acmplr);
+}
+
+#else
 struct c_acm2polar_reducer
 {
   const cv::Mat1f & acm;
@@ -160,7 +372,6 @@ struct c_acm2polar_reducer
     cv::add(this->cntr, other.cntr, this->cntr);
   }
 };
-} // namespace
 
 // Convert (central-symmetric) auto-correlation map to polar map for limited radius range
 // Forward mapping is used to account deposit from all of the input ACM pixels.
@@ -196,6 +407,10 @@ static void acm2plr(const cv::Mat1f & acm, cv::Mat1f & acmplr, int nAngles)
   parallel_reduce(0, acmSize.height / 2 + 1, reducer);
   divideImages(reducer.acmplr, reducer.cntr, acmplr);
 }
+#endif
+
+} // namespace
+
 
 static double estimateMedian(cv::InputArray image, cv::InputArray mask = cv::noArray())
 {
@@ -479,11 +694,7 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
 
     INSTRUMENT_REGION("windowed_apodization");
 
-    normalzeMeanStd(src(frame->srcROI), frame->image(frame->dstROI));
-    if ( _drc > 0 ) {
-      asinh(frame->image(frame->dstROI), frame->image(frame->dstROI), _drc);
-      cv::add(frame->image(frame->dstROI), -estimateMedian(frame->image(frame->dstROI)), frame->image(frame->dstROI));
-    }
+    normalizeMeanStdev(src(frame->srcROI), frame->image(frame->dstROI), _drc);
 
     if ( _aalpha > 1 ) {
       if( _apodizationWindow.size() != _fftSize ) {
@@ -509,11 +720,7 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
   else {
     INSTRUMENT_REGION("masked_apodization");
 
-    normalzeMeanStd(src(frame->srcROI), frame->image(frame->dstROI), msk(frame->srcROI));
-    if ( _drc > 0 ) {
-      asinh(frame->image(frame->dstROI), frame->image(frame->dstROI), _drc);
-      cv::add(frame->image(frame->dstROI), -estimateMedian(frame->image(frame->dstROI)), frame->image(frame->dstROI));
-    }
+    normalizeMeanStdev(src(frame->srcROI), frame->image(frame->dstROI), _drc, msk(frame->srcROI));
 
     if ( _aalpha > 1 ) {
       //const double maskScale = std::max(1.0 / _aalpha, std::max(3.0 / msk.cols, 3.0 / msk.rows));
@@ -550,6 +757,7 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
     cv::idft(frame->autospec, frame->acm, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
 
     acm2plr(frame->acm, frame->acmp, numAngles);
+    //acm2lplr(frame->acm, frame->acmp, numAngles);
 
     const cv::Size polarSize = frame->acmp.size();
     if (_vlap2.size() != polarSize ) {

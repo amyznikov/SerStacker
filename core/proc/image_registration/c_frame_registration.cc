@@ -139,7 +139,8 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
   LOAD_OPTION(settings, *opts, enable_ecc_registration);
   LOAD_OPTION(settings, *opts, enable_eccflow_registration);
   LOAD_OPTION(settings, *opts, accumulate_and_compensate_turbulent_flow);
-  LOAD_OPTION(settings, *opts, phase_correlate_min_score);
+  LOAD_OPTION(settings, *opts, phase_correlate_min_rotation_score);
+  LOAD_OPTION(settings, *opts, phase_correlate_min_translation_score);
 
   if( (section = settings["phase_correlate"]).isGroup() ) {
     load_settings(section, &opts->phase_correlate);
@@ -175,7 +176,8 @@ bool save_settings(c_config_setting settings, const c_image_registration_options
   SAVE_OPTION(settings, opts, enable_ecc_registration);
   SAVE_OPTION(settings, opts, enable_eccflow_registration);
   SAVE_OPTION(settings, opts, accumulate_and_compensate_turbulent_flow);
-  SAVE_OPTION(settings, opts, phase_correlate_min_score);
+  SAVE_OPTION(settings, opts, phase_correlate_min_rotation_score);
+  SAVE_OPTION(settings, opts, phase_correlate_min_translation_score);
 
   if( (section = settings.add_group("phase_correlate")).isGroup() ) {
     save_settings(section, opts.phase_correlate);
@@ -724,28 +726,54 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   /////////////////////////////////////////////////////////////////////////////
   if( _options.enable_phase_correlate ) {
-    cv::Vec2f Translation;
-    double score, peak;
+    if ( _options.phase_correlate.estimateRotation || _options.phase_correlate.estimateTranslation ) {
 
-    if ( !_phase_correlate.setCurrentImage(ecc_image, ecc_mask) ) {
-      CF_ERROR("_phase_correlate.setCurrentImage() fails");
-      return false;
+      cv::Vec2f Translation;
+      double Rotation = 0;
+
+      if ( !_phase_correlate.setCurrentImage(ecc_image, ecc_mask) ) {
+        CF_ERROR("_phase_correlate.setCurrentImage() fails");
+        return false;
+      }
+
+      if ( !_phase_correlate.compute(Rotation, Translation) ) {
+        CF_ERROR("_phase_correlate.compute() fails");
+        return false;
+      }
+
+      if( _options.phase_correlate.estimateRotation ) {
+        const double score = _phase_correlate.rotationScore();
+        if( score < _options.phase_correlate_min_rotation_score ) {
+          CF_DEBUG("_phase_correlate: bad rotation score=%g / %g", score,
+              _options.phase_correlate_min_rotation_score);
+          return false;
+        }
+      }
+
+      if( _options.phase_correlate.estimateTranslation ) {
+        const double score = _phase_correlate.translationScore();
+        if( score < _options.phase_correlate_min_translation_score ) {
+          CF_DEBUG("_phase_correlate: bad translation score=%g / %g", score,
+              _options.phase_correlate_min_translation_score);
+          return false;
+        }
+      }
+
+      if ( _options.phase_correlate.estimateTranslation ) {
+        const cv::Vec2f & Cc = _image_transform->Cc();
+        const cv::Vec2f & Cr = _image_transform->Cr();
+        _image_transform->set_translation(Cr - Cc - Translation);
+        have_transform = true;
+      }
+
+      if ( _options.phase_correlate.estimateRotation ) {
+        _image_transform->set_rotation(-Rotation);
+        have_transform = true;
+      }
     }
-
-    score = _phase_correlate.compute(Translation);
-    peak = _phase_correlate.peakValue();
-    CF_DEBUG("_phase_correlate: score=%g / %g peak=%g Tx=%g Ty=%g", score, _options.phase_correlate_min_score,
-        peak, Translation[0], Translation[1]);
-
-   if ( score < _options.phase_correlate_min_score ) {
-     CF_ERROR("_phase_correlate.compute() fails: Bad score = %g < %g", score, _options.phase_correlate_min_score);
-     return false;
-   }
-
-   _image_transform->set_translation(-Translation);
-   have_transform = true;
   }
-  else if( _options.enable_feature_registration ) {
+
+  if( !have_transform && _options.enable_feature_registration ) {
 
     t0 = get_realtime_ms();
     if( !estimate_feature_transform(current_image, current_mask, _image_transform.get()) ) {

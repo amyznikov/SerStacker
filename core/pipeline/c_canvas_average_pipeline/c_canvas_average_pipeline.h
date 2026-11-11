@@ -32,8 +32,9 @@ struct c_canvas_average_registration_options
   cv::Size canvasSize;
   double eccUnsharpMaskSigma = 1;
   double eccUnsharpMaskAlpha = 0.9;
-  double minAcceptablePhaseCorrelation = 0.08;
   double registration_scale = 0.5;
+  double phase_correlate_min_rotation_score = 0.1;
+  double phase_correlate_min_translation_score = 0.75;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 

@@ -71,7 +71,8 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
 //      serialize_phase_correlate_options(group, save, _registration_options.phase_correlate);
 //    }
     if( auto group = SERIALIZE_GROUP(section, save, "polar_phase_correlate") ) {
-      SERIALIZE_OPTION(group, save, _registration_options, minAcceptablePhaseCorrelation);
+      SERIALIZE_OPTION(group, save, _registration_options, phase_correlate_min_rotation_score);
+      SERIALIZE_OPTION(group, save, _registration_options, phase_correlate_min_translation_score);
       serialize_polar_phase_correlate_options(group, save, _registration_options.phase_correlate);
     }
 
@@ -188,7 +189,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
   ctlbind_expandable_group(ctls, "Phase Correlate", "");
   ctlbind(ctls, "Enable phase correlate", ctx(&S::enable_phase_correlate), "");
-    ctlbind(ctls, "Min Correlation:", ctx(&S::minAcceptablePhaseCorrelation), "Min acceptable phase correlation in [0..1]");
+  ctlbind(ctls, "Min Rotation Correlation:", ctx(&S::phase_correlate_min_rotation_score), "Min acceptable phase correlation in [0..1]");
+    ctlbind(ctls, "Min Translation Correlation:", ctx(&S::phase_correlate_min_translation_score), "Min acceptable phase correlation in [0..1]");
     ctlbind(ctls, ctx(&S::phase_correlate));
   ctlbind_end_group(ctls);
 
@@ -880,18 +882,20 @@ bool c_canvas_average_pipeline::process_current_frame()
     mkgrayscale(reference_image, reference_grayscale_image);
     mkgrayscale(_current_image, _current_grayscale_image);
 
-//    const double regscale =  _registration_options.registration_scale;
-//    const double downscale = regscale > 0 && std::abs(1 - regscale) > 1e-3 ? 1. / regscale : 1.0;
-//    if( downscale != 1.0 ) {
-//      cv::resize(reference_grayscale_image, reference_grayscale_image, cv::Size(),
-//          downscale, downscale, cv::INTER_AREA);
-//      cv::resize(_current_grayscale_image, _current_grayscale_image, cv::Size(),
-//          downscale, downscale, cv::INTER_AREA);
-//    }
-
+    const double registration_scale = _registration_options.registration_scale;
+    const double regscale =  (registration_scale > 0) && std::abs(1 - registration_scale) > 1e-3 ? registration_scale : 0.0;
+    if( regscale > 0 ) {
+      cv::resize(reference_grayscale_image, reference_grayscale_image, cv::Size(),
+          regscale, regscale, cv::INTER_AREA);
+      cv::resize(reference_binary_mask, reference_binary_mask, reference_grayscale_image.size(),
+          0, 0, cv::INTER_NEAREST);
+      cv::resize(_current_grayscale_image, _current_grayscale_image, cv::Size(),
+          regscale, regscale, cv::INTER_AREA);
+      cv::resize(current_binary_mask, current_binary_mask, _current_grayscale_image.size(),
+          0, 0, cv::INTER_NEAREST);
+    }
 
     if ( _output_options.save_reference_video ) {
-
       const cv::Size frameSize(_current_grayscale_image.cols + 8, _current_grayscale_image.rows + 8);
       cv::Mat frame = cv::Mat::zeros(frameSize, reference_grayscale_image.type());
       cv::Mat mask = reference_binary_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
@@ -910,9 +914,11 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
+    bool have_transform = false;
     _image_transform->reset();
     _image_transform->set_Cc(cv::Vec2f(_current_grayscale_image.cols / 2, _current_grayscale_image.rows / 2));
     _image_transform->set_Cr(cv::Vec2f(reference_grayscale_image.cols / 2, reference_grayscale_image.rows / 2));
+
 
     // Special stress test:
     //    _image_transform->set_reference_points(cv::Vec2f(_current_image.cols / 4, _current_image.rows / 4),
@@ -930,60 +936,54 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      cv::Vec2f T;
-      double R;
-      bool pcok = _phase_correlate.compute(R, T);
+      cv::Vec2f Translation;
+      double Rotation = 0;
 
-      //const double score = _phase_correlate.compute(T);
-//      if ( score < _registration_options.minAcceptablePhaseCorrelation ) {
-//        CF_ERROR("_phase_correlate.compute() : bad correlation = %g < acceptable = %g",
-//            score, _registration_options.minAcceptablePhaseCorrelation);
-//        return !canceled();
-//      }
-      if ( !pcok ) {
+      if ( !_phase_correlate.compute(Rotation, Translation) ) {
         CF_ERROR("_phase_correlate.compute() fails");
-        return !canceled();
       }
+      else {
 
-      const cv::Vec2f & Cc = _image_transform->Cc();
-      const cv::Vec2f & Cr = _image_transform->Cr();
-      _image_transform->set_translation(-T + Cr - Cc);
-      if ( _registration_options.phase_correlate.estimateRotation ) {
-        _image_transform->set_rotation(-R);
+        bool have_translation = false;
+        bool have_rotation = false;
+
+        if( _registration_options.phase_correlate.estimateTranslation ) {
+          const double score = _phase_correlate.translationScore();
+          if( !(score >= _registration_options.phase_correlate_min_translation_score) ) {
+            CF_DEBUG("_phase_correlate: bad translation score = %g / %g Tx=%g Ty=%g Rotation=%g deg", score,
+                _registration_options.phase_correlate_min_translation_score,
+                Translation(0), Translation(1), Rotation * 180 / CV_PI);
+          }
+          else {
+            const cv::Vec2f & Cc = _image_transform->Cc();
+            const cv::Vec2f & Cr = _image_transform->Cr();
+            _image_transform->set_translation(Cr - Cc - Translation);
+            have_translation = true;
+          }
+        }
+
+        if( _registration_options.phase_correlate.estimateRotation ) {
+          const double score = _phase_correlate.rotationScore();
+          if( !(score >= _registration_options.phase_correlate_min_rotation_score) ) {
+            CF_DEBUG("_phase_correlate: bad rotation score = %g / %g Tx=%g Ty=%g Rotation=%g deg", score,
+                _registration_options.phase_correlate_min_translation_score,
+                Translation(0), Translation(1), Rotation * 180 / CV_PI);
+          }
+          else {
+            _image_transform->set_rotation(-Rotation);
+            have_rotation = true;
+          }
+        }
+
+        if ( _registration_options.phase_correlate.estimateRotation && have_rotation ) {
+          if( _registration_options.phase_correlate.estimateTranslation && have_translation ) {
+            have_transform = true;
+          }
+        }
       }
-
-      T = _image_transform->translation();
-      CF_DEBUG("[F %d] pcorr: R=%g deg Tx=%g Ty=%g", _input_sequence->current_pos() - 1,
-        R * 180 / CV_PI, T(0), T(1));
-
     }
-    else if( _registration_options.enable_feature2d_registration ) {
-      INSTRUMENT_REGION("feature2d_registration");
 
-      if ( !_feature2d->setup_reference_frame(reference_grayscale_image, reference_binary_mask) ) {
-        CF_ERROR("_feature2d.setup_reference_frame() fails");
-        return !canceled();
-      }
-
-      if ( !_feature2d->match_current_frame(_current_grayscale_image, current_binary_mask) ) {
-        CF_ERROR("_feature2d.match_current_frame() fails");
-        return !canceled();
-      }
-
-      CF_DEBUG("FEATURE2D: matched_current_positions=%u", _feature2d->matched_current_positions().size());
-
-      const bool transformEstimated =
-          estimate_image_transform(_image_transform.get(),
-              _feature2d->matched_current_positions(),
-              _feature2d->matched_reference_positions(),
-              _registration_options.transform_estimation);
-
-      if( !transformEstimated ) {
-        CF_ERROR("estimate_image_transform() fails");
-        return !canceled();
-      }
-    }
-    else if( _registration_options.enable_star_registration ) {
+    if( _registration_options.enable_star_registration && !have_transform ) {
       INSTRUMENT_REGION("star_registration");
 
       synchronized(_current_stars_lock, [&]() {
@@ -1010,18 +1010,17 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-//      CF_DEBUG("call estimate_image_transform(): matches.size=%zu", _current_matches.size());
-//      const bool debug_estimate = _input_sequence->current_pos() - 1 == 60;
-//      if (debug_estimate) {
-//        CF_DEBUG("WILL DUMP HERE");
-//        //c_stdio_file fp;
-//      }
-//      set_dump_transfrom_estimation(debug_estimate);
-
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
               _current_keypoints, _reference_keypoints, _current_matches,
               _registration_options.transform_estimation);
+
+      if( !transformEstimated ) {
+        CF_ERROR("estimate_image_transform() fails");
+      }
+      else {
+        have_transform = true;
+      }
 
       const double R = _image_transform->rotation() * 180 / CV_PI;
       const cv::Vec2f T = _image_transform->translation();
@@ -1031,11 +1030,6 @@ bool c_canvas_average_pipeline::process_current_frame()
           _current_matches.size(),
           transformEstimated,
           R, T(0), T(1));
-
-      if( !transformEstimated ) {
-        CF_ERROR("estimate_image_transform() fails");
-        return !canceled();
-      }
 
       if ( false ) {
         // Temporary debug for star matcher
@@ -1124,8 +1118,37 @@ bool c_canvas_average_pipeline::process_current_frame()
                 _input_sequence->current_pos()-1));
 
       }
-
     }
+
+    if( _registration_options.enable_feature2d_registration && !have_transform ) {
+      INSTRUMENT_REGION("feature2d_registration");
+
+      if ( !_feature2d->setup_reference_frame(reference_grayscale_image, reference_binary_mask) ) {
+        CF_ERROR("_feature2d.setup_reference_frame() fails");
+        return !canceled();
+      }
+
+      if ( !_feature2d->match_current_frame(_current_grayscale_image, current_binary_mask) ) {
+        CF_ERROR("_feature2d.match_current_frame() fails");
+        return !canceled();
+      }
+
+      CF_DEBUG("FEATURE2D: matched_current_positions=%u", _feature2d->matched_current_positions().size());
+
+      const bool transformEstimated =
+          estimate_image_transform(_image_transform.get(),
+              _feature2d->matched_current_positions(),
+              _feature2d->matched_reference_positions(),
+              _registration_options.transform_estimation);
+
+      if( !transformEstimated ) {
+        CF_ERROR("estimate_image_transform() fails");
+      }
+      else {
+        have_transform = true;
+      }
+    }
+
 
     if( _registration_options.enable_ecc_registration ) {
       INSTRUMENT_REGION("ecc_registration");
@@ -1162,6 +1185,10 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
       if( !registered ) {
         return false;
+      }
+
+      if ( regscale) {
+        _image_transform->scale_transfrom(1.0 / regscale);
       }
 
       if ( true ) {

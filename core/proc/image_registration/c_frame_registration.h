@@ -12,7 +12,7 @@
 #include <core/proc/feature2d/feature2d.h>
 #include <core/ctrlbind/ctrlbind.h>
 #include "image_transform.h"
-#include "c_phase_correlate.h"
+//#include "c_phase_correlate.h"
 #include "c_polar_phase_correlate.h"
 #include "ecc2.h"
 
@@ -98,9 +98,10 @@ struct c_image_registration_options
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
-  struct c_phase_correlate_options phase_correlate;
+  struct c_polar_phase_correlate_options phase_correlate;
 
-  double phase_correlate_min_score = 0.5;
+  double phase_correlate_min_rotation_score = 0.1;
+  double phase_correlate_min_translation_score = 0.3;
 
   bool enable_phase_correlate = true;
   bool enable_feature_registration = true;
@@ -132,8 +133,10 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind_expandable_group(ctls, "Phase Correlate", "");
     ctlbind(ctls, "Enable Phase Correlate", ctx(&S::enable_phase_correlate), "");
-    ctlbind(ctls, "min_score [0..1]",  ctx(&S::phase_correlate_min_score),
-        "Minimal acceptable correlation score to accept frame");
+    ctlbind(ctls, "min_rotation_score [0..1]",  ctx(&S::phase_correlate_min_rotation_score),
+        "Minimal acceptable rotation correlation score to accept frame");
+    ctlbind(ctls, "min_translation_score [0..1]",  ctx(&S::phase_correlate_min_translation_score),
+        "Minimal acceptable translation correlation score to accept frame");
     ctlbind_group(ctls, ctx(&S::enable_phase_correlate));
     ctlbind(ctls, ctx(&S::phase_correlate));
     ctlbind_end_group(ctls);
@@ -310,7 +313,7 @@ protected:
   cv::Mat1f _image_transform_defaut_parameters;
 
   c_sparse_feature_extractor_and_matcher::sptr _sparse_feature_extractor_and_matcher;
-  c_phase_correlate _phase_correlate;
+  c_polar_phase_correlate _phase_correlate;
   c_ecch _ecch;
   c_eccflow _eccflow;
 

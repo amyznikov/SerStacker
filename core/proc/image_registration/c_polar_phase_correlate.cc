@@ -918,11 +918,14 @@ bool c_polar_phase_correlate::computeRotation(double & outAngleRadian)
     return false;
   }
 
+  const double shift_x = std::abs(peakPos.x - _fftSize.width / 2);
+  const double shift_y = std::abs(peakPos.y - _fftSize.height / 2);
+  const double score_correction = _fftSize.area() / ((_fftSize.width - shift_x) * (_fftSize.height - shift_y));
   if (_whitenPolarSpecs) {
-    _rotationScore = peakVal;
+    _rotationScore = peakVal * score_correction;
   }
   else {
-    _rotationScore = peakVal / std::sqrt(crossEnergy);
+    _rotationScore = peakVal * score_correction / std::sqrt(crossEnergy);
   }
 
   const double deltaPixels = peakPos.y - _currentFrame.acmp.rows / 2;
@@ -1004,11 +1007,14 @@ bool c_polar_phase_correlate::computeTranslation(double orientationAngleRadian, 
 
   estimateTranslationPeak(_correlationMap, crossEnergyScale, peakPos, peakVal);
 
+  const double shift_x = std::abs(peakPos.x - _fftSize.width / 2);
+  const double shift_y = std::abs(peakPos.y - _fftSize.height / 2);
+  const double score_correction = _fftSize.area() / ((_fftSize.width - shift_x) * (_fftSize.height - shift_y));
   if (_whitenTransSpecs) {
-    _translationScore = peakVal;
+    _translationScore = peakVal * score_correction;
   }
   else {
-    _translationScore = peakVal * crossEnergyScale;
+    _translationScore = peakVal * score_correction * crossEnergyScale ;
   }
 
 

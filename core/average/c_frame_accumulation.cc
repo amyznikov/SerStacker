@@ -674,7 +674,7 @@ bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::Output
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<class _Tp>
+template<class _Tp, class _Tpw>
 static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
@@ -695,10 +695,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
   const int cols = acc.cols;
 
   if( rmap.empty() ) {
-
     if( weigths.empty() ) {
-      // CF_DEBUG("NO WEIGHTS");
-
       parallel_for(0, rows, [=](const auto & range) {
         for ( int y = rbegin(range); y < rend(range); ++y ) {
           cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
@@ -712,11 +709,8 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
         }
       });
     }
-    else if( weigths.type() == CV_8UC1 ) {
-
-      //  CF_DEBUG("CV_8UC1 WEIGHTS: ACC: %dx%d BAYER: %dx%d", acc.cols, acc.rows, raw_bayer.cols, raw_bayer.rows);
-
-      const cv::Mat1b wmap = weigths.getMat();
+    else {
+      const cv::Mat wmap = weigths.getMat();
       const uint8_t * wmap_base = wmap.ptr();
       const size_t wmap_stride = wmap.step;
 
@@ -725,32 +719,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
           cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
           cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
           const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const uint8_t * wp = (const uint8_t * )(wmap_base + y * wmap_stride);
-
-          for( int x = 0; x < cols; ++x ) {
-            if ( wp[x] ) {
-              const int cc = bayer_lookup[y & 1][x & 1];
-              accp[x][cc] += bayerp[x];
-              cntrp[x][cc] += 1;
-            }
-          }
-        }
-      });
-    }
-    else if( weigths.type() == CV_32FC1 ) {
-
-      // CF_DEBUG("CV_32FC1 WEIGHTS");
-
-      const cv::Mat1f wmap = weigths.getMat();
-      const uint8_t * wmap_base = wmap.ptr();
-      const size_t wmap_stride = wmap.step;
-
-      parallel_for(0, rows, [=](const auto & range) {
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const float * wp = (const float * )(wmap_base + y * wmap_stride);
+          const _Tpw * wp = (const _Tpw * )(wmap_base + y * wmap_stride);
           for( int x = 0; x < cols; ++x ) {
             const int cc = bayer_lookup[y & 1][x & 1];
             accp[x][cc] += bayerp[x] * wp[x];
@@ -759,7 +728,6 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
         }
       });
     }
-
   }
   else {
 
@@ -767,9 +735,6 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
     const size_t rmap_stride = rmap.step;
 
     if( weigths.empty() ) {
-
-      // CF_DEBUG("NO WEIGHTS");
-
       parallel_for(0, rows, [=](const auto & range) {
         constexpr int w = 1;
         for ( int y = rbegin(range); y < rend(range); ++y ) {
@@ -821,11 +786,9 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
         }
       });
     }
-    else if( weigths.type() == CV_8UC1 ) {
+    else {
 
-      // CF_DEBUG("CV_8UC1 WEIGHTS: ACC: %dx%d BAYER: %dx%d", acc.cols, acc.rows, raw_bayer.cols, raw_bayer.rows);
-
-      const cv::Mat1b wmap = weigths.getMat();
+      const cv::Mat wmap = weigths.getMat();
       const uint8_t * wmap_base = wmap.ptr();
       const size_t wmap_stride = wmap.step;
 
@@ -833,72 +796,11 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
         for ( int y = rbegin(range); y < rend(range); ++y ) {
           cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
           cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const uint8_t * wp = (const uint8_t * )(wmap_base + y * wmap_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
-
-          for( int x = 0; x < cols; ++x ) {
-            if ( wp[x] ) {
-              const cv::Vec2f p = rmp[x];
-              // Boundaries of the target pixel (x, y) in the source frame
-              // Find the sx range where drops guaranteed to intersect the target pixel along the X-axis.
-              // Intersection condition: (sx + 0.5 - half_drop < target_x_max) AND (sx + 0.5 + half_drop > target_x_min)
-              const float target_x_min = p[0] - 0.5f;
-              const float target_x_max = p[0] + 0.5f;
-              const float target_y_min = p[1] - 0.5f;
-              const float target_y_max = p[1] + 0.5f;
-              const float half_drop = pixfrac * 0.5f;
-              const int src_x_start = std::max(0, cvCeil (target_x_min - 0.5f - half_drop));
-              const int src_x_end   = std::min(cols - 1, cvFloor(target_x_max - 0.5f + half_drop));
-              if (src_x_start > src_x_end) { // No intersections along the X-axis.
-                continue;
-              }
-              const int src_y_start = std::max(0, cvCeil (target_y_min - 0.5f - half_drop));
-              const int src_y_end   = std::min(rows - 1, cvFloor(target_y_max - 0.5f + half_drop));
-              if (src_y_start > src_y_end) { // No intersections along the Y-axis.
-                continue;
-              }
-
-              // Iterate only over pixels where s > 0
-              for (int sy = src_y_start; sy <= src_y_end; ++sy) {
-                const _Tp* src_row = (const _Tp* )(bayer_base + sy * bayer_stride);
-                const float drop_y_min = (sy + 0.5f) - half_drop;
-                const float drop_y_max = (sy + 0.5f) + half_drop;
-                const float overlap_y = std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min);
-                const float weight_y = overlap_y;
-                const int bayer_y = sy & 1;
-                for (int sx = src_x_start; sx <= src_x_end; ++sx) {
-                  const float drop_x_min = (sx + 0.5f) - half_drop;
-                  const float drop_x_max = (sx + 0.5f) + half_drop;
-                  const float overlap_x = std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min);
-                  const float s = overlap_x * weight_y;
-                  const int cc = bayer_lookup[bayer_y][sx & 1];
-                  accp[x][cc] += src_row[sx] * s;
-                  cntrp[x][cc] += s;
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-    else if( weigths.type() == CV_32FC1 ) {
-
-      // CF_DEBUG("CV_32FC1 WEIGHTS");
-
-      const cv::Mat1f wmap = weigths.getMat();
-      const uint8_t * wmap_base = wmap.ptr();
-      const size_t wmap_stride = wmap.step;
-
-      parallel_for(0, rows, [=](const auto & range) {
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const float * wp = (const float * )(wmap_base + y * wmap_stride);
+          const _Tpw * wp = (const _Tpw * )(wmap_base + y * wmap_stride);
           const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
           const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
           for( int x = 0; x < cols; ++x ) {
-            if ( wp[x] ) {
+            if ( wp[x] > 0 ) {
               const cv::Vec2f p = rmp[x];
               const float target_x_min = p[0] - 0.5f;
               const float target_x_max = p[0] + 0.5f;
@@ -918,7 +820,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
 
               // Iterate only over pixels where s > 0
               for (int sy = src_y_start; sy <= src_y_end; ++sy) {
-                const _Tp* src_row = (const _Tp* )(bayer_base + sy * bayer_stride);
+                const _Tp* srcp = (const _Tp* )(bayer_base + sy * bayer_stride);
                 const float drop_y_min = (sy + 0.5f) - half_drop;
                 const float drop_y_max = (sy + 0.5f) + half_drop;
                 const float overlap_y = std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min);
@@ -930,7 +832,7 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
                   const float overlap_x = std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min);
                   const float s = overlap_x * weight_y;
                   const int cc = bayer_lookup[bayer_y][sx & 1];
-                  accp[x][cc] += src_row[sx] * s;
+                  accp[x][cc] += srcp[sx] * s;
                   cntrp[x][cc] += s;
                 }
               }
@@ -944,63 +846,57 @@ static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3
   return true;
 }
 
-
 static bool bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
     cv::InputArray weigths,
     double pixfrac)
 {
-  CV_DISPATCH(bayer_image.depth(), _bayer_drizzle, bayer_image, acc, cntr, rmap, bayer_lookup, weigths, pixfrac);
-  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d encountered", bayer_image.depth());
+  CV_DISPATCH2(bayer_image.depth(), weigths.depth(), _bayer_drizzle, bayer_image, acc, cntr, rmap, bayer_lookup, weigths, pixfrac);
+  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d weigths.depth()=%d encountered", bayer_image.depth(), weigths.depth());
   return false;
 }
 
 
-void c_bayer_drizzle::set_bayer_pattern(COLORID colorid)
+void c_bayer_drizzle_base::generate_bayer_lookup_mask()
 {
-  _colorid = colorid;
-  if ( !_accumulator.size().empty() ) {
-    generate_bayer_lookup_mask();
+  switch (_colorid) {
+    case COLORID_BAYER_RGGB:
+      /*
+       * R G
+       * G B
+       * */
+      _bayer_lookup[0][0] = BAYER_R; _bayer_lookup[0][1] = BAYER_G;
+      _bayer_lookup[1][0] = BAYER_G; _bayer_lookup[1][1] = BAYER_B;
+      break;
+
+    case COLORID_BAYER_GRBG:
+      /*
+       * G R
+       * B G
+       * */
+      _bayer_lookup[0][0] = BAYER_G; _bayer_lookup[0][1] = BAYER_R;
+      _bayer_lookup[1][0] = BAYER_B; _bayer_lookup[1][1] = BAYER_G;
+      break;
+    case COLORID_BAYER_GBRG:
+      /*
+       * G B
+       * R G
+       * */
+      _bayer_lookup[0][0] = BAYER_G; _bayer_lookup[0][1] = BAYER_B;
+      _bayer_lookup[1][0] = BAYER_R; _bayer_lookup[1][1] = BAYER_G;
+      break;
+    case COLORID_BAYER_BGGR:
+      /*
+       * B G
+       * G R
+       * */
+      _bayer_lookup[0][0] = BAYER_B; _bayer_lookup[0][1] = BAYER_G;
+      _bayer_lookup[1][0] = BAYER_G; _bayer_lookup[1][1] = BAYER_R;
+      break;
+    default:
+      break;
   }
-}
-
-COLORID c_bayer_drizzle::bayer_pattern() const
-{
-  return _colorid;
-}
-
-void c_bayer_drizzle::set_pixfrac(double v)
-{
-  _pixfrac = v;
-}
-
-double c_bayer_drizzle::pixfrac() const
-{
-  return _pixfrac;
-}
-
-void c_bayer_drizzle::set_remap(const cv::Mat2f & rmap)
-{
-  _rmap = rmap;
-}
-
-const cv::Mat2f & c_bayer_drizzle::remap() const
-{
-  return _rmap ;
-}
-
-void c_bayer_drizzle::clear()
-{
-  _accumulator.release();
-  _counter.release();
-  _rmap.release();
-  _accumulated_frames = 0;
-}
-
-bool c_bayer_drizzle::reinitialize(cv::InputArray src, cv::InputArray accw)
-{
-  return false;
 }
 
 bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
@@ -1015,7 +911,7 @@ bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
     generate_bayer_lookup_mask();
   }
 
-  if ( !bayer_drizzle(src, _accumulator, _counter, _rmap, bayer_lookup, weights, _pixfrac) ) {
+  if ( !bayer_drizzle(src, _accumulator, _counter, _rmap, _bayer_lookup, weights, _pixfrac) ) {
     CF_ERROR("bayer_drizzle() fails");
     return false;
   }
@@ -1045,46 +941,6 @@ bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double 
   return true;
 }
 
-void c_bayer_drizzle::generate_bayer_lookup_mask()
-{
-  switch (_colorid) {
-    case COLORID_BAYER_RGGB:
-      /*
-       * R G
-       * G B
-       * */
-      bayer_lookup[0][0] = BAYER_R; bayer_lookup[0][1] = BAYER_G;
-      bayer_lookup[1][0] = BAYER_G; bayer_lookup[1][1] = BAYER_B;
-      break;
-
-    case COLORID_BAYER_GRBG:
-      /*
-       * G R
-       * B G
-       * */
-      bayer_lookup[0][0] = BAYER_G; bayer_lookup[0][1] = BAYER_R;
-      bayer_lookup[1][0] = BAYER_B; bayer_lookup[1][1] = BAYER_G;
-      break;
-    case COLORID_BAYER_GBRG:
-      /*
-       * G B
-       * R G
-       * */
-      bayer_lookup[0][0] = BAYER_G; bayer_lookup[0][1] = BAYER_B;
-      bayer_lookup[1][0] = BAYER_R; bayer_lookup[1][1] = BAYER_G;
-      break;
-    case COLORID_BAYER_BGGR:
-      /*
-       * B G
-       * G R
-       * */
-      bayer_lookup[0][0] = BAYER_B; bayer_lookup[0][1] = BAYER_G;
-      bayer_lookup[1][0] = BAYER_G; bayer_lookup[1][1] = BAYER_R;
-      break;
-    default:
-      break;
-  }
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////

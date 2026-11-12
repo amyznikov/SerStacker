@@ -205,11 +205,12 @@ protected:
   cv::Mat1f G;
 };
 
-class c_bayer_drizzle :
+
+class c_bayer_drizzle_base :
     public c_frame_accumulation
 {
 public:
-  typedef c_bayer_drizzle this_class;
+  typedef c_bayer_drizzle_base this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
@@ -219,40 +220,89 @@ public:
     BAYER_R = 2,
   };
 
-  void set_bayer_pattern(COLORID colorid);
-  COLORID bayer_pattern() const;
+  void set_bayer_pattern(COLORID colorid)
+  {
+    _colorid = colorid;
+    if ( !_accumulator.size().empty() ) {
+      generate_bayer_lookup_mask();
+    }
+  }
 
-  void set_pixfrac(double v);
-  double pixfrac() const;
+  COLORID bayer_pattern() const
+  {
+    return _colorid;
+  }
 
-  void set_remap(const cv::Mat2f & rmap);
-  const cv::Mat2f & remap() const;
+  void set_pixfrac(double v)
+  {
+    _pixfrac = v;
+  }
 
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
-  void clear() final;
+  double pixfrac() const
+  {
+    return _pixfrac;
+  }
 
-  cv::Size accumulator_size() const final {
+  void set_remap(const cv::Mat2f & rmap)
+  {
+    _rmap = rmap;
+  }
+
+  const cv::Mat2f & remap() const
+  {
+    return _rmap ;
+  }
+
+  cv::Size accumulator_size() const final
+  {
     return _accumulator.size();
   }
-  cv::Mat get_accumulator() const final {
+
+  cv::Mat get_accumulator() const final
+  {
     return _accumulator;
   }
-  cv::Mat get_counter() const final {
+
+  cv::Mat get_counter() const final
+  {
     return _counter;
+  }
+
+  void clear() final
+  {
+    _accumulator.release();
+    _counter.release();
+    _rmap.release();
+    _accumulated_frames = 0;
+  }
+
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final
+  {
+    return false;
   }
 
 protected:
   void generate_bayer_lookup_mask();
 
 protected:
-  int bayer_lookup[2][2];
+  int _bayer_lookup[2][2];
   cv::Mat3f _accumulator;
   cv::Mat3f _counter;
   cv::Mat2f _rmap;
   double _pixfrac = 1;
   COLORID _colorid = COLORID_UNKNOWN;
+};
+
+class c_bayer_drizzle :
+    public c_bayer_drizzle_base
+{
+public:
+  typedef c_bayer_drizzle this_class;
+  typedef c_bayer_drizzle_base base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
 };
 
 #endif /* __c_frame_stacking_h__ */

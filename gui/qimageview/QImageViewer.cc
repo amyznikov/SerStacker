@@ -404,8 +404,9 @@ void QImageViewer::createDisplayImage()
       }
       else {
         cv::Mat visualMask;
-        if (!_currentMask.empty() && !_transparentMask) {
-          if (_currentMask.type() == CV_8UC1 || _currentMask.type() == CV_8UC3) {
+
+        if( !_currentMask.empty() && !_transparentMask ) {
+          if( _currentMask.type() == CV_8UC1 || _currentMask.type() == CV_8UC3 ) {
             visualMask = _currentMask;
           }
           else {
@@ -494,7 +495,6 @@ void QImageViewer::showCurrentDisplayImage()
     scene()->setImage(QPixmap());
   }
   else {
-
     QPixmap pixmap =
         createPixmap(_displayImage, true,
             Qt::AutoColor |

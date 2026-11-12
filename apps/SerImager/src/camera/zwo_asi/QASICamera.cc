@@ -691,10 +691,7 @@ void QASICamera::device_stop()
 
 bool QASICamera::device_recv_frame(QCameraFrame::sptr & frm)
 {
-  INSTRUMENT_REGION("");
-
   if( (frm = dqpool()) ) {
-    INSTRUMENT_REGION("ASIGetVideoData");
 
     ASI_ERROR_CODE status;
 

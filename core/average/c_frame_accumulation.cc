@@ -674,191 +674,331 @@ bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::Output
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<class _Tp, class _Tpw>
-static bool _bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+template<class _Tp, class _Tpw, int _Scale>
+static bool _bayer_drizzle_core(cv::InputArray bayer_image,
+    cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
-    cv::InputArray weigths,
+    cv::InputArray weights,
     float pixfrac)
 {
-  const cv::Mat_<_Tp> raw_bayer = bayer_image.getMat();
-  const uint8_t * bayer_base = raw_bayer.ptr();
-  const size_t bayer_stride = raw_bayer.step;
+  static_assert(_Scale == 1 || _Scale == 2, "Only scale 1 and 2 are supported");
 
-  const uint8_t * acc_base = acc.ptr();
+  const cv::Mat_<_Tp> raw_bayer = bayer_image.getMat();
+  const uint8_t * const bayer_base = raw_bayer.ptr();
+  const size_t bayer_stride = raw_bayer.step;
+  const int src_rows = raw_bayer.rows;
+  const int src_cols = raw_bayer.cols;
+
+  const uint8_t * const acc_base = acc.ptr();
   const size_t acc_stride = acc.step;
 
-  const uint8_t * cntr_base = cntr.ptr();
+  const uint8_t * const cntr_base = cntr.ptr();
   const size_t cntr_stride = cntr.step;
 
-  const int rows = acc.rows;
-  const int cols = acc.cols;
+  const int dst_rows = acc.rows;
+  const int dst_cols = acc.cols;
 
-  if( rmap.empty() ) {
-    if( weigths.empty() ) {
-      parallel_for(0, rows, [=](const auto & range) {
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          for( int x = 0; x < cols; ++x ) {
-            const int cc = bayer_lookup[y & 1][x & 1];
-            accp[x][cc] += bayerp[x];
-            cntrp[x][cc] += 1;
+  constexpr bool has_weights = !std::is_void_v<_Tpw>;
+  const cv::Mat wmap = has_weights ? weights.getMat() : cv::Mat();
+  const uint8_t * const wmap_base = has_weights ? wmap.ptr() : nullptr;
+  const size_t wmap_stride = has_weights ? wmap.step : 0;
+
+  if ( rmap.empty() ) {
+    parallel_for(0, dst_rows, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const int sy = y / _Scale;
+        const _Tp * const bayerp = (const _Tp *)(bayer_base + sy * bayer_stride);
+        const int * const blookup = bayer_lookup[sy & 1];
+
+        cv::Vec3f * __restrict accp = (cv::Vec3f *)(acc_base + y * acc_stride);
+        cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
+
+        if constexpr ( !has_weights ) {
+          for ( int x = 0; x < dst_cols; ++x ) {
+            const int sx = x / _Scale;
+            const int cc = blookup[sx & 1];
+            accp[x][cc] += bayerp[sx];
+            cntrp[x][cc] += 1.0f;
           }
         }
-      });
-    }
-    else {
-      const cv::Mat wmap = weigths.getMat();
-      const uint8_t * wmap_base = wmap.ptr();
-      const size_t wmap_stride = wmap.step;
-
-      parallel_for(0, rows, [=](const auto & range) {
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const _Tpw * wp = (const _Tpw * )(wmap_base + y * wmap_stride);
-          for( int x = 0; x < cols; ++x ) {
-            const int cc = bayer_lookup[y & 1][x & 1];
-            accp[x][cc] += bayerp[x] * wp[x];
-            cntrp[x][cc] += wp[x];
+        else {
+          const _Tpw * const wp = (const _Tpw *)(wmap_base + y * wmap_stride);
+          for ( int x = 0; x < dst_cols; ++x ) {
+            const float w = static_cast<float>(wp[x]);
+            if ( w > 0.0f ) {
+              const int sx = x / _Scale;
+              const int cc = blookup[sx & 1];
+              accp[x][cc] += bayerp[sx] * w;
+              cntrp[x][cc] += w;
+            }
           }
         }
-      });
-    }
+      }
+    });
+    return true;
   }
-  else {
 
-    const uint8_t * rmap_base = rmap.ptr();
-    const size_t rmap_stride = rmap.step;
+  const uint8_t * const rmap_base = rmap.ptr();
+  const size_t rmap_stride = rmap.step;
 
-    if( weigths.empty() ) {
-      parallel_for(0, rows, [=](const auto & range) {
-        constexpr int w = 1;
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
+  constexpr float half_target = 0.5f / static_cast<float>(_Scale);
+  const float half_drop = pixfrac * 0.5f;
 
-          for( int x = 0; x < cols; ++x ) {
-            const cv::Vec2f p = rmp[x];
-            // Boundaries of the target pixel (x, y) in the source frame
-            // Find the sx range where drops guaranteed to intersect the target pixel along the X-axis.
-            // Intersection condition: (sx + 0.5 - half_drop < target_x_max) AND (sx + 0.5 + half_drop > target_x_min)
-            const float target_x_min = p[0] - 0.5f;
-            const float target_x_max = p[0] + 0.5f;
-            const float target_y_min = p[1] - 0.5f;
-            const float target_y_max = p[1] + 0.5f;
-            const float half_drop = pixfrac * 0.5f;
-            const int src_x_start = std::max(0, cvCeil (target_x_min - 0.5f - half_drop));
-            const int src_x_end   = std::min(cols - 1, cvFloor(target_x_max - 0.5f + half_drop));
-            if (src_x_start > src_x_end) { // No intersections along the X-axis.
+  // Fast unrolled 2x2 path for standard drizzle drops (pixfrac <= 1.0f)
+  if ( pixfrac <= 1.0f ) {
+    parallel_for(0, dst_rows, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        cv::Vec3f * __restrict accp = (cv::Vec3f *)(acc_base + y * acc_stride);
+        cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
+
+        const cv::Vec2f * const rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
+        const _Tpw * const wp = has_weights ? (const _Tpw *)(wmap_base + y * wmap_stride) : nullptr;
+
+        for ( int x = 0; x < dst_cols; ++x ) {
+          float w = 1.0f;
+          if constexpr ( has_weights ) {
+            w = static_cast<float>(wp[x]);
+            if ( w <= 0.0f ) {
               continue;
             }
-            const int src_y_start = std::max(0, cvCeil (target_y_min - 0.5f - half_drop));
-            const int src_y_end   = std::min(rows - 1, cvFloor(target_y_max - 0.5f + half_drop));
-            if (src_y_start > src_y_end) { // No intersections along the Y-axis.
-              continue;
-            }
+          }
 
-            // Iterate only over pixels where s > 0
-            for (int sy = src_y_start; sy <= src_y_end; ++sy) {
-              const _Tp* src_row = (const _Tp* )(bayer_base + sy * bayer_stride);
-              const float drop_y_min = (sy + 0.5f) - half_drop;
-              const float drop_y_max = (sy + 0.5f) + half_drop;
-              const float overlap_y = std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min);
-              const float weight_y = overlap_y * w;
-              const int bayer_y = sy & 1;
-              for (int sx = src_x_start; sx <= src_x_end; ++sx) {
-                const float drop_x_min = (sx + 0.5f) - half_drop;
-                const float drop_x_max = (sx + 0.5f) + half_drop;
-                const float overlap_x = std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min);
-                const float s = overlap_x * weight_y;
-                const int cc = bayer_lookup[bayer_y][sx & 1];
-                accp[x][cc] += src_row[sx] * s;
-                cntrp[x][cc] += s;
-              }
+          const cv::Vec2f p = rmp[x];
+          const float px = p(0);
+          const float py = p(1);
+
+          const float target_x_min = px - half_target;
+          const float target_x_max = px + half_target;
+          const int sx0 = std::max(0, cvCeil(target_x_min - 0.5f - half_drop));
+          const int sx1 = std::min(src_cols - 1, cvFloor(target_x_max - 0.5f + half_drop));
+          if ( sx0 > sx1 ) {
+            continue;
+          }
+
+          const float target_y_min = py - half_target;
+          const float target_y_max = py + half_target;
+          const int sy0 = std::max(0, cvCeil(target_y_min - 0.5f - half_drop));
+          const int sy1 = std::min(src_rows - 1, cvFloor(target_y_max - 0.5f + half_drop));
+          if ( sy0 > sy1 ) {
+            continue;
+          }
+
+          const float drop_x0_min = (sx0 + 0.5f) - half_drop;
+          const float drop_x0_max = (sx0 + 0.5f) + half_drop;
+          const float wx0 = std::min(target_x_max, drop_x0_max) - std::max(target_x_min, drop_x0_min);
+
+          const float drop_y0_min = (sy0 + 0.5f) - half_drop;
+          const float drop_y0_max = (sy0 + 0.5f) + half_drop;
+          const float wy0 = (std::min(target_y_max, drop_y0_max) - std::max(target_y_min, drop_y0_min)) * w;
+
+          cv::Vec3f a = accp[x];
+          cv::Vec3f c = cntrp[x];
+
+          const _Tp * const row0 = (const _Tp *)(bayer_base + sy0 * bayer_stride);
+          const int * const lut0 = bayer_lookup[sy0 & 1];
+
+          const float s00 = wx0 * wy0;
+          const int cc00 = lut0[sx0 & 1];
+          a[cc00] += row0[sx0] * s00;
+          c[cc00] += s00;
+
+          if ( sx1 > sx0 ) {
+            const float drop_x1_min = (sx1 + 0.5f) - half_drop;
+            const float drop_x1_max = (sx1 + 0.5f) + half_drop;
+            const float wx1 = std::min(target_x_max, drop_x1_max) - std::max(target_x_min, drop_x1_min);
+
+            const float s01 = wx1 * wy0;
+            const int cc01 = lut0[sx1 & 1];
+            a[cc01] += row0[sx1] * s01;
+            c[cc01] += s01;
+
+            if ( sy1 > sy0 ) {
+              const float drop_y1_min = (sy1 + 0.5f) - half_drop;
+              const float drop_y1_max = (sy1 + 0.5f) + half_drop;
+              const float wy1 = (std::min(target_y_max, drop_y1_max) - std::max(target_y_min, drop_y1_min)) * w;
+
+              const _Tp * const row1 = (const _Tp *)(bayer_base + sy1 * bayer_stride);
+              const int * const lut1 = bayer_lookup[sy1 & 1];
+
+              const float s10 = wx0 * wy1;
+              const int cc10 = lut1[sx0 & 1];
+              a[cc10] += row1[sx0] * s10;
+              c[cc10] += s10;
+
+              const float s11 = wx1 * wy1;
+              const int cc11 = lut1[sx1 & 1];
+              a[cc11] += row1[sx1] * s11;
+              c[cc11] += s11;
             }
           }
-        }
-      });
-    }
-    else {
+          else if ( sy1 > sy0 ) {
+            const float drop_y1_min = (sy1 + 0.5f) - half_drop;
+            const float drop_y1_max = (sy1 + 0.5f) + half_drop;
+            const float wy1 = (std::min(target_y_max, drop_y1_max) - std::max(target_y_min, drop_y1_min)) * w;
 
-      const cv::Mat wmap = weigths.getMat();
-      const uint8_t * wmap_base = wmap.ptr();
-      const size_t wmap_stride = wmap.step;
+            const _Tp * const row1 = (const _Tp *)(bayer_base + sy1 * bayer_stride);
+            const int * const lut1 = bayer_lookup[sy1 & 1];
 
-      parallel_for(0, rows, [=](const auto & range) {
-        for ( int y = rbegin(range); y < rend(range); ++y ) {
-          cv::Vec3f * __restrict accp = (cv::Vec3f * )(acc_base + y * acc_stride);
-          cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-          const _Tpw * wp = (const _Tpw * )(wmap_base + y * wmap_stride);
-          const _Tp * bayerp = (const _Tp * )(bayer_base + y * bayer_stride);
-          const cv::Vec2f *rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
-          for( int x = 0; x < cols; ++x ) {
-            if ( wp[x] > 0 ) {
-              const cv::Vec2f p = rmp[x];
-              const float target_x_min = p[0] - 0.5f;
-              const float target_x_max = p[0] + 0.5f;
-              const float target_y_min = p[1] - 0.5f;
-              const float target_y_max = p[1] + 0.5f;
-              const float half_drop = pixfrac * 0.5f;
-              const int src_x_start = std::max(0, cvCeil (target_x_min - 0.5f - half_drop));
-              const int src_x_end   = std::min(cols - 1, cvFloor(target_x_max - 0.5f + half_drop));
-              if (src_x_start > src_x_end) { // No intersections along the X-axis.
-                continue;
-              }
-              const int src_y_start = std::max(0, cvCeil (target_y_min - 0.5f - half_drop));
-              const int src_y_end   = std::min(rows - 1, cvFloor(target_y_max - 0.5f + half_drop));
-              if (src_y_start > src_y_end) { // No intersections along the Y-axis.
-                continue;
-              }
-
-              // Iterate only over pixels where s > 0
-              for (int sy = src_y_start; sy <= src_y_end; ++sy) {
-                const _Tp* srcp = (const _Tp* )(bayer_base + sy * bayer_stride);
-                const float drop_y_min = (sy + 0.5f) - half_drop;
-                const float drop_y_max = (sy + 0.5f) + half_drop;
-                const float overlap_y = std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min);
-                const float weight_y = overlap_y * wp[x];
-                const int bayer_y = sy & 1;
-                for (int sx = src_x_start; sx <= src_x_end; ++sx) {
-                  const float drop_x_min = (sx + 0.5f) - half_drop;
-                  const float drop_x_max = (sx + 0.5f) + half_drop;
-                  const float overlap_x = std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min);
-                  const float s = overlap_x * weight_y;
-                  const int cc = bayer_lookup[bayer_y][sx & 1];
-                  accp[x][cc] += srcp[sx] * s;
-                  cntrp[x][cc] += s;
-                }
-              }
-            }
+            const float s10 = wx0 * wy1;
+            const int cc10 = lut1[sx0 & 1];
+            a[cc10] += row1[sx0] * s10;
+            c[cc10] += s10;
           }
+
+          accp[x] = a;
+          cntrp[x] = c;
         }
-      });
-    }
+      }
+    });
+    return true;
   }
+
+  // General path for oversized drops (pixfrac > 1.0f)
+  parallel_for(0, dst_rows, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      cv::Vec3f * __restrict accp = (cv::Vec3f *)(acc_base + y * acc_stride);
+      cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
+
+      const cv::Vec2f * const rmp = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
+      const _Tpw * const wp = has_weights ? (const _Tpw *)(wmap_base + y * wmap_stride) : nullptr;
+
+      for ( int x = 0; x < dst_cols; ++x ) {
+        float w = 1.0f;
+        if constexpr ( has_weights ) {
+          w = static_cast<float>(wp[x]);
+          if ( w <= 0.0f ) {
+            continue;
+          }
+        }
+
+        const cv::Vec2f p = rmp[x];
+        const float px = p(0);
+        const float py = p(1);
+
+        const float target_x_min = px - half_target;
+        const float target_x_max = px + half_target;
+        const int src_x_start = std::max(0, cvCeil(target_x_min - 0.5f - half_drop));
+        const int src_x_end   = std::min(src_cols - 1, cvFloor(target_x_max - 0.5f + half_drop));
+        if ( src_x_start > src_x_end ) {
+          continue;
+        }
+
+        const float target_y_min = py - half_target;
+        const float target_y_max = py + half_target;
+        const int src_y_start = std::max(0, cvCeil(target_y_min - 0.5f - half_drop));
+        const int src_y_end   = std::min(src_rows - 1, cvFloor(target_y_max - 0.5f + half_drop));
+        if ( src_y_start > src_y_end ) {
+          continue;
+        }
+
+        cv::Vec3f a = accp[x];
+        cv::Vec3f c = cntrp[x];
+
+        for ( int sy = src_y_start; sy <= src_y_end; ++sy ) {
+          const _Tp * const src_row = (const _Tp *)(bayer_base + sy * bayer_stride);
+          const float drop_y_min = (sy + 0.5f) - half_drop;
+          const float drop_y_max = (sy + 0.5f) + half_drop;
+          const float overlap_y = std::min(target_y_max, drop_y_max) - std::max(target_y_min, drop_y_min);
+          const float weight_y = overlap_y * w;
+          const int * const row_lookup = bayer_lookup[sy & 1];
+
+          for ( int sx = src_x_start; sx <= src_x_end; ++sx ) {
+            const float drop_x_min = (sx + 0.5f) - half_drop;
+            const float drop_x_max = (sx + 0.5f) + half_drop;
+            const float overlap_x = std::min(target_x_max, drop_x_max) - std::max(target_x_min, drop_x_min);
+            const float s = overlap_x * weight_y;
+            const int cc = row_lookup[sx & 1];
+            a[cc] += src_row[sx] * s;
+            c[cc] += s;
+          }
+        }
+
+        accp[x] = a;
+        cntrp[x] = c;
+      }
+    }
+  });
 
   return true;
 }
 
-static bool bayer_drizzle(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+template<class _Tp>
+static bool _bayer_drizzle_dispatch_scale(cv::InputArray bayer_image,
+    cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
-    cv::InputArray weigths,
-    double pixfrac)
+    cv::InputArray weights,
+    float pixfrac,
+    int scale)
 {
-  CV_DISPATCH2(bayer_image.depth(), weigths.depth(), _bayer_drizzle, bayer_image, acc, cntr, rmap, bayer_lookup, weigths, pixfrac);
-  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d weigths.depth()=%d encountered", bayer_image.depth(), weigths.depth());
+  if ( weights.empty() ) {
+    switch ( scale ) {
+      case c_bayer_drizzle::SCALE_1x:
+        return _bayer_drizzle_core<_Tp, void, 1>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      case c_bayer_drizzle::SCALE_2x:
+        return _bayer_drizzle_core<_Tp, void, 2>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      default:
+        break;
+    }
+  }
+  else if ( weights.type() == CV_8UC1 ) {
+    switch ( scale ) {
+      case c_bayer_drizzle::SCALE_1x:
+        return _bayer_drizzle_core<_Tp, uint8_t, 1>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      case c_bayer_drizzle::SCALE_2x:
+        return _bayer_drizzle_core<_Tp, uint8_t, 2>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      default:
+        break;
+    }
+  }
+  else if ( weights.type() == CV_32FC1 ) {
+    switch ( scale ) {
+      case c_bayer_drizzle::SCALE_1x:
+        return _bayer_drizzle_core<_Tp, float, 1>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      case c_bayer_drizzle::SCALE_2x:
+        return _bayer_drizzle_core<_Tp, float, 2>(bayer_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      default:
+        break;
+    }
+  }
+
+  CF_ERROR("Unsupported weights type=%d or scale=%d in bayer_drizzle", weights.type(), scale);
   return false;
 }
 
+static bool bayer_drizzle(cv::InputArray bayer_image,
+    cv::Mat3f & acc, cv::Mat3f & cntr,
+    const cv::Mat2f & rmap,
+    const int bayer_lookup[2][2],
+    cv::InputArray weights,
+    double pixfrac,
+    int scale)
+{
+  INSTRUMENT_REGION("");
+  CV_DISPATCH(bayer_image.depth(), _bayer_drizzle_dispatch_scale,
+      bayer_image, acc, cntr, rmap, bayer_lookup, weights,
+      float(pixfrac),
+      scale);
 
-void c_bayer_drizzle_base::generate_bayer_lookup_mask()
+  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d encountered", bayer_image.depth());
+  return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<>
+const c_enum_member * members_of<c_bayer_drizzle::SCALE>()
+{
+  static const c_enum_member members[] = {
+      { c_bayer_drizzle::SCALE_1x, "DRIZZLE_1x", "" },
+      { c_bayer_drizzle::SCALE_2x, "DRIZZLE_2x", "" },
+      { c_bayer_drizzle::SCALE_1x}
+  };
+  return members;
+}
+
+void c_bayer_drizzle::generate_bayer_lookup_mask()
 {
   switch (_colorid) {
     case COLORID_BAYER_RGGB:
@@ -901,46 +1041,185 @@ void c_bayer_drizzle_base::generate_bayer_lookup_mask()
 
 bool c_bayer_drizzle::add(cv::InputArray src, cv::InputArray weights)
 {
-  if( _accumulated_frames < 1 ) {
-    const cv::Size image_size = src.size();
-    _accumulator.create(image_size);
-    _counter.create(image_size);
-    _accumulator.setTo(cv::Scalar::all(0));
-    _counter.setTo(cv::Scalar::all(0));
-    _accumulated_frames = 0;
-    generate_bayer_lookup_mask();
+  if( _scale != SCALE_1x && _scale != SCALE_2x ) {
+    CF_ERROR("Invalid scale=%d in c_bayer_drizzle", (int )_scale);
+    return false;
   }
 
-  if ( !bayer_drizzle(src, _accumulator, _counter, _rmap, _bayer_lookup, weights, _pixfrac) ) {
+  if( src.channels() != 1 ) {
+    CF_ERROR("Expected single-channel raw bayer image, got channels=%d", src.channels());
+    return false;
+  }
+
+  const cv::Size src_size = src.size();
+  const cv::Size dst_size(src_size.width * _scale, src_size.height * _scale);
+
+  if ( true ) {
+    std::scoped_lock lock(_mtx);
+
+    if( _accumulated_frames < 1 ) {
+      _accumulator.create(dst_size);
+      _counter.create(dst_size);
+      _accumulator.setTo(cv::Scalar::all(0));
+      _counter.setTo(cv::Scalar::all(0));
+      _accumulated_frames = 0;
+      generate_bayer_lookup_mask();
+    }
+    else if( _accumulator.size() != dst_size ) {
+      CF_ERROR("Expected destination size (%dx%d) does not match accumulator size (%dx%d)",
+          dst_size.width, dst_size.height, _accumulator.cols, _accumulator.rows);
+      return false;
+    }
+  }
+
+  const cv::Mat2f * rmap = &_rmap;
+  if( !_rmap.empty() && _rmap.size() != dst_size ) {
+    if( _scale == SCALE_2x && _rmap.size() == src_size ) {
+      cv::resize(_rmap, _scaled_rmap, dst_size, 0, 0, cv::INTER_LINEAR);
+      rmap = &_scaled_rmap;
+    }
+    else {
+      CF_ERROR("Invalid remap size (%dx%d) for src size (%dx%d) and scale=%d",
+          _rmap.cols, _rmap.rows, src_size.width, src_size.height, (int )_scale);
+      return false;
+    }
+  }
+
+  cv::Mat current_weights;
+  if( !weights.empty() ) {
+
+    if( weights.size() == dst_size ) {
+      current_weights = weights.getMat();
+    }
+    else if( _scale == SCALE_2x && weights.size() == src_size ) {
+      const int interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+      cv::resize(weights, _scaled_weights, dst_size, 0, 0, interp);
+      current_weights = _scaled_weights;
+    }
+    else {
+      CF_ERROR("Invalid weights size (%dx%d) for src size (%dx%d) and scale=%d",
+          weights.cols(), weights.rows(), src_size.width, src_size.height, (int )_scale);
+      return false;
+    }
+  }
+
+  if( !bayer_drizzle(src, _accumulator, _counter, *rmap, _bayer_lookup, current_weights, _pixfrac, _scale) ) {
     CF_ERROR("bayer_drizzle() fails");
     return false;
   }
 
   ++_accumulated_frames;
+  return true;
+}
+
+template<class _Tp, bool _NeedAvg, bool _NeedMask>
+static void _compute_drizzle_output_impl(const cv::Mat3f & acc, const cv::Mat3f & cntr,
+    cv::OutputArray avg, cv::OutputArray mask, float scale)
+{
+  constexpr float eps = 1e-5f;
+
+  const cv::Size size = acc.size();
+
+  cv::Mat dst_avg;
+  if constexpr ( _NeedAvg ) {
+    avg.create(size, CV_MAKETYPE(cv::DataType<_Tp>::depth, 3));
+    dst_avg = avg.getMat();
+  }
+
+  cv::Mat1b dst_mask;
+  if constexpr ( _NeedMask ) {
+    mask.create(size, CV_8UC1);
+    dst_mask = mask.getMat();
+  }
+
+  const uint8_t * const acc_base = acc.ptr();
+  const size_t acc_stride = acc.step;
+  const uint8_t * const cntr_base = cntr.ptr();
+  const size_t cntr_stride = cntr.step;
+
+  uint8_t * const avg_base = _NeedAvg ? dst_avg.ptr() : nullptr;
+  const size_t avg_stride = _NeedAvg ? dst_avg.step : 0;
+  uint8_t * const msk_base = _NeedMask ? dst_mask.ptr() : nullptr;
+  const size_t msk_stride = _NeedMask ? dst_mask.step : 0;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const cv::Vec3f * const accp = (const cv::Vec3f *)(acc_base + y * acc_stride);
+      const cv::Vec3f * const cntrp = (const cv::Vec3f *)(cntr_base + y * cntr_stride);
+      cv::Vec<_Tp, 3> * __restrict avgp = _NeedAvg ? (cv::Vec<_Tp, 3> *)(avg_base + y * avg_stride) : nullptr;
+      uint8_t * __restrict mskp = _NeedMask ? (msk_base + y * msk_stride) : nullptr;
+
+      for ( int x = 0; x < size.width; ++x ) {
+        const cv::Vec3f c = cntrp[x];
+
+        if constexpr ( _NeedMask ) {
+          mskp[x] = (c[0] > 0.0f || c[1] > 0.0f || c[2] > 0.0f) ? 255 : 0;
+        }
+
+        if constexpr ( _NeedAvg ) {
+          const cv::Vec3f a = accp[x];
+          avgp[x][0] = cv::saturate_cast<_Tp>(c[0] > eps ? (a[0] * scale / c[0]) : 0.0f);
+          avgp[x][1] = cv::saturate_cast<_Tp>(c[1] > eps ? (a[1] * scale / c[1]) : 0.0f);
+          avgp[x][2] = cv::saturate_cast<_Tp>(c[2] > eps ? (a[2] * scale / c[2]) : 0.0f);
+        }
+      }
+    }
+  });
+}
+
+template<class _Tp>
+static bool _compute_drizzle_output(const cv::Mat3f & acc, const cv::Mat3f & cntr,
+    cv::OutputArray avg, cv::OutputArray mask, float scale)
+{
+  const bool need_avg = avg.needed();
+  const bool need_mask = mask.needed();
+
+  if ( need_avg && need_mask ) {
+    _compute_drizzle_output_impl<_Tp, true, true>(acc, cntr, avg, mask, scale);
+  }
+  else if ( need_avg ) {
+    _compute_drizzle_output_impl<_Tp, true, false>(acc, cntr, avg, mask, scale);
+  }
+  else if ( need_mask ) {
+    _compute_drizzle_output_impl<_Tp, false, true>(acc, cntr, avg, mask, scale);
+  }
 
   return true;
 }
 
 bool c_bayer_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
-  if( _accumulated_frames < 1 ) {
+  if ( !avg.needed() && !mask.needed() ) {
+    return true;
+  }
+
+  cv::Mat3f acc, cntr;
+  int accumulated_frames = 0;
+
+  synchronized([&]() {
+    acc = _accumulator;
+    cntr = _counter;
+    accumulated_frames = _accumulated_frames;
+  });
+
+  if ( accumulated_frames < 1 ) {
     CF_ERROR("no frames");
     return false;
   }
 
-  if ( avg.needed() ) {
-    divideImages(_accumulator, _counter, avg, ddepth, dscale, 1e-5);
+  if ( avg.fixedType() ) {
+    ddepth = avg.depth();
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = CV_32F;
   }
 
-  if( mask.needed() ) {
-    cv::Mat msk;
-    cv::compare(_counter, 0, msk, cv::CMP_GT);
-    reduce_color_channels(msk, mask, cv::REDUCE_MAX);
-  }
+  const float scale = float(dscale);
 
-  return true;
+  CV_DISPATCH(ddepth, _compute_drizzle_output, acc, cntr, avg, mask, scale);
+  CF_ERROR("APP BUG: BAD ddepth=%d encountered in c_bayer_drizzle::compute", ddepth);
+  return false;
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

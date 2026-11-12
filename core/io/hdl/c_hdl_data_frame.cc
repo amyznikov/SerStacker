@@ -215,9 +215,10 @@ void c_hdl_data_frame::setup_default_channels()
 bool c_hdl_data_frame::get_image(const std::string & display_name,
     cv::OutputArray output_image,
     cv::OutputArray output_mask,
-    cv::OutputArray output_data)
+    cv::OutputArray output_data,
+    bool copy )
 {
-  if (base::get_image(display_name, output_image, output_mask, output_data)) {
+  if (base::get_image(display_name, output_image, output_mask, output_data, copy)) {
     return true;
   }
 

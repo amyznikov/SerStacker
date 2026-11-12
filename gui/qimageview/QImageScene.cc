@@ -6,47 +6,48 @@
  */
 
 #include "QImageScene.h"
+#include <core/debug.h>
 
-QImageScene::QImageScene(QObject * parent)
-  : Base(parent)
+QImageScene::QImageScene(QObject * parent) :
+  Base(parent)
 {
-  pixmapItem_ = addPixmap(QPixmap());
-  pixmapItem_->setZValue(-1000);
-  pixmapItem_->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
-  pixmapItem_->setFlags(pixmapItem_->flags() &
+  _pxmapItem = addPixmap(QPixmap());
+  _pxmapItem->setZValue(-1000);
+  _pxmapItem->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
+  _pxmapItem->setFlags(_pxmapItem->flags() &
       ~(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable));
-  pixmapItem_->setPos(pixmapItem_->mapFromScene(0, 0));
+  _pxmapItem->setPos(_pxmapItem->mapFromScene(0, 0));
 
   setSceneRect(0, 0, 1, 1);
 }
 
-QImageScene::QImageScene(const QRectF & sceneRect, QObject *parent)
-  : Base(sceneRect, parent)
+QImageScene::QImageScene(const QRectF & sceneRect, QObject *parent) :
+    Base(sceneRect, parent)
 {
-  pixmapItem_ = addPixmap(QPixmap());
-  pixmapItem_->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
-  pixmapItem_->setFlags(pixmapItem_->flags() &
+  _pxmapItem = addPixmap(QPixmap());
+  _pxmapItem->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
+  _pxmapItem->setFlags(_pxmapItem->flags() &
       ~(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable));
-  pixmapItem_->setPos(pixmapItem_->mapFromScene(0, 0));
+  _pxmapItem->setPos(_pxmapItem->mapFromScene(0, 0));
 
   setSceneRect(0, 0, 1, 1);
 }
 
-QImageScene::QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *parent)
-  : Base(x, y, width, height, parent)
+QImageScene::QImageScene(qreal x, qreal y, qreal width, qreal height, QObject *parent) :
+    Base(x, y, width, height, parent)
 {
-  pixmapItem_ = addPixmap(QPixmap());
-  pixmapItem_->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
-  pixmapItem_->setFlags(pixmapItem_->flags() &
+  _pxmapItem = addPixmap(QPixmap());
+  _pxmapItem->setShapeMode(QGraphicsPixmapItem::BoundingRectShape);
+  _pxmapItem->setFlags(_pxmapItem->flags() &
       ~(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable));
-  pixmapItem_->setPos(pixmapItem_->mapFromScene(0, 0));
+  _pxmapItem->setPos(_pxmapItem->mapFromScene(0, 0));
 
   setSceneRect(0, 0, 1, 1);
 }
 
 QGraphicsPixmapItem * QImageScene::image(void) const
 {
-  return pixmapItem_;
+  return _pxmapItem;
 }
 
 QGraphicsPixmapItem * QImageScene::setImage(const QImage & image)
@@ -56,18 +57,16 @@ QGraphicsPixmapItem * QImageScene::setImage(const QImage & image)
 
 QGraphicsPixmapItem * QImageScene::setImage(const QPixmap & pxmap)
 {
-  const QSize oldPixmapSize =
-      pixmapItem_->pixmap().size();
-
-  pixmapItem_->setPixmap(pxmap);
-  pixmapItem_->setVisible(true);
+  const QSize oldPixmapSize = _pxmapItem->pixmap().size();
+  _pxmapItem->setPixmap(pxmap);
+  _pxmapItem->setVisible(true);
 
   if ( !pxmap.isNull() && pxmap.size() != oldPixmapSize ) {
     setSceneRect(0, 0, pxmap.width(), pxmap.height());
-    pixmapItem_->setPos(0, 0);
+    _pxmapItem->setPos(0, 0);
   }
 
-  return pixmapItem_;
+  return _pxmapItem;
 }
 
 void QImageScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *e)

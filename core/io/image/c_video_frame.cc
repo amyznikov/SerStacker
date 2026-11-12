@@ -34,20 +34,31 @@ void c_video_frame::get_output_mask(cv::OutputArray output_mask)
 bool c_video_frame::get_image(const std::string & display_name,
     cv::OutputArray output_image,
     cv::OutputArray output_mask,
-    cv::OutputArray output_data )
+    cv::OutputArray output_data,
+    bool copy)
 {
-  if (base::get_image(display_name, output_image, output_mask, output_data)) {
+  if (base::get_image(display_name, output_image, output_mask, output_data, copy)) {
     return true;
   }
 
   if ( display_name == "PIXEL_VALUE" ) {
 
     if ( output_image.needed() ) {
-      this->_current_image.copyTo(output_image);
+      if ( copy ) {
+        this->_current_image.copyTo(output_image);
+      }
+      else {
+        output_image.assign(this->_current_image);
+      }
     }
 
     if( output_mask.needed() ) {
-      this->_selection_mask.copyTo(output_mask);
+      if ( copy ) {
+        this->_selection_mask.copyTo(output_mask);
+      }
+      else {
+        output_mask.assign(this->_selection_mask);
+      }
     }
 
     if ( output_data.needed() ) {

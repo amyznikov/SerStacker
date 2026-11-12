@@ -141,8 +141,6 @@ static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst)
  */
 bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst)
 {
-  INSTRUMENT_REGION("");
-
   const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
   CV_DISPATCH2(src.depth(),ddepth, _extract_bayer_planes, src, dst);
 
@@ -217,7 +215,6 @@ static bool _extract_bayer_plane(cv::InputArray _src, cv::OutputArray _dst, int 
  */
 bool extract_bayer_plane(cv::InputArray src, cv::OutputArray dst, int index, const cv::Rect &roi)
 {
-  INSTRUMENT_REGION("");
   const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
   CV_DISPATCH2(src.depth(), ddepth, _extract_bayer_plane, src, dst, index, roi);
   return false;
@@ -319,7 +316,6 @@ static bool _average_bayer_planes(cv::InputArray _src, cv::OutputArray _dst)
  */
 bool average_bayer_planes(cv::InputArray src, cv::OutputArray dst)
 {
-  INSTRUMENT_REGION("");
   const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
   CV_DISPATCH2(src.depth(), ddepth, _average_bayer_planes, src, dst);
   return true;
@@ -367,8 +363,6 @@ static bool _bayer_planes_to_bgr(cv::InputArray _src, cv::OutputArray _dst)
  */
 bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst, int ddepth)
 {
-  INSTRUMENT_REGION("");
-
   if( src.channels() != 4 ) {
     CF_ERROR("Invalid argument: 4-channel input image expected but src.channels=%d",
         src.channels());
@@ -737,8 +731,6 @@ static bool _debayer_sp(cv::InputArray _src, cv::OutputArray _dst, COLORID color
  */
 bool debayer_sp(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int ddepth)
 {
-  INSTRUMENT_REGION("");
-
   if( dst.fixedType() && dst.channels() != 3 ) {
     CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
         dst.channels());
@@ -1110,8 +1102,6 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
 
 bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
 {
-  INSTRUMENT_REGION("");
-
   if ( !is_bayer_pattern(colorid) ) {
     CF_ERROR("colorid=%d (%s) is not bayer pattern", (int)colorid, toCString(colorid));
     return false;
@@ -1419,8 +1409,6 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, enum COLORID colo
 template<class _Tp>
 static bool _bayer_planes_to_bayer(cv::InputArray _src_planes, cv::OutputArray _dst_bayer)
 {
-  INSTRUMENT_REGION("");
-
   const int rows4 = _src_planes.rows();
   const int cols4 = _src_planes.cols();
 
@@ -1457,8 +1445,6 @@ static bool _bayer_planes_to_bayer(cv::InputArray _src_planes, cv::OutputArray _
 
 bool bayer_planes_to_bayer(cv::InputArray src_planes, cv::OutputArray dst_bayer)
 {
-  INSTRUMENT_REGION("");
-
   if ( src_planes.empty() ) {
     CF_ERROR("bayer_planes_to_bayer: src_planes image is empty");
     return false;
@@ -1481,8 +1467,6 @@ template<class _Tp>
 static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id,
     bool returnBayerPlanes)
 {
-  INSTRUMENT_REGION("");
-
   const int cn = _bayer_image.channels();
   switch (cn) {
     case 1: // assume monochrome bayer patter
@@ -1617,8 +1601,6 @@ static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id
 bool bayer_denoise(cv::Mat & bayer_image, double variation_threshold,
     COLORID color_id, bool returnBayerPlanes)
 {
-  INSTRUMENT_REGION("");
-
   if( is_bayer_pattern(color_id) ) {
     CV_DISPATCH(bayer_image.depth(), _debayer_denoise, bayer_image, variation_threshold, color_id,
         returnBayerPlanes);
@@ -1639,8 +1621,6 @@ template<typename _Tp1, typename _Tp2>
 static bool _interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid,
     int ddepth /*= -1*/)
 {
-  INSTRUMENT_REGION("");
-
   using Vec4T = cv::Vec<_Tp1, 4>;
   using Vec3T = cv::Vec<_Tp2, 3>;
 

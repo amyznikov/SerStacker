@@ -83,8 +83,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
 {
   QPixmap pixmap;
 
-  const cv::Mat image =
-      src.getMat();
+  const cv::Mat image = src.getMat();
 
   if( image.type() == CV_8UC3 ) {
 
@@ -101,8 +100,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
 
 #endif
 
-    pixmap =
-        QPixmap::fromImage(qimage, flags);
+    pixmap = QPixmap::fromImage(qimage, flags);
 
   }
   else if( image.type() == CV_8UC1 ) {
@@ -112,8 +110,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
         (int) (size_t) (image.step),
         QImage::Format_Grayscale8 );
 
-    pixmap =
-        QPixmap::fromImage(qimage, flags);
+    pixmap = QPixmap::fromImage(qimage, flags);
 
   }
 #if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
@@ -124,8 +121,7 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
         (int) (size_t) (image.step),
         QImage::Format_Grayscale16 );
 
-    pixmap =
-        QPixmap::fromImage(qimage, flags);
+    pixmap = QPixmap::fromImage(qimage, flags);
 
   }
 #endif
@@ -133,11 +129,8 @@ QPixmap createPixmap(cv::InputArray src, bool rgbswap, Qt::ImageConversionFlags 
   else {
 
     QImage qimage;
-
     cv2qt(image, &qimage, rgbswap);
-
-    pixmap =
-        QPixmap::fromImage(qimage, flags);
+    pixmap = QPixmap::fromImage(qimage, flags);
   }
 
   return pixmap;

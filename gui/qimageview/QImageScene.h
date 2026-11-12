@@ -38,7 +38,7 @@ protected:
   void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 private:
-  QGraphicsPixmapItem * pixmapItem_ = nullptr;
+  QGraphicsPixmapItem * _pxmapItem = nullptr;
 };
 
 #endif /* __QImageScene_h__ */

@@ -67,6 +67,57 @@ protected:
   cv::Mat1f _weights;
 };
 
+class c_laplacian_pyramid_focus_stacking :
+    public c_frame_accumulation
+{
+public:
+  typedef c_laplacian_pyramid_focus_stacking this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  enum fusing_policy {
+    select_max_energy,
+    weighted_average
+  };
+
+  struct options {
+    enum fusing_policy fusing_policy = select_max_energy;
+    bool inpaint_mask_holes = true;
+    bool avgchannel = true;
+    int kradius = 0;
+    double ksigma = 0;
+  };
+
+  c_laplacian_pyramid_focus_stacking(const options & opts);
+
+  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
+  void clear() final;
+
+  cv::Size accumulator_size() const final {
+    return _image_size;
+  }
+  cv::Mat get_accumulator() const final {
+    return acc[0];
+  }
+  cv::Mat get_counter() const final {
+    return wwp[0];
+  }
+
+protected:
+  static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
+
+protected:
+  options _opts;
+  std::vector<cv::Mat> acc;
+  std::vector<cv::Mat> wwp;
+  cv::Size _image_size;
+  int _acctype = CV_32F;
+  int _weightstype = CV_8U;
+  cv::Mat1f G;
+};
+
 class c_canvas_average
 {
 public:
@@ -134,11 +185,13 @@ public:
     }
   }
 
-  const cv::Mat & get_accumulator() const {
+  const cv::Mat & get_accumulator() const
+  {
     return _accumulator;
   }
 
-  const cv::Mat & get_counter() const {
+  const cv::Mat & get_counter() const
+  {
     return _weights;
   }
 
@@ -154,65 +207,18 @@ protected:
   int _accumulated_frames = 0;
 };
 
-class c_laplacian_pyramid_focus_stacking :
+class c_bayer_drizzle :
     public c_frame_accumulation
 {
 public:
-  typedef c_laplacian_pyramid_focus_stacking this_class;
+  typedef c_bayer_drizzle this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
-  enum fusing_policy {
-    select_max_energy,
-    weighted_average
+  enum SCALE {
+    SCALE_1x = 1,
+    SCALE_2x = 2,
   };
-
-  struct options {
-    enum fusing_policy fusing_policy = select_max_energy;
-    bool inpaint_mask_holes = true;
-    bool avgchannel = true;
-    int kradius = 0;
-    double ksigma = 0;
-  };
-
-  c_laplacian_pyramid_focus_stacking(const options & opts);
-
-  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) final;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
-  void clear() final;
-
-  cv::Size accumulator_size() const final {
-    return _image_size;
-  }
-  cv::Mat get_accumulator() const final {
-    return acc[0];
-  }
-  cv::Mat get_counter() const final {
-    return wwp[0];
-  }
-
-protected:
-  static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
-
-protected:
-  options _opts;
-  std::vector<cv::Mat> acc;
-  std::vector<cv::Mat> wwp;
-  cv::Size _image_size;
-  int _acctype = CV_32F;
-  int _weightstype = CV_8U;
-  cv::Mat1f G;
-};
-
-
-class c_bayer_drizzle_base :
-    public c_frame_accumulation
-{
-public:
-  typedef c_bayer_drizzle_base this_class;
-  typedef c_frame_accumulation base;
-  typedef std::shared_ptr<this_class> ptr;
 
   enum BAYER_COLOR_ID {
     BAYER_B = 0,
@@ -220,10 +226,15 @@ public:
     BAYER_R = 2,
   };
 
+  c_bayer_drizzle(SCALE scale = SCALE_1x) :
+      _scale(scale)
+  {
+  }
+
   void set_bayer_pattern(COLORID colorid)
   {
     _colorid = colorid;
-    if ( !_accumulator.size().empty() ) {
+    if ( _accumulated_frames > 0 ) {
       generate_bayer_lookup_mask();
     }
   }
@@ -243,6 +254,19 @@ public:
     return _pixfrac;
   }
 
+  void set_scale(SCALE v)
+  {
+    if ( _scale != v ) {
+      clear();
+      _scale = v;
+    }
+  }
+
+  SCALE scale() const
+  {
+    return _scale;
+  }
+
   void set_remap(const cv::Mat2f & rmap)
   {
     _rmap = rmap;
@@ -250,7 +274,7 @@ public:
 
   const cv::Mat2f & remap() const
   {
-    return _rmap ;
+    return _rmap;
   }
 
   cv::Size accumulator_size() const final
@@ -273,6 +297,8 @@ public:
     _accumulator.release();
     _counter.release();
     _rmap.release();
+    _scaled_rmap.release();
+    _scaled_weights.release();
     _accumulated_frames = 0;
   }
 
@@ -281,28 +307,36 @@ public:
     return false;
   }
 
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+
 protected:
   void generate_bayer_lookup_mask();
 
+  template<typename Fn>
+  inline auto synchronized(Fn && fn) const
+  {
+    std::scoped_lock lock(_mtx);
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
+
 protected:
-  int _bayer_lookup[2][2];
+  int _bayer_lookup[2][2] = {{0}};
+  mutable std::mutex _mtx;
   cv::Mat3f _accumulator;
   cv::Mat3f _counter;
   cv::Mat2f _rmap;
+  cv::Mat2f _scaled_rmap;
+  cv::Mat _scaled_weights;
   double _pixfrac = 1;
   COLORID _colorid = COLORID_UNKNOWN;
+  SCALE _scale = SCALE_1x;
 };
 
-class c_bayer_drizzle :
-    public c_bayer_drizzle_base
-{
-public:
-  typedef c_bayer_drizzle this_class;
-  typedef c_bayer_drizzle_base base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
-};
 
 #endif /* __c_frame_stacking_h__ */

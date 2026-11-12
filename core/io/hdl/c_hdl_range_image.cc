@@ -1556,8 +1556,6 @@ bool c_hdl_range_image::build_image_for_ground_detection(const std::vector<c_hdl
     /* out, opt */ std::vector<cv::Point> * projected_coords)
 {
 
-  INSTRUMENT_REGION("");
-
   static const auto next_col =
       [](int x, const cv::Vec3f dhs[], int n) -> int {
         while ( x < n && !dhs[x][0] ) {
@@ -1698,8 +1696,6 @@ bool c_hdl_range_image::build_images_for_ground_detection(const std::vector<c_hd
     /* out, opt */ std::vector<cv::Point> * projected_coords)
 {
 
-  INSTRUMENT_REGION("");
-
   static const auto next_col =
       [](int x, const float depths[], int n) -> int {
         while ( x < n && !depths[x] ) {
@@ -1836,8 +1832,6 @@ bool c_hdl_range_image::build_images_for_ground_detection(const std::vector<c_hd
 
 void c_hdl_range_image::median_inpaint(cv::InputOutputArray image, int kradius)
 {
-  INSTRUMENT_REGION("");
-
   cv::Mat median_image, mask;
 
   cv::medianBlur(image,

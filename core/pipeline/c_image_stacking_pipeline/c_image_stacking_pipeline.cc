@@ -315,7 +315,7 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
     case frame_accumulation_bayer_drizzle:
-      return c_frame_accumulation::ptr(new c_bayer_drizzle());
+      return c_frame_accumulation::ptr(new c_bayer_drizzle(opts.drizzle_scale));
     default:
       break;
   }
@@ -545,7 +545,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       cv::Mat1b msk;
 
       if ( true ) {
-        lock_guard lock(mutex());
+        // lock_guard lock(mutex());
 
         if( !_frame_accumulation->compute(avg, msk) ) {
           CF_ERROR("ERROR: frame_accumulation->compute() fails");
@@ -1346,9 +1346,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     if ( _frame_accumulation ) {
 
       if( c_bayer_drizzle *bayer_drizzle = dynamic_cast<c_bayer_drizzle*>(_frame_accumulation.get()) ) {
+        INSTRUMENT_REGION("bayer_drizzle_add");
 
-        lock_guard lock(mutex());
-
+        // lock_guard lock(mutex());
         if( bayer_drizzle->accumulated_frames() < 1 ) {
           bayer_drizzle->set_bayer_pattern(_raw_bayer_colorid);
         }
@@ -1592,18 +1592,17 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
 
     case stacking_stage_generate_reference_frame:
       case stacking_stage_in_progress:
-      case stacking_stage_finishing:
-      if( _frame_accumulation && _frame_accumulation->accumulated_frames() > 0 ) {
-        if( !_frame_accumulation->compute(dst, dst_mask) ) {
-          CF_ERROR("frame_accumulation_->compute() fails");
-          return false;
+      case stacking_stage_finishing: {
+        INSTRUMENT_REGION("get_display");
+        if( _frame_accumulation && _frame_accumulation->accumulated_frames() > 0 ) {
+          if( !_frame_accumulation->compute(dst, dst_mask, _input_bpp > 1 ? (1 << _input_bpp) : 1) ) {
+            CF_ERROR("frame_accumulation_->compute() fails");
+            return false;
+          }
+          return true;
         }
-        if ( _input_bpp > 1 ) {
-          cv::multiply(dst, cv::Scalar::all(1 << _input_bpp), dst);
-        }
-        return true;
+        break;
       }
-      break;
   }
 
   return false;
@@ -1711,7 +1710,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     c_frame_accumulation_options & opts = _master_options.accumulation;
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
-    // SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
+    SERIALIZE_OPTION(section, save, opts, drizzle_scale);
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, opts.sharpness_measure);
     }
@@ -1732,6 +1731,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     c_frame_accumulation_options & opts = _stack_options.accumulation;
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
+    SERIALIZE_OPTION(section, save, opts, drizzle_scale);
 
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, opts.sharpness_measure);
@@ -1944,6 +1944,7 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   using S = c_frame_accumulation_options;
 
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
+  ctlbind(ctls, "Drizzle Scale:", ctx(&S::drizzle_scale));
 
   ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, ctx(&S::sharpness_measure));

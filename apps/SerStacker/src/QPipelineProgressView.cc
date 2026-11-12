@@ -41,6 +41,11 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
   _menuButton->setIcon(getIcon(ICON_menu));
   _layout->addWidget(_menuButton, 1);
 
+  _updateTimer.setSingleShot(true);
+  _updateTimer.setTimerType(Qt::VeryCoarseTimer);
+
+  QObject::connect(&_updateTimer, &QTimer::timeout,
+      this, &ThisClass::onUpdateTimerTimeout);
 
   //
   connect(QPipelineThread::instance(), &QPipelineThread::started,
@@ -57,14 +62,6 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
 
   connect(_menuButton, &QToolButton::clicked,
       this, &ThisClass::onMenuButtonClicked);
-//
-//  connect(QPipelineThread::instance(), &QPipelineThread::accumulatorChanged,
-//      this, &ThisClass::onAccumulatorChanged,
-//      Qt::QueuedConnection);
-//
-//  connect(QPipelineThread::instance(), &QPipelineThread::selectedMasterFrameChanged,
-//      this, &ThisClass::onSelectedMasterFrameChanged,
-//      Qt::QueuedConnection);
 
   if( QPipelineThread::isRunning() ) {
     onPipelineThreadStarted();
@@ -95,66 +92,49 @@ void QPipelineProgressView::showEvent(QShowEvent *e)
   updateAccumulatedImageDisplay();
 }
 
-void QPipelineProgressView::timerEvent(QTimerEvent *event)
+void QPipelineProgressView::onUpdateTimerTimeout()
 {
-  if ( !_updatingDisplay ) {
-    updateAccumulatedImageDisplay();
+  updateAccumulatedImageDisplay(false);
+  if ( QPipelineThread::isRunning() ) {
+    _updateTimer.start(1000);
   }
 }
 
 void QPipelineProgressView::onPipelineThreadStarted()
 {
   c_image_processing_pipeline::sptr pipeline = QPipelineThread::currentPipeline();
-  if( pipeline ) {
-
-    QImageProcessingPipeline *p =
-        dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
-
-    if( p ) {
-      connect(p, &QImageProcessingPipeline::frameProcessed,
-          [this]() {
+  if ( pipeline ) {
+    QImageProcessingPipeline *p = dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
+    if ( p ) {
+      QObject::connect(p, &QImageProcessingPipeline::frameProcessed,
+          this, [this]() {
             _hasStatusUpdates = true;
-          });
+          },
+          Qt::DirectConnection);
     }
   }
 
-  timerId = startTimer(1000, Qt::VeryCoarseTimer);
+  _updateTimer.start(1000);
 }
 
 void QPipelineProgressView::onPipelineThreadFinishing()
 {
-  c_image_processing_pipeline::sptr pipeline =
-      QPipelineThread::currentPipeline();
+  _updateTimer.stop();
 
-  if( pipeline ) {
-
-    QImageProcessingPipeline *p =
-        dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
-
-    if( p ) {
+  c_image_processing_pipeline::sptr pipeline = QPipelineThread::currentPipeline();
+  if ( pipeline ) {
+    QImageProcessingPipeline *p = dynamic_cast<QImageProcessingPipeline*>(pipeline.get());
+    if ( p ) {
       p->disconnect(this);
     }
   }
-
-  killTimer(timerId);
-  timerId = 0;
-
-  QApplication::setOverrideCursor(Qt::WaitCursor);
 }
-
 
 void QPipelineProgressView::onPipelineThreadFinished()
 {
-  if ( timerId > 0 ) {
-    killTimer(timerId);
-    timerId = 0;
-  }
-
+  _updateTimer.stop();
   updateAccumulatedImageDisplay(true);
-
-  QApplication::restoreOverrideCursor();
 }
-
 
 void QPipelineProgressView::onMenuButtonClicked()
 {
@@ -201,16 +181,12 @@ void QPipelineProgressView::onMenuButtonClicked()
 
 void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 {
-  const c_image_processing_pipeline::sptr & pipeline =
-      QPipelineThread::currentPipeline();
-
-  if ( !pipeline ) {
+  const c_image_processing_pipeline::sptr & pipeline = QPipelineThread::currentPipeline();
+  if ( !pipeline || (!force && !_hasStatusUpdates)) {
     return;
   }
 
-  if ( !force && !_hasStatusUpdates ) {
-    return;
-  }
+  _hasStatusUpdates = false;
 
   _progressStrip->setRange(0, pipeline->total_frames());
   _progressStrip->setValue(0, pipeline->processed_frames());
@@ -226,25 +202,17 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
   if( _imageView && _imageView->isVisible() ) {
 
     QWaitCursor wait(this);
-    cv::Mat currentImage, currentMask;
 
-    _updatingDisplay = true;
-
-    if( pipeline->get_display(currentImage, currentMask) ) {
+    if( pipeline->get_display(_currentImage, _currentMask) ) {
 
       if ( !_dataframe ) {
         _dataframe.reset(new c_data_frame());
       }
 
-      _dataframe->add_image("PROGRESS", std::move(currentImage), std::move(currentMask));
+      _dataframe->add_image("PROGRESS", _currentImage, _currentMask, cv::noArray(), false);
       _imageView->showFrame(_dataframe);
-
-      //_imageViewer->setCurrentFileName(pipeline->cname());
-      //_imageViewer->editImage(currentImage, currentMask);
     }
 
-    _hasStatusUpdates = false;
-    _updatingDisplay = false;
   }
 }
 

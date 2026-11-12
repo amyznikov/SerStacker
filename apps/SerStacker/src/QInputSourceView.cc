@@ -613,7 +613,9 @@ void QInputSourceView::displayCurrentFrame()
 
         cv::Mat image, mask, data;
 
-        _currentFrame->get_image(_displayChannel.toStdString(), image, mask, data);
+        _currentFrame->get_image(_displayChannel.toStdString(),
+            image, mask, data,
+            false);
 
         setCurrentView(_imageView);
 

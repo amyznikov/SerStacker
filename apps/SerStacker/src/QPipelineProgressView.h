@@ -17,7 +17,6 @@
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
-// QInputSourceView::showFrame(const c_data_frame::sptr & frame)
 class QPipelineProgressView:
     public QFrame
 {
@@ -36,7 +35,6 @@ Q_SIGNALS:
 
 protected:
   void showEvent(QShowEvent *event) final;
-  void timerEvent(QTimerEvent *event) final;
   void updateAccumulatedImageDisplay(bool force = false);
 
 protected Q_SLOTS:
@@ -44,20 +42,17 @@ protected Q_SLOTS:
   void onPipelineThreadFinishing();
   void onPipelineThreadFinished();
   void onMenuButtonClicked();
-//  void onStatusChanged();
-//  void onAccumulatorChanged();
-//  void onSelectedMasterFrameChanged();
+  void onUpdateTimerTimeout();
 
 protected:
   QHBoxLayout * _layout = nullptr;
   QProgressStrip * _progressStrip = nullptr;
   QToolButton * _menuButton = nullptr;
   QInputSourceView * _imageView = nullptr;
+  QTimer _updateTimer;
   c_data_frame::sptr _dataframe;
-
-  int timerId = 0;
+  cv::Mat _currentImage, _currentMask;
   alignas(64) std::atomic<bool> _hasStatusUpdates = false;
-  alignas(64) std::atomic<bool> _updatingDisplay = false;
 };
 
 

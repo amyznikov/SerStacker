@@ -674,8 +674,6 @@ bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 
 void QV4L2Camera::device_release_frame(const QCameraFrame::sptr & frame)
 {
-  INSTRUMENT_REGION("");
-
   if( _current_state == State_started ) {
 
     QV4L2CameraFrame *frm =

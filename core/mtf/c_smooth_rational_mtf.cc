@@ -1,5 +1,5 @@
 /*
- * c_cubic_hermite_mtf.cc
+ * c_smooth_rational_mtf.cc
  *
  *  Created on: Mar 6, 2026
  *      Author: amyznikov
@@ -130,45 +130,53 @@ void c_smooth_rational_mtf::parallel_apply(const cv::Mat & src, cv::Mat & dst) c
     const uint16_t * lutp = _lut16.ptr<uint16_t>();
     const int width = src.cols * src.channels();
 
-    parallel_for(0, src.rows,
-        [&src, &dst, lutp, width](const auto & range) {
-          const int beg = rbegin(range), end = rend(range);
-          for ( int r = beg; r != end; ++r ) {
-            const uint16_t * srcp = src.ptr<uint16_t>(r);
-            uint16_t * dstp = dst.ptr<uint16_t>(r);
-            for (int c = 0; c < width; ++c) {
-              dstp[c] = lutp[srcp[c]];
-            }
-          }
-        });
+    const uint8_t * src_base = src.ptr();
+    const size_t src_stride = src.step;
+
+    uint8_t * dst_base = dst.ptr();
+    const size_t dst_stride = dst.step;
+
+    parallel_for(0, src.rows, [=](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const uint16_t * srcp = (const uint16_t * )(src_base + y * src_stride);
+        uint16_t * __restrict dstp = (uint16_t * )(dst_base + y * dst_stride);
+        for (int x = 0; x < width; ++x) {
+          dstp[x] = lutp[srcp[x]];
+        }
+      }
+    });
   }
   else {
 
-    const float xmin = _xmin;
-    const float xmax = _xmax;
-    const float xs = _xscale;
-    const float k = _k;
-    //const float log_k = _log_k;
-    const float s = _s;// _opts.shadows;
-    const float h = _h; // _opts.highlights;
-    const float omin = _omin;
-    const float omax = _omax;
-    const float orange = _omax - _omin;
+    const uint8_t * src_base = src.ptr();
+    const size_t src_stride = src.step;
+
+    uint8_t * dst_base = dst.ptr();
+    const size_t dst_stride = dst.step;
+
     const int width = src.cols * src.channels();
 
-    parallel_for(0, src.rows,
-        [=, &src, &dst](const auto & range) {
-          const int beg = rbegin(range), end = rend(range);
-          for ( int r = beg; r != end; ++r ) {
-            const Tin * srcp = src.ptr<Tin>(r);
-            Tout * dstp = dst.ptr<Tout>(r);
-            for (int c = 0; c < width; ++c) {
-              const float x = static_cast<float>(srcp[c]);
-              dstp[c] = cv::saturate_cast<Tout>( (x <= xmin) ? omin : x >= xmax ? omax :
-                  std::fma(eval((x - xmin) * xs, k, s, h), orange, omin));
-            }
-          }
-        });
+    parallel_for(0, src.rows, [=](const auto & range) {
+      const float imin = _xmin;
+      const float imax = _xmax;
+      const float xs = _xscale;
+      const float k = _k;
+      const float s = _s;
+      const float h = _h;
+      const float omin = _omin;
+      const float omax = _omax;
+      const float orange = _omax - _omin;
+
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const Tin * srcp = (const Tin * ) (src_base + y * src_stride);
+        Tout * __restrict dstp = (Tout * )(dst_base + y * dst_stride);
+
+        for ( int x = 0; x < width; ++x ) {
+          const float t = std::min(1.0f, std::max(0.0f, (float(srcp[x]) - imin) * xs));
+          dstp[x] = cv::saturate_cast<Tout>(std::fma(eval(t, k, s, h), orange, omin));
+        }
+      }
+    });
   }
 }
 

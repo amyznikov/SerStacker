@@ -81,12 +81,20 @@ c_data_frame::CloudDisplays::iterator c_data_frame::add_cloud_display(const std:
 void c_data_frame::add_image(const std::string &display_name,
     cv::InputArray image,
     cv::InputArray mask,
-    cv::InputArray data)
+    cv::InputArray data,
+    bool clone)
 {
   auto &display = add_image_display(display_name)->second;
-  display.image = image.getMat().clone();
-  display.data = data.getMat().clone();
-  display.mask = mask.getMat().clone();
+  if ( clone ) {
+    display.image = image.getMat().clone();
+    display.data = data.getMat().clone();
+    display.mask = mask.getMat().clone();
+  }
+  else {
+    display.image = image.getMat();
+    display.data = data.getMat();
+    display.mask = mask.getMat();
+  }
   _display_types.emplace(DisplayType_Image);
 }
 
@@ -116,7 +124,8 @@ void c_data_frame::add_point_cloud(const std::string & display_name,
 bool c_data_frame::get_image(const std::string &display_name,
     cv::OutputArray output_image,
     cv::OutputArray output_mask,
-    cv::OutputArray output_data)
+    cv::OutputArray output_data,
+    bool copy)
 {
   bool fOk = false;
 
@@ -132,15 +141,30 @@ bool c_data_frame::get_image(const std::string &display_name,
         CF_DEBUG("WARNING: Special case for selection_mask_ not handled");
       }
 
-      display.image.copyTo(output_image);
+      if ( copy ) {
+        display.image.copyTo(output_image);
+      }
+      else {
+        output_image.assign(display.image);
+      }
       fOk = true;
     }
     if (output_mask.needed() && !display.mask.empty()) {
-      copy_output_mask(display.mask, output_mask);
+      if ( copy ) {
+        copy_output_mask(display.mask, output_mask);
+      }
+      else {
+        output_mask.assign(display.mask);
+      }
       fOk = true;
     }
     if (output_data.needed() && !display.data.empty()) {
-      display.data.copyTo(output_data);
+      if ( copy ) {
+        display.data.copyTo(output_data);
+      }
+      else {
+        output_data.assign(display.data);
+      }
       fOk = true;
     }
   }

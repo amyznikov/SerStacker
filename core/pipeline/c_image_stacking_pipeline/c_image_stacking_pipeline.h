@@ -69,6 +69,7 @@ struct c_frame_upscale_options
 struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method = frame_accumulation_weighted_average;
+  c_bayer_drizzle::SCALE drizzle_scale = c_bayer_drizzle::SCALE_1x;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
 };

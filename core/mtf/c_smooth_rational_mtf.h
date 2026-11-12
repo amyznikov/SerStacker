@@ -133,9 +133,10 @@ public:
     return _opts;
   }
 
-
+#if 0
   // Primary rational formula, k-midtones, s-shadows, h-highlighs
   // k, s, h are computed from user inputs inside of update_coeffs()
+  __attribute__((always_inline))
   static inline float eval(float t, float k, float s, float h)
   {
     const float ts = std::pow(t, s);
@@ -143,12 +144,69 @@ public:
     return ts / (ts + k1t_h + 1e-9f);
   }
 
+#else
+
+  __attribute__((always_inline))
+  static inline float fast_log2(float x)
+  {
+    // Clamp to smallest positive normal float to avoid -inf / NaN on x <= 0
+    if ( x < 1.17549435e-38f ) {
+      x = 1.17549435e-38f;
+    }
+
+    union { float f; uint32_t i; } vx = { x };
+    union { uint32_t i; float f; } mx = { (vx.i & 0x007FFFFFu) | 0x3F000000u };
+
+    // Minimax polynomial approximation of log2(m) on [0.5, 1.0)
+    const float y = float(vx.i) * 1.1920928955078125e-7f; // 1.0f / (1 << 23)
+    const float m = mx.f; // m in [0.5, 1.0)
+    return y - 124.22551499f - 1.498030302f * m - 1.72587999f / (0.3520887068f + m);
+  }
+
+  __attribute__((always_inline))
+  static inline float fast_exp2(float p)
+  {
+    // Clamp exponent to safe IEEE-754 float range [-126, 127]
+    if ( p < -126.0f ) {
+      return 0.0f;
+    }
+    if ( p > 127.0f ) {
+      p = 127.0f;
+    }
+
+    // Minimax polynomial approximation of 2^z on [0, 1)
+    const float offset = (p < 0.0f) ? 1.0f : 0.0f;
+    const float z = p - int(p - offset); // fractional part in [0, 1)
+    const float approx = p + 121.2740575f + 27.7280233f / (4.84252568f - z) - 1.49012907f * z;
+    union { uint32_t i; float f; } v = { uint32_t((1 << 23) * approx) };
+    return v.f;
+  }
+
+  __attribute__((always_inline))
+  static inline float fast_pow(float x, float y)
+  {
+    return (x <= 0.0f) ? 0.0f : fast_exp2(y * fast_log2(x));
+  }
+
+  // Primary rational formula, k-midtones, s-shadows, h-highlighs
+  // k, s, h are computed from user inputs inside of update_coeffs()
+  __attribute__((always_inline))
+  static inline float eval(float t, float k, float s, float h)
+  {
+    const float ts = fast_pow(t, s);
+    const float k1t_h = fast_pow(k * (1.0f - t), h);
+    return ts / (ts + k1t_h + 1e-9f);
+  }
+#endif
+
+  __attribute__((always_inline))
   inline float eval(float t) const
   {
     return eval(t, _k, _s, _h);
   }
 
   // The same as primary eval() above but uses log/exp to replace std::pow()
+  __attribute__((always_inline))
   static inline float eeval(float t, float log_k, float s, float h)
   {
     // pow(t, shadow) = exp(y * log(x))
@@ -159,11 +217,13 @@ public:
     return ts / (ts + k1t_h + 1e-12f);
   }
 
+  __attribute__((always_inline))
   inline float eeval(float t) const
   {
     return eval(t, _log_k, _s, _h);
   }
 
+  __attribute__((always_inline))
   inline float apply(float x) const
   {
     return x <= _xmin ? _omin : x >= _xmax ? _omax :

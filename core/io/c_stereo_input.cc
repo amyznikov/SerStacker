@@ -29,8 +29,6 @@ static bool read_input_frame(const c_input_source::sptr & source,
     cv::Mat & output_image,
     cv::Mat & output_mask)
 {
-  INSTRUMENT_REGION("");
-
   enum COLORID colorid = COLORID_UNKNOWN;
   int bpp = 0;
 

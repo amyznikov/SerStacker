@@ -58,7 +58,8 @@ public:
   bool get_image(const std::string & display_name,
       cv::OutputArray output_image,
       cv::OutputArray output_mask,
-      cv::OutputArray output_data) final;
+      cv::OutputArray output_data,
+      bool copy = true ) final;
 
   bool get_point_cloud(const std::string & display_name,
       cv::OutputArray output_points,

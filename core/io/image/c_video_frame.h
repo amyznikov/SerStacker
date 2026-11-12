@@ -32,7 +32,8 @@ public:
   bool get_image(const std::string & display_name,
       cv::OutputArray output_image,
       cv::OutputArray output_mask,
-      cv::OutputArray output_data ) override;
+      cv::OutputArray output_data,
+      bool copy = true) override;
 
   void cleanup() override;
 

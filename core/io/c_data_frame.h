@@ -67,7 +67,8 @@ public:
   virtual bool get_image(const std::string & display_name,
       cv::OutputArray output_image,
       cv::OutputArray output_mask,
-      cv::OutputArray output_data);
+      cv::OutputArray output_data,
+      bool copy = true);
 
   virtual bool get_point_cloud(const std::string & display_name,
       cv::OutputArray output_points,
@@ -80,7 +81,8 @@ public:
   virtual void add_image(const std::string & display_name,
       cv::InputArray image,
       cv::InputArray mask = cv::noArray(),
-      cv::InputArray data = cv::noArray());
+      cv::InputArray data = cv::noArray(),
+      bool clone = true);
 
   virtual void set_image(const std::string & display_name,
       cv::Mat && image,

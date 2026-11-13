@@ -201,6 +201,8 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
   if( _imageView && _imageView->isVisible() ) {
 
+    INSTRUMENT_REGION("");
+
     QWaitCursor wait(this);
 
     if( pipeline->get_display(_currentImage, _currentMask) ) {
@@ -210,7 +212,11 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
       }
 
       _dataframe->add_image("PROGRESS", _currentImage, _currentMask, cv::noArray(), false);
-      _imageView->showFrame(_dataframe);
+
+      if ( true ) {
+        INSTRUMENT_REGION("showFrame");
+        _imageView->showFrame(_dataframe);
+      }
     }
 
   }

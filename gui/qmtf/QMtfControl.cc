@@ -179,7 +179,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         ctl->setKeyboardTracking(false);
         ctl->setRange(minv, maxv);
         ctl->setDecimals(decimals);
-        ctl->setSingleStep(std::pow(1.0, -decimals));
+        ctl->setSingleStep(std::pow(10.0, -decimals));
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
         ctl->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
 #endif
@@ -188,11 +188,11 @@ QMtfControl::QMtfControl(QWidget * parent) :
       };
 
   bottomToolbar_ctl->addWidget(lclip_ctl = createSpinBox(this, 0, 1, 0, 3));
-  bottomToolbar_ctl->addWidget(shadows_ctl = createSpinBox(this, -2, 2, 0, 2));
+  bottomToolbar_ctl->addWidget(shadows_ctl = createSpinBox(this, -2, 4, 0, 3));
   addStretch(bottomToolbar_ctl);
   bottomToolbar_ctl->addWidget(midtones_ctl = createSpinBox(this, 0, 1, 0.5, 3));
   addStretch(bottomToolbar_ctl);
-  bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, -2, 2, 0, 2));
+  bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, -3, 3, 0, 3));
   bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1, 3));
 
   mtfSliderBand_ctl->setlclipRange(lclip_ctl->minimum(), lclip_ctl->maximum(), lclip_ctl->value());

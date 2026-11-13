@@ -79,7 +79,7 @@ void c_smooth_rational_mtf::update_coeffs()
     _xmin = 0, _xmax = 1, _xscale = 1;
   }
   else {
-    const float & irange = _imax - _imin;
+    const float irange = _imax - _imin;
     _xmin = _opts.lclip >= 0 && _opts.lclip < 1 ? _imin + _opts.lclip * irange : _imin;
     _xmax = _opts.hclip > 0 && _opts.hclip <= 1 ? _imin + _opts.hclip * irange : _imax;
     _xscale = _xmax > _xmin ? 1 / std::abs(_xmax - _xmin) : 1;

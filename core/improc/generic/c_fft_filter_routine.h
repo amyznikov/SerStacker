@@ -27,7 +27,7 @@ public:
     FILTER_BUTTERWORTH_BAND,
     FILTER_GAUSSIAN_SHARP,
     FILTER_LAPLACIAN_SHARP,
-    //FILTER_LAPLACIAN_LPASS,
+    FILTER_MOFFAT,
   };
 
   enum DISPLAY {
@@ -78,6 +78,14 @@ protected:
   struct c_laplacian_filter_opts {
     double gain = 1;
   } laplacian;
+
+  struct c_moffat_filter_opts {
+    double fwhm = 3;
+    double beta = 4.5;
+    double gain = 1;
+    bool inverse = false;
+  } moffat;
+
 
   struct c_ramp_filter_opts {
     double gain = 1;

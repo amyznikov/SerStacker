@@ -140,6 +140,13 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
     double grain_size, double grain_band, int order, double gain,
     bool inverse, bool centerDC);
 
+// Space Isotropic Moffat parameterized by FWHM
+// alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
+// PSF ~ (1 + (r / alpha_space)^2)^(-beta)
+cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
+    double fwhm, double beta, double gain,
+    bool inverse, bool centerDC);
+
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);

@@ -47,6 +47,121 @@
 
 /////////////////////////////////////
 namespace {
+
+struct HoughMaps
+{
+  cv::Mat grid; // CV_32FC1 (512x512): signal with background removed
+  cv::Mat accumulator; // CV_32FC1 (90 x numRho): voting sinogram
+  float noiseFloor; // Noise cutoff threshold (mean + 3*stddev)
+  float starClamp; // Brightness ceiling for suppressing stars (mean + 8*stddev)
+};
+
+template<typename T>
+static bool _generateHoughMaps(cv::InputArray _src, HoughMaps & res)
+{
+  constexpr int BLOCK = 8;
+  const int gridW = _src.cols() / BLOCK;
+  const int gridH = _src.rows() / BLOCK;
+
+  const cv::Mat raw4K = _src.getMat();
+
+  res.grid = cv::Mat::zeros(gridH, gridW, CV_32FC1);
+
+  std::vector<T> rowMax(gridW);
+  std::vector<double> rowSum(gridW);
+
+  double totalSum = 0.0;
+  double totalSqSum = 0.0;
+
+  for( int gy = 0; gy < gridH; ++gy ) {
+    std::fill(rowMax.begin(), rowMax.end(), T(0));
+    std::fill(rowSum.begin(), rowSum.end(), 0.0);
+
+    for( int dy = 0; dy < BLOCK; ++dy ) {
+      const T * ptr = raw4K.ptr<T>(gy * BLOCK + dy);
+      for( int gx = 0; gx < gridW; ++gx ) {
+        const T * blk = ptr + gx * BLOCK;
+        T m = rowMax[gx];
+        double s = 0.0;
+
+        for( int dx = 0; dx < BLOCK; ++dx ) {
+          T v = blk[dx];
+          if( v > m )
+            m = v;
+          s += static_cast<double>(v);
+        }
+
+        rowMax[gx] = m;
+        rowSum[gx] += s;
+      }
+    }
+
+    float * gridRow = res.grid.ptr<float>(gy);
+    for( int gx = 0; gx < gridW; ++gx ) {
+      double maxD = static_cast<double>(rowMax[gx]);
+      double bg = (rowSum[gx] - maxD) / 63.0;
+      float sig = static_cast<float>(std::max(0.0, maxD - bg));
+
+      gridRow[gx] = sig;
+      totalSum += sig;
+      totalSqSum += static_cast<double>(sig) * sig;
+    }
+  }
+
+
+  const int gridCells = gridW * gridH;
+  double mean = totalSum / gridCells;
+  double variance = (totalSqSum / gridCells) - (mean * mean);
+  double stddev = std::sqrt(std::max(0.0, variance));
+
+  res.noiseFloor = static_cast<float>(mean + 3.0 * stddev);
+  res.starClamp = static_cast<float>(mean + 8.0 * stddev);
+
+  constexpr int NUM_THETA = 90;
+  constexpr int RHO_SHIFT = 1;
+  const int maxRho = (static_cast<int>(std::hypot(gridW, gridH)) >> RHO_SHIFT) + 2;
+  const int numRho = maxRho * 2;
+
+  res.accumulator = cv::Mat::zeros(NUM_THETA, numRho, CV_32FC1);
+
+  if( res.starClamp <= res.noiseFloor ) {
+    return false;
+  }
+
+  constexpr int FIX_SHIFT = 16;
+  int32_t cosStep[NUM_THETA];
+  int32_t sinStep[NUM_THETA];
+  for( int t = 0; t < NUM_THETA; ++t ) {
+    double rad = (t * 2.0) * CV_PI / 180.0;
+    cosStep[t] = static_cast<int32_t>((std::cos(rad) / (1 << RHO_SHIFT)) * (1 << FIX_SHIFT));
+    sinStep[t] = static_cast<int32_t>((std::sin(rad) / (1 << RHO_SHIFT)) * (1 << FIX_SHIFT));
+  }
+
+  for( int gy = 0; gy < gridH; ++gy ) {
+    const float * gridRow = res.grid.ptr<float>(gy);
+    for( int gx = 0; gx < gridW; ++gx ) {
+      float w = gridRow[gx];
+      if( w <= res.noiseFloor )
+        continue;
+      if( w > res.starClamp )
+        w = res.starClamp;
+
+      for( int t = 0; t < NUM_THETA; ++t ) {
+        int rIdx = ((gx * cosStep[t] + gy * sinStep[t]) >> FIX_SHIFT) + maxRho;
+        res.accumulator.ptr<float>(t)[rIdx] += w;
+      }
+    }
+  }
+
+  return true;
+}
+
+static bool generateHoughMaps(cv::InputArray _src, HoughMaps & res)
+{
+  CV_DISPATCH(_src.depth(), _generateHoughMaps, _src, res);
+  return false;
+}
+
 }
 
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
@@ -73,38 +188,10 @@ void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::Mat msk;
-  cv::Scalar mv, sv;
+  HoughMaps hmps;
+  generateHoughMaps(image, hmps);
 
-  const int cn = image.channels();
-
-  if( !mask.empty() ) {
-    if( mask.depth() == CV_8U ) {
-      msk = mask.getMat();
-    }
-    else {
-      cv::compare(mask, 0, msk, cv::CMP_GT);
-    }
-  }
-
-
-  cv::meanStdDev(image, mv, sv, msk);
-
-  for ( int c = 0; c < cn; ++c ) {
-    if ( sv[c] != 0 ) {
-      sv[c] = 1.0 / sv[c];
-    }
-  }
-
-  const cv::Scalar bias = -mv.mul(sv);
-
-  cv::Mat1f M = cv::Mat1f::zeros(cn, cn + 1);
-  for (int i = 0; i < cn; ++i) {
-    M(i, i) = sv[i];
-    M(i, cn) = bias[i];
-  }
-
-  cv::transform(image, image, M);
+  image.assign(hmps.accumulator);
 
   return true;
 }

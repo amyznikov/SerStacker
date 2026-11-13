@@ -1920,6 +1920,65 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+
+// Space Isotropic Moffat parameterized by FWHM
+// alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
+// PSF ~ (1 + (r / alpha_space)^2)^(-beta)
+cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
+    double fwhm, double beta, double gain,
+    bool inverse, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  if (fwhm <= 0.0) {
+    fwhm = 1.0;
+  }
+  if (beta <= 1.001) {
+    beta = 1.001;
+  }
+
+  const double alpha = fwhm / (2.0 * std::sqrt(std::pow(2.0, 1.0 / beta) - 1.0));
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int h_half = h / 2;
+  const int w_half = w / 2;
+
+  const double cx = w / 2.0;
+  const double cy = h / 2.0;
+
+  const double sx = alpha * CV_2PI / w;
+  const double sy = alpha * CV_2PI / h;
+
+  const double nu = beta - 1.0;
+  const double rmax = 40.0 + 2.0 * nu;
+  const double norm_factor = std::pow(2.0, 1.0 - nu) / std::tgamma(nu);
+  const float fgain = float(gain);
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+
+      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const double dy = (freq_y - cy) * sy;
+      const double dy2 = dy * dy;
+
+      for (int x = 0; x < w; ++x) {
+        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const double dx = (freq_x - cx) * sx;
+        const double dx2 = dx * dx;
+        const double r = std::sqrt(dx2 + dy2);
+        const double otf = r > 0 ? (r < rmax ? norm_factor * std::pow(r, nu) * std::cyl_bessel_k(nu, r) : 0) : 1;
+        const float LPF = fgain * float(otf);
+        const float fltv = inverse ? (1.0f + fgain) / (1.0f + LPF) : (1.0f + LPF) / (1.0f + fgain);
+        dstp[x] = fltv;
+      }
+    }
+  });
+
+  return FILTER;
+}
+
 /**
  * @brief Generates an inverse frequency-domain cross-shaped filter to suppress rectangular window artifacts.
  *

@@ -17,6 +17,7 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_GAUSSIAN, "GAUSSIAN", },
       { c_fft_filter_routine::FILTER_EXPONENTIAL, "EXPONENTIAL", },
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
+      { c_fft_filter_routine::FILTER_MOFFAT, "MOFFAT", },
       { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH_BAND, "BUTTERWORTH_BAND", },
@@ -77,6 +78,14 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
   ctlbind_expandable_group(ctls, "Laplacian options",
       [&, ctx = CTL_CONTEXT(ctx, laplacian)]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+      });
+
+  ctlbind_expandable_group(ctls, "Moffat options",
+      [&, ctx = CTL_CONTEXT(ctx, moffat)]() {
+        ctlbind(ctls, "fwhm: ", CTL_CONTEXT(ctx, fwhm), "PSF FWHM size in pixels:  PSF ~ (1 + (r / alpha)^2)^(-beta)");
+        ctlbind(ctls, "beta: ", CTL_CONTEXT(ctx, beta), "PSF curvature:  PSF ~ (1 + (r / alpha_space)^2)^(-beta)");
+        ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+        ctlbind(ctls, "inverse: ", CTL_CONTEXT(ctx, inverse), "");
       });
 
   ctlbind_expandable_group(ctls, "Ramp options",
@@ -140,6 +149,13 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "LaplacianFilter")) {
       SERIALIZE_OPTION(group, save, laplacian, gain);
+    }
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "MoffatFilter")) {
+      SERIALIZE_OPTION(group, save, moffat, fwhm);
+      SERIALIZE_OPTION(group, save, moffat, beta);
+      SERIALIZE_OPTION(group, save, moffat, gain);
+      SERIALIZE_OPTION(group, save, moffat, inverse);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GradientFilter")) {
@@ -218,6 +234,17 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       }
       break;
     }
+
+    case FILTER_MOFFAT: {
+      const int ksize = 0;
+      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      if ( _FILTER.size() != fftSize ) {
+        _FILTER = fftGenerateMoffatFilter(fftSize, moffat.fwhm, moffat.beta, moffat.gain,
+            moffat.inverse, false);
+      }
+      break;
+    }
+
 
     case FILTER_RAMP: {
       const int ksize = 0;

@@ -119,3 +119,5 @@ int extract_channel_with_max_sn_ratio(cv::InputArray src, cv::OutputArray dst, c
 
   return best_channel;
 }
+
+///////////////////////////////////////////////////////////////////////////////

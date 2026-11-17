@@ -598,8 +598,8 @@ void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
 //double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
 //double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap);
 
-double ecc_compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
-double ecc_compute_correlation(cv::InputArray current_image, cv::InputArray current_mask,
+double compute_image_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
+double compute_image_correlation(cv::InputArray current_image, cv::InputArray current_mask,
     cv::InputArray reference_image, cv::InputArray reference_mask,
     const cv::Mat2f & rmap);
 

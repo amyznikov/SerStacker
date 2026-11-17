@@ -141,7 +141,7 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
     bool inverse, bool centerDC);
 
 // Space Isotropic Moffat parameterized by FWHM
-// alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
+// alpha = 0.5 * fwhm / sqrt(pow(2.0, 1.0 / beta) - 1.0)
 // PSF ~ (1 + (r / alpha_space)^2)^(-beta)
 cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
     double fwhm, double beta, double gain,

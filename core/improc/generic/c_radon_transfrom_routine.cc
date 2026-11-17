@@ -10,6 +10,7 @@
 #include <opencv2/ximgproc/radon_transform.hpp>
 #include <core/proc/run-loop.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/divide.h>
 #include <core/proc/fft.h>
 #include <core/debug.h>
 
@@ -27,6 +28,173 @@ const c_enum_member* members_of<c_radon_transfrom_routine::DISPLAY>()
       { c_radon_transfrom_routine::DISPLAY_SINOGRAM, },
   };
   return members;
+}
+
+static void ifftshift(cv::InputArray _src, cv::OutputArray _dst)
+{
+  cv::Mat src = _src.getMat();
+  CV_Assert(src.dims == 2);
+
+  const int cx = (src.cols + 1) / 2;
+  const int cy = (src.rows + 1) / 2;
+
+  if( cx == 0 || cy == 0 ) {
+    src.copyTo(_dst);
+    return;
+  }
+
+  cv::Mat q0(src, cv::Rect(0, 0, cx, cy));
+  cv::Mat q1(src, cv::Rect(cx, 0, src.cols - cx, cy));
+  cv::Mat q2(src, cv::Rect(0, cy, cx, src.rows - cy));
+  cv::Mat q3(src, cv::Rect(cx, cy, src.cols - cx, src.rows - cy));
+
+  cv::Mat dst;
+  if( src.data == _dst.getMat().data ) {
+    dst.create(src.size(), src.type());
+  }
+  else {
+    _dst.create(src.size(), src.type());
+    dst = _dst.getMat();
+  }
+
+  const int ncx = src.cols - cx;
+  const int ncy = src.rows - cy;
+
+  // q0 <-> q3, q1 <-> q2
+  q3.copyTo(dst(cv::Rect(0, 0, ncx, ncy)));
+  q2.copyTo(dst(cv::Rect(ncx, 0, cx, ncy)));
+  q1.copyTo(dst(cv::Rect(0, ncy, ncx, cy)));
+  q0.copyTo(dst(cv::Rect(ncx, ncy, cx, cy)));
+
+  if( dst.data != _dst.getMat().data ) {
+    dst.copyTo(_dst);
+  }
+}
+
+static void _shift1D_rows(cv::InputArray _src, cv::OutputArray _dst, int cx)
+{
+  cv::Mat src = _src.getMat();
+  CV_Assert(src.dims == 2);
+
+  const int rows = src.rows;
+  const int cols = src.cols;
+
+  if( cx <= 0 || cx >= cols ) {
+    src.copyTo(_dst);
+    return;
+  }
+
+  const int ncx = cols - cx;
+  const size_t elemSize = src.elemSize();
+  const size_t leftBytes = size_t(cx) * elemSize;
+  const size_t rightBytes = size_t(ncx) * elemSize;
+
+  cv::Mat dst = createOutOfPlace(_src, _dst, _src.size(), _src.type());
+
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range), yend = rend(range); y < yend; ++y) {
+      const uint8_t * const srcp = src_base + y * src_stride;
+      uint8_t * const dstp = dst_base + y * dst_stride;
+      std::memcpy(dstp, srcp + leftBytes, rightBytes);
+      std::memcpy(dstp + rightBytes, srcp, leftBytes);
+    }
+  });
+
+  assignOutOfPlace(_dst, dst);
+}
+
+static void ifftshift1D_rows(cv::InputArray src, cv::OutputArray dst)
+{
+    _shift1D_rows(src, dst, (src.cols() + 1) / 2);
+}
+
+static void fftshift1D_rows(cv::InputArray src, cv::OutputArray dst)
+{
+  _shift1D_rows(src, dst, src.cols() / 2);
+}
+
+static void complexSpect2polar(
+    const cv::Mat2f & cmplxSpecCart,
+    cv::Mat2f & outCmplxSpecPolar,
+    int numAngles = 180,
+    int rBinSize = 2)
+{
+  CV_Assert(rBinSize >= 1);
+
+  const cv::Size fftSize = cmplxSpecCart.size();
+  const int cx = fftSize.width / 2;
+  const int cy = fftSize.height / 2;
+
+  const double rmax = 0.5 * std::sqrt(double(fftSize.width) * fftSize.width + double(fftSize.height) * fftSize.height);
+
+  const int halfBins = cvCeil(rmax / rBinSize);
+  const int nRadii = 2 * halfBins + 1;
+  const int rCenter = halfBins;
+  const double rscale = (rCenter - 1) / rmax; // [0, nRadii - 1]
+  const double ascale = double(numAngles) / CV_PI;
+
+  const cv::Size polarSize(nRadii, numAngles);
+  cv::Mat1f cntr(polarSize, 0.f);
+
+  outCmplxSpecPolar.create(polarSize);
+  outCmplxSpecPolar.setTo(cv::Scalar::all(0));
+
+  const uint8_t * const src_base = cmplxSpecCart.ptr();
+  const size_t src_stride = cmplxSpecCart.step;
+
+  uint8_t * const out_base = outCmplxSpecPolar.ptr();
+  const size_t out_stride = outCmplxSpecPolar.step;
+
+  uint8_t * const cntr_base = cntr.ptr();
+  const size_t cntr_stride = cntr.step;
+
+  for( int y = 0; y <= cy; ++y ) {
+    const cv::Vec2f * srcp = (const cv::Vec2f*) (src_base + y * src_stride);
+
+    const int xbeg = (y < cy) ? 0 : cx;
+    for( int x = xbeg; x < fftSize.width; ++x ) {
+      const int dx = x - cx;
+      const int dy = y - cy;
+
+      double theta = std::atan2(double(-dy), double(dx));
+      if( theta < 0.0 ) {
+        theta += CV_PI;
+      }
+
+      int aIdx = int(theta * ascale + 0.5);
+      if( aIdx >= numAngles ) {
+        aIdx = 0;
+      }
+
+      const double r = std::sqrt(double(dx) * dx + double(dy) * dy);
+      const int rOffset = int(r * rscale + 0.5);
+
+      const int sign = (y == cy && x < cx) ? -1 : 1;
+      const int rIdxPos = rCenter + sign * rOffset;
+      const int rIdxNeg = rCenter - sign * rOffset;
+
+      const cv::Vec2f val = srcp[x];
+      const cv::Vec2f valConj(val[0], -val[1]);
+
+      cv::Vec2f * outRow = (cv::Vec2f*) (out_base + aIdx * out_stride);
+      float * cntrRow = (float*) (cntr_base + aIdx * cntr_stride);
+
+      outRow[rIdxPos] += val;
+      cntrRow[rIdxPos] += 1.f;
+
+      outRow[rIdxNeg] += valConj;
+      cntrRow[rIdxNeg] += 1.f;
+    }
+  }
+
+  // compute average, DONT GENERATE THIS FUNCTION - IT ALREADY EXISTS!!!!!
+  divideImages(outCmplxSpecPolar, cntr, outCmplxSpecPolar, -1, 1, 0.5);
 }
 
 /**
@@ -74,57 +242,6 @@ static void createCart2PolarRemap(cv::Mat2f & outputMap, const cv::Size & fftSiz
   });
 }
 
-bool fftRadonTransform(cv::InputArray _src, cv::OutputArray _dst,
-    cv::Mat & outputDebugP_SPECTRUM,
-    cv::Mat & outputDebugComplexSpecCart,
-    cv::Mat & outputDebugComplexSpecPolar)
-{
-  INSTRUMENT_REGION("");
-
-  if ( _src.empty() || _src.type() != CV_32FC1 ) {
-    CF_ERROR("my_fft_radon_transform: Single-channel CV_32FC1 input image expected");
-    return false;
-  }
-
-  const cv::Mat src = _src.getMat();
-  const cv::Size fftSize = src.size();
-  const int rows = fftSize.height;
-  const int cols = fftSize.width;
-
-  cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-  if ( VLAP.empty() ) {
-    CF_ERROR("my_fft_radon_transform: Failed to generate Discrete Laplacian Filter");
-    return false;
-  }
-
-  cv::Mat P_SPECTRUM, cmplxCart, cmplxPolar;
-  cv::Mat2f polarRmap;
-
-  if ( !fftPPSDecompositionCCS(src, VLAP, P_SPECTRUM, cv::noArray()) ) {
-    CF_ERROR("fftPPSDecompositionCCS() failed");
-    return false;
-  }
-
-  outputDebugP_SPECTRUM = P_SPECTRUM;
-  if ( !fftUnpackCCSSpectrum(P_SPECTRUM, cmplxCart, true) ) {
-    CF_ERROR("fftUnpackCCSSpectrum() failed");
-    return false;
-  }
-
-  outputDebugComplexSpecCart = cmplxCart;
-  createCart2PolarRemap(polarRmap, fftSize, 360);
-
-  cv::remap(cmplxCart, cmplxPolar, polarRmap, cv::noArray(), cv::INTER_CUBIC,
-      cv::BORDER_REPLICATE);
-
-  outputDebugComplexSpecPolar = cmplxPolar;
-
-  cv::dft(cmplxPolar, _dst, cv::DFT_INVERSE | cv::DFT_ROWS | cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-
-  return true;
-}
-
-
 bool c_radon_transfrom_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
@@ -151,38 +268,21 @@ void c_radon_transfrom_routine::getcontrols(c_control_list & ctls, const ctlbind
 
 bool c_radon_transfrom_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::Mat SINOGRAM;
-  cv::Mat P_SPECTRUM;
-  cv::Mat cmplxSpecCart;
-  cv::Mat cmplxSpecPolar;
+  cv::Mat2f P_SPECTRUM;
+  cv::Mat2f P_SPECTRUM_POLAR;
+  cv::Mat1f SINOGRAM;
 
-  CF_DEBUG("Enter");
-  fftRadonTransform(image, SINOGRAM, P_SPECTRUM, cmplxSpecCart, cmplxSpecPolar);
-  CF_DEBUG("Leave");
+  const cv::Size fftSize = image.size();
 
-  switch (_display) {
-    case DISPLAY_P_SPECTRUM:
-      image.move(P_SPECTRUM);
-      break;
-    case DISPLAY_CMLPX_SPEC_CART:
-      image.move(cmplxSpecCart);
-      break;
-    case DISPLAY_CMLPX_SPEC_CART_POLAR:
-      image.move(cmplxSpecCart);
-      fftSpectrumToPolar(image);
-      break;
-    case DISPLAY_CMLPX_SPEC_POLAR:
-      image.move(cmplxSpecPolar);
-      break;
-    case DISPLAY_CMLPX_SPEC_POLAR_POLAR:
-    image.move(cmplxSpecPolar);
-    fftSpectrumToPolar(image);
-    break;
-    case DISPLAY_SINOGRAM:
-    default:
-      image.move(SINOGRAM);
-      break;
-  }
+  ifftshift(image, image);
+  cv::dft(image, P_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+  fftSwapQuadrants(P_SPECTRUM);
+  complexSpect2polar(P_SPECTRUM, P_SPECTRUM_POLAR, 360, 4);
+  ifftshift1D_rows(P_SPECTRUM_POLAR, P_SPECTRUM_POLAR);
+//  fftSpectrumToPolar(P_SPECTRUM_POLAR, image);
+  cv::dft(P_SPECTRUM_POLAR, SINOGRAM, cv::DFT_INVERSE | cv::DFT_ROWS | cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+  fftshift1D_rows(SINOGRAM, image);
+  // //image.assign(SINOGRAM);
 
   mask.release();
 

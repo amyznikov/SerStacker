@@ -337,7 +337,8 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
     }
   }
 
-  CF_DEBUG("obj->_options.matcher.type=%d (%s)", obj->_options.matcher.type, toCString(obj->_options.matcher.type));
+  //CF_DEBUG("obj->_options.matcher.type=%d (%s)", obj->_options.matcher.type,
+  //  toCString(obj->_options.matcher.type));
 
   if( obj->_options.matcher.type != FEATURE2D_MATCHER_UNKNOWN ) {
     switch (obj->_options.matcher.type) {
@@ -411,10 +412,11 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
     if ( _matcher ) {
       // Regular case for normal feature detection/description/matching
 
-      CF_DEBUG("_matcher=%d (%s)", _matcher->type(), toCString((FEATURE2D_MATCHER_TYPE) _matcher->type()));
+      // CF_DEBUG("_matcher=%d (%s)", _matcher->type(), toCString((FEATURE2D_MATCHER_TYPE) _matcher->type()));
 
       detectAndCompute(current_image, current_mask, _current_keypoints, _current_descriptors);
-      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%d",
+      CF_DEBUG("_matcher=%d (%s) _current_keypoints.size=%zu _current_descriptors.rows=%d",
+          _matcher->type(), toCString((FEATURE2D_MATCHER_TYPE) _matcher->type()),
           _current_keypoints.size(), _current_descriptors.rows);
 
       if( !_matcher->match(_current_keypoints, _current_descriptors, _current_matches) ) {

@@ -120,8 +120,6 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
         std::memory_order_relaxed));
   });
 
-  //  const double scale3 = depthScale * depthScale * depthScale / W;
-  //  return total_sum.load() * scale3;
   const double scale2 = depthScale * depthScale / W;
   return total_sum.load() * scale2;
 }
@@ -158,8 +156,6 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
 
       for (int x = 0; x < cols; ++x) {
         const float g = gp[x];
-        // dstp[x] = g * g * g * mapScale; // g^3 * mapScale
-        // local_sum += g * g * g * g; // g ^ 4
         dstp[x] = g * g * mapScale; // g^2 * mapScale
         local_sum += g * g * g;     // g ^3
       }
@@ -170,8 +166,6 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
         std::memory_order_relaxed));
   });
 
-  //  const double scale3 = depthScale * depthScale * depthScale / W;
-  //  return scale3 * total_sum.load();
   const double scale2 = depthScale * depthScale / W;
   return scale2 * total_sum.load();
 }

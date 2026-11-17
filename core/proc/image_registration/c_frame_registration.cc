@@ -7,13 +7,9 @@
 
 #include "c_frame_registration.h"
 #include <core/proc/feature2d/feature2d_settings.h>
-#include <core/proc/feature2d/planetary-disk-detection.h>
-#include <core/proc/morphology.h>
-#include <core/proc/geo-reconstruction.h>
+#include <core/proc/image_correlation.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/histogram-tools.h>
-#include <core/proc/normalize.h>
-#include <core/io/save_image.h>
 #include <core/get_time.h>
 #include <core/debug.h>
 
@@ -822,8 +818,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    rho = ecc_compute_correlation(_ecch.reference_image(), _ecch.remapped_current_image(),
+#if 0
+    rho = compute_image_correlation_sw(_ecch.reference_image(), _ecch.remapped_current_image(),
         ~_ecch.remapped_current_zmask());
+#else
+    rho = compute_image_correlation(_ecch.reference_image(), _ecch.remapped_current_image(),
+        ~_ecch.remapped_current_zmask());
+#endif
     if( rho < _options.ecc.min_rho ) {
       CF_ERROR("Poor aligned image correlation: rho = %g / %g", rho, _options.ecc.min_rho);
       return false;
@@ -999,12 +1000,10 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_i
     return false;
   }
 
-  CF_DEBUG("reference_feature_image: %dx%d channels=%d  depth=%d ",
+  CF_DEBUG("Reference_feature_image: %dx%d channels=%d  depth=%d mask: %dx%d channels=%d depth=%d",
       _reference_feature_image.cols, _reference_feature_image.rows,
       _reference_feature_image.channels(),
-      _reference_feature_image.depth());
-
-  CF_DEBUG("reference_feature_mask: %dx%d channels=%d  depth=%d ",
+      _reference_feature_image.depth(),
       _reference_feature_mask.cols, _reference_feature_mask.rows,
       _reference_feature_mask.channels(),
       _reference_feature_mask.depth());

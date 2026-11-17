@@ -38,6 +38,7 @@ protected:
   double end_angle = 180;
   bool crop = false;
   bool norm = false;
+  //cv::Mat1f VLAP;
 };
 
 #endif /* __c_radon_transfrom_routine_h__ */

@@ -68,8 +68,8 @@ bool c_image_stacking_pipeline_base::initialize_pipeline()
   }
 
   if ( !base::initialize_pipeline() ) {
-      CF_ERROR("base::initialize_pipeline() fails");
-      return false;
+    CF_ERROR("base::initialize_pipeline() fails");
+    return false;
   }
 
   return true;
@@ -129,7 +129,6 @@ bool c_image_stacking_pipeline_base::initialize_pipeline(const c_image_stacking_
         opts.missing_pixel_mask_filename.c_str());
   }
 
-  CF_DEBUG("H");
   return true;
 }
 

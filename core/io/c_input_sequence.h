@@ -82,12 +82,13 @@ public:
   bool is_bad_frame_index(int global_pos) const;
   const std::vector<int> & badframes() const;
 
+  void gather_badframes();
+
 protected:
   bool open_source(int source_index);
   void close_source(int source_index);
   bool seek_current_source(int relative_pos);
   bool read_current_source(cv::OutputArray output_frame, cv::OutputArray output_mask);
-  void gather_badframes();
 
 protected:
   std::string _name;

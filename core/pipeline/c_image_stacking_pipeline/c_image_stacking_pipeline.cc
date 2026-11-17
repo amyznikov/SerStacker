@@ -746,12 +746,10 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
 
   _generating_master_frame = false;
 
-  CF_DEBUG("Reference frame : %dx%d depth=%d channels=%d",
+  CF_DEBUG("Reference frame: %dx%d depth=%d channels=%d mask: %dx%d depth=%d channels=%d",
       reference_frame.cols, reference_frame.rows,
       reference_frame.depth(),
-      reference_frame.channels());
-
-  CF_DEBUG("Reference mask : %dx%d depth=%d channels=%d",
+      reference_frame.channels(),
       reference_mask.cols, reference_mask.rows,
       reference_mask.depth(),
       reference_mask.channels());
@@ -966,11 +964,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 {
   INSTRUMENT_REGION("");
 
-//  c_scope_guard auto_close_video_writers([this]() {
-//    close_all_writers();
-//  });
-
-  cv::Mat current_frame, current_mask, current_weights;
+  cv::Mat current_frame/*, current_grayscale_frame*/, current_mask, current_weights;
   cv::Mat2f current_remap;
 
   const c_image_registration_options & registration_options =
@@ -999,6 +993,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       return false;
     }
   }
+
+//  const auto grayscale_frame_required = [&]() -> bool {
+//    return _generating_master_frame || _input_options.enable_streak_checker ||
+//        _frame_registration != nullptr;
+//  };
+
 
   _processed_frames = 0;
   _accumulated_frames = 0;
@@ -1059,11 +1059,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           continue;
         }
       }
-    }
 
-    if ( canceled() ) {
-      set_status_msg("canceled");
-      break;
+      if ( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
     }
 
     if( _output_options.save_preprocessed_frames ) {
@@ -1078,6 +1078,14 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
     }
+
+//    if ( current_frame.channels() == 1 || !grayscale_frame_required() ) {
+//      current_grayscale_frame = current_frame;
+//    }
+//    else {
+//      color_channel_type channel = _generating_master_frame ? _master_options.master_channel;
+//    }
+
 
     if( _generating_master_frame && current_frame.channels() > 1 ) {
 
@@ -1101,6 +1109,22 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
     }
 
+    if( _input_options.enable_streak_checker ) {
+
+      const bool streaksDetected =
+          _streak_checker.check_for_streaks(_input_options.streak_checker,
+              current_frame, current_mask);
+
+      if( streaksDetected ) {
+        CF_ERROR("[F %4d] :  Streaks Detected, skip frame");
+        continue;
+      }
+
+      if( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
+    }
 
     if( !current_mask.empty() && current_mask.depth() != CV_8U ) {
       cv::compare(current_mask, 0, current_weights, cv::CMP_GT);
@@ -1619,8 +1643,6 @@ bool c_image_stacking_pipeline::upscale_required(bool generating_master_frame) c
   return _upscale_options.upscale_option != frame_upscale_none ;
 }
 
-
-
 bool c_image_stacking_pipeline::write_image(const std::string & output_file_name,
     const c_image_stacking_output_options & output_options,
     const cv::Mat & output_image, const cv::Mat & output_mask)
@@ -1650,13 +1672,18 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "input_options")) ) {
     serialize_base_image_stacking_input_options(section, save, _input_options);
+
+    SERIALIZE_OPTION(section, save, _input_options, enable_streak_checker);
+    if( auto group = get_group(section, save, "streak_checker") ) {
+      serialize_quick_streak_checker_options(group, save, _input_options.streak_checker);
+    }
   }
 
   if( (section = get_group(settings, save, "roi")) ) {
     serialize_base_roi_selection_options(section, save, _roi_selection_options);
   }
 
-  // c_frame_upscale_options upscale_options_;
+
   if( (section = get_group(settings, save, "upscale")) ) {
     SERIALIZE_OPTION(section, save, _upscale_options, upscale_option);
   }
@@ -1982,6 +2009,10 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
     ctlbind_expandable_group(ctls, "1. Input options",
         [&, cctx = ctx(&this_class::_input_options)]() {
           ctlbind(ctls, as_base<c_image_stacking_pipeline_base_input_options>(cctx));
+          ctlbind_expandable_group(ctls, "Streak checker...", [&]() {
+            ctlbind(ctls, "Enable Streak checker",  CTL_CONTEXT(cctx,  enable_streak_checker));
+            ctlbind(ctls, CTL_CONTEXT(cctx,  streak_checker));
+          });
         });
 
     ////////

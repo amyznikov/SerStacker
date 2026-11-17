@@ -10,6 +10,7 @@
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/proc/feature2d/c_roi_selection.h>
+#include <core/proc/feature2d/c_quick_streak_checker.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/histogram-tools.h>
@@ -40,6 +41,8 @@ enum frame_upscale_option
 struct c_image_stacking_input_options :
     c_image_stacking_pipeline_base_input_options
 {
+   c_quick_streak_checker_options streak_checker;
+   bool enable_streak_checker = false;
 };
 
 
@@ -282,6 +285,7 @@ protected:
   c_frame_registration::sptr _frame_registration;
   c_frame_accumulation::ptr _frame_accumulation;
   c_weigthed_average::ptr _flow_accumulation;
+  c_quick_streak_checker _streak_checker;
 
   mutable std::string _output_file_name_postfix;
 

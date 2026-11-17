@@ -788,6 +788,9 @@ bool c_image_processing_pipeline::initialize_pipeline()
   _accumulated_frames = 0;
   _statusmsg.clear();
 
+  _input_sequence->gather_badframes();
+  CF_DEBUG("BAD FRAMES: %zu", _input_sequence->badframes().size());
+
   return true;
 }
 

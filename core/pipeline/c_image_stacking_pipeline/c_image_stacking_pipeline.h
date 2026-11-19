@@ -42,31 +42,14 @@ struct c_image_stacking_input_options :
     c_image_stacking_pipeline_base_input_options
 {
    c_quick_streak_checker_options streak_checker;
+   color_channel_type gray_channel = color_channel_gray;
    bool enable_streak_checker = false;
 };
 
 
 struct c_frame_upscale_options
 {
-  enum frame_upscale_option upscale_option = frame_upscale_none;
-
-  bool need_upscale_after_align() const
-  {
-    return upscale_option != frame_upscale_none;
-  }
-
-  double image_scale() const
-  {
-    switch (upscale_option) {
-    case frame_upscale_x15:
-      return 1.5;
-    case frame_upscale_pyrUp:
-      return 2;
-    default:
-      break;
-    }
-    return 1.0;
-  }
+  enum frame_upscale_option upscale = frame_upscale_none;
 };
 
 struct c_frame_accumulation_options
@@ -137,7 +120,7 @@ struct c_image_stacking_master_options
   struct c_image_registration_options registration;
   struct c_frame_accumulation_options accumulation;
 
-  color_channel_type master_channel = color_channel_dont_change;
+  //color_channel_type master_channel = color_channel_dont_change;
   int max_frames_to_generate_master_frame = 3000;
 
   bool apply_input_image_processor = true;
@@ -253,10 +236,6 @@ protected:
       cv::InputArray src, cv::InputArray srcmask,
       cv::OutputArray dst, cv::OutputArray dstmask);
 
-  static void upscale_remap(enum frame_upscale_option scale,
-      cv::InputArray srcmap,
-      cv::OutputArray dstmap);
-
   static void upscale_optflow(enum frame_upscale_option scale,
       cv::InputArray srcmap,
       cv::OutputArray dstmap);
@@ -266,7 +245,7 @@ protected:
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   //static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
-  bool upscale_required(bool generating_master_frame) const;
+  //bool upscale_required(bool generating_master_frame) const;
 
 protected:
   c_image_stacking_input_options _input_options;
@@ -282,10 +261,10 @@ protected:
   std::string _output_file_name;
 
   // c_roi_selection::sptr _roi_selection;
+  c_quick_streak_checker _streak_checker;
   c_frame_registration::sptr _frame_registration;
   c_frame_accumulation::ptr _frame_accumulation;
   c_weigthed_average::ptr _flow_accumulation;
-  c_quick_streak_checker _streak_checker;
 
   mutable std::string _output_file_name_postfix;
 

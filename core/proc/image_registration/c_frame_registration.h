@@ -23,7 +23,7 @@ struct c_feature_registration_options
   c_estimate_image_transform_options estimate_options;
   double scale = 0.5;
   double sp_eps = 5; // [px]
-  color_channel_type registration_channel = color_channel_gray;
+  //color_channel_type registration_channel = color_channel_gray;
 };
 
 template<class RootObjectType>
@@ -31,7 +31,7 @@ void ctlbind_sparse_feature_registration_options(c_ctlist<RootObjectType> & ctls
     const c_ctlbind_context<RootObjectType, c_feature_registration_options> & ctx)
 {
   ctlbind(ctls, "Image scale:", CTL_CONTEXT(ctx, scale), "Downscale image for speedup and improve robustness to noise");
-  ctlbind(ctls, "Registration channel:", CTL_CONTEXT(ctx, registration_channel), "Image channel for feature detection");
+  //ctlbind(ctls, "Registration channel:", CTL_CONTEXT(ctx, registration_channel), "Image channel for feature detection");
   ctlbind(ctls, "Second pass eps [px]:", CTL_CONTEXT(ctx, sp_eps), "Second pass tolerance in pixels");
   ctlbind(ctls, CTL_CONTEXT(ctx, sparse_feature_extractor_and_matcher));
   ctlbind_expandable_group(ctls, "Transform estimation..", "");
@@ -90,7 +90,7 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
 struct c_image_registration_options
 {
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
-  color_channel_type ecc_registration_channel = color_channel_gray;
+  //color_channel_type ecc_registration_channel = color_channel_gray;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
@@ -123,7 +123,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "Interpolation:", ctx(&S::interpolation), "");
   ctlbind(ctls, "Border Mode:", ctx(&S::border_mode), "");
   ctlbind(ctls, "Border Value:", ctx(&S::border_value), "");
-  ctlbind(ctls, "ECC Registration Channel:", ctx(&S::ecc_registration_channel), "");
+  //ctlbind(ctls, "ECC Registration Channel:", ctx(&S::ecc_registration_channel), "");
   ctlbind(ctls, "Compute and Compensate Turbulent Flow:", ctx(&S::accumulate_and_compensate_turbulent_flow), "");
   //ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
 

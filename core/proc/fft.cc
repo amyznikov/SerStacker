@@ -1435,8 +1435,8 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
 {
   cv::Mat1f FILTER(fftSize);
 
-  const bool inverseFilter = sigma_space < 0;
-  if( inverseFilter ) {
+  const bool inverse = sigma_space < 0;
+  if( inverse ) {
     sigma_space = -sigma_space;
   }
   else if( sigma_space == 0 ) {
@@ -1445,46 +1445,135 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
 
   const int w = fftSize.width;
   const int h = fftSize.height;
-  const int h_half = h / 2;
-  const int w_half = w / 2;
+  const int cx = w / 2;
+  const int cy = h / 2;
 
-  const float cx = float(w / 2.0);
-  const float cy = float(h / 2.0);
   const float sx = float(sigma_space * CV_PI * M_SQRT2 / w);
   const float sy = float(sigma_space * CV_PI * M_SQRT2 / h);
-  const float fgain = float(gain);
 
-  parallel_for(0, h, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER[y];
-
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const float dy = (freq_y - cy) * sy;
-      const float dy2 = dy * dy;
-
-      for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const float dx = (freq_x - cx) * sx;
-        const float dx2 = dx * dx;
-
-        const float LPF = fgain * std::exp(-(dx2 + dy2));
-        const float fltv = inverseFilter ? (1.f + fgain) / (1.f + LPF) : (1.f + LPF) / (1.f + fgain);
-        dstp[x] = fltv;
+  if ( !inverse ) {
+    const float fgain = float(gain);
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const float dy = (fy - cy) * sy;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int freq_x = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const float dx = (freq_x - cx) * sx;
+          const float dx2 = dx * dx;
+          const float H = std::exp(-(dx2 + dy2));
+          dstp[x] = fgain * H;
+        }
       }
-    }
-  });
+    });
+
+  }
+  else {
+    const float eps = float(1.0 / (gain * gain));
+
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const float dy = (fy - cy) * sy;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const float dx = (fx - cx) * sx;
+          const float dx2 = dx * dx;
+          const float H = std::exp(-(dx2 + dy2));
+          dstp[x] = std::sqrt((1.0f + eps) / (H * H + eps));
+        }
+      }
+    });
+
+  }
+
+  return FILTER;
+}
+
+// Space Isotropic Moffat parameterized by FWHM
+// alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
+// PSF ~ (1 + (r / alpha_space)^2)^(-beta)
+cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
+    double fwhm, double beta, double gain,
+    bool inverse, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  if (fwhm <= 0.0) {
+    fwhm = 1.0;
+  }
+  if (beta <= 1.001) {
+    beta = 1.001;
+  }
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int cx = w / 2;
+  const int cy = h / 2;
+
+  const double alpha = fwhm / (2.0 * std::sqrt(std::pow(2.0, 1.0 / beta) - 1.0));
+  const double sx = alpha * CV_2PI / w;
+  const double sy = alpha * CV_2PI / h;
+
+  const double nu = beta - 1.0;
+  const double norm_factor = std::pow(2.0, 1.0 - nu) / std::tgamma(nu);
+  //const double rmax = (40.0 + 2.0 * nu);
+
+  if ( !inverse ) {
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const double dy = (fy - cy) * sy;
+        const double dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const double dx = (fx - cx) * sx;
+          const double dx2 = dx * dx;
+          const double r = std::sqrt(dx2 + dy2);
+          const double H = (r > 0.0) ? (norm_factor * std::pow(r, nu) * std::cyl_bessel_k(nu, r))  : 1.0;
+          dstp[x] = gain * H;
+        }
+      }
+    });
+  }
+  else {
+    const double eps = 1.0 / (gain * gain);
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const double dy = (fy - cy) * sy;
+        const double dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const double dx = (fx - cx) * sx;
+          const double dx2 = dx * dx;
+          const double r = std::sqrt(dx2 + dy2);
+          const double H = (r > 0.0) ? (norm_factor * std::pow(r, nu) * std::cyl_bessel_k(nu, r))  : 1.0;
+          dstp[x] = std::sqrt((1.0 + eps)/(H * H + eps));
+        }
+      }
+    });
+  }
 
   return FILTER;
 }
 
 // Space Isotropic Exponential
 // PSF ~ exp(-r / lambda_space)
+// Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)
+// Normalized such that when dx=0, dy=0, the value inside the parentheses equals 1.0
 cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_space, double gain, bool centerDC)
 {
   cv::Mat1f FILTER(fftSize);
 
-  const bool inverseFilter = lambda_space < 0;
-  if( inverseFilter ) {
+  const bool inverse = lambda_space < 0;
+  if( inverse ) {
     lambda_space = -lambda_space;
   }
   else if( lambda_space == 0 ) {
@@ -1493,36 +1582,165 @@ cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_s
 
   const int w = fftSize.width;
   const int h = fftSize.height;
-  const int h_half = h / 2;
-  const int w_half = w / 2;
-
-  const float cx = float(w / 2.0);
-  const float cy = float(h / 2.0);
+  const int cx = w / 2;
+  const int cy = h / 2;
 
   // Factor of 2 * PI to convert spatial radius lambda_space into the frequency domain
   const float sx = float(lambda_space * 2.0 * CV_PI / w);
   const float sy = float(lambda_space * 2.0 * CV_PI / h);
-  const float fgain = float(gain);
+
+  if ( !inverse ) {
+    const float fgain = float(gain);
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const float dy = (fy - cy) * sy;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const float dx = (fx - cx) * sx;
+          const float dx2 = dx * dx;
+          const float denominator = 1.0f + dx2 + dy2;
+          const float H = 1.0f / (denominator * std::sqrt(denominator)); // ^1.5
+          dstp[x] = fgain * H;
+        }
+      }
+    });
+
+  }
+  else {
+    const float eps = float(1.0 / (gain * gain));
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const float dy = (fy - cy) * sy;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const float dx = (fx - cx) * sx;
+          const float dx2 = dx * dx;
+          const float denominator = 1.0f + dx2 + dy2;
+          const float H = 1.0f / (denominator * std::sqrt(denominator)); // ^1.5
+          dstp[x] = std::sqrt((1.f + eps) / (H * H + eps));
+        }
+      }
+    });
+  }
+
+  return FILTER;
+}
+
+// Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
+cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
+    double rc, int order, double gain,
+    bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  const bool inverse = rc < 0;
+  if ( inverse ) {
+    rc = -rc;
+  }
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int cx = w / 2;
+  const int cy = h / 2;
+
+  const float sx = float(CV_2PI / w);
+  const float sy = float(CV_2PI / h);
+
+  if ( !inverse ) {
+    const float fgain = float(gain);
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float* __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const float dy = (fy - cy) * sy;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const float dx = (fx - cx) * sx;
+          const float dx2 = dx * dx;
+          const float r = std::sqrt(dx2 + dy2);
+          const float H = 1.f / (1.f + std::pow(r / rc, order));
+          dstp[x] = fgain * H;
+        }
+      }
+    });
+  }
+  else {
+    const float eps = float(1.0 / (gain * gain));
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float* __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const double dy = (fy - cy) * sy;
+        const double dy2 = dy * dy;
+        for (int x = 0; x < w; ++x) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const double dx = (fx - cx) * sx;
+          const double dx2 = dx * dx;
+          const double r = std::sqrt(dx2 + dy2);
+          const float H = 1.f / (1.f + std::pow(r / rc, order));
+          dstp[x] = std::sqrt((1.f + eps) / (H * H + eps));
+        }
+      }
+    });
+  }
+
+  return FILTER;
+}
+
+
+/**
+ * Space Isotropic Butterworth Band-Pass / Band-Reject Filter.
+ *
+ * @param fftSize      FFT matrix size.
+ * @param grain_size   Central grain size in pixels (spatial).
+ * @param grain_band   Grain bandwidth in pixels (spatial spread).
+ * @param order        Butterworth filter order (roll-off steepness, n).
+ * @param gain         Filtering depth (0.0 - no effect, 1.0 - full effect).
+ * @param inverse      true: Grain suppression (Band-Reject), false: Grain isolation/enhancement (Band-Pass).
+ * @param centerDC     Output spectrum format.
+**/
+cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
+    double grain_size, double grain_band, int order, double gain,
+    bool inverse, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int cx = w / 2;
+  const int cy = h / 2;
+
+  // Central frequency and bandwidth in radians expressed via the difference between cutoff frequencies
+  const int bw_order = 2 * order;
+  const float rc = float(CV_2PI / grain_size);
+  const float rc_min = float(CV_2PI / (grain_size + 0.5 * grain_band));
+  const float rc_max = float(CV_2PI / (grain_size - 0.5 * grain_band));
+  const float B = float(1. / ((rc_max - rc_min) * 0.5));
+  const float sx = float(CV_2PI / w);
+  const float sy = float(CV_2PI / h);
+  const float fgain = (float)(gain);
 
   parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER[y];
-
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const float dy = (freq_y - cy) * sy;
+      float* __restrict dstp = FILTER[y];
+      const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+      const float dy = (fy - cy) * sy;
       const float dy2 = dy * dy;
-
       for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const float dx = (freq_x - cx) * sx;
+        const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+        const float dx = (fx - cx) * sx;
         const float dx2 = dx * dx;
-
-        // Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)
-        // Normalized such that when dx=0, dy=0, the value inside the parentheses equals 1.0
-        const float denominator = 1.0f + dx2 + dy2;
-        const float LPF = fgain / (denominator * std::sqrt(denominator)); // ^1.5
-        const float fltv = inverseFilter ? (1.f + fgain) / (1.f + LPF) : (1.f + LPF) / (1.f + fgain);
-        dstp[x] = fltv;
+        const float r = std::sqrt(dx2 + dy2);
+        const float H = 1.f / (1.f + std::pow(std::abs(r - rc) * B, bw_order));
+        // Suppression / Boost  mode
+        dstp[x] = inverse ? 1.f - fgain * H :  1.f + fgain * H;
       }
     }
   });
@@ -1551,13 +1769,12 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
   parallel_for(0, h, [=, &FILTER](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       float * __restrict dstp = FILTER[y];
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const float dy = (freq_y - cy) * scaleY;
+      const int fy = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
+      const float dy = (fy - cy) * scaleY;
       const float dy2 = dy * dy;
-
       for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const float dx = (freq_x - cx) * scaleX;
+        const int fx = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
+        const float dx = (fx - cx) * scaleX;
         const float dx2 = dx * dx;
         const float dr2 = dx2 + dy2;
         dstp[x] = fgain * dr2;
@@ -1709,41 +1926,6 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool cent
   return FILTER;
 }
 
-// Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
-cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
-    double rc, int order, double gain,
-    bool centerDC)
-{
-  cv::Mat1f FILTER(fftSize);
-
-  const int w = fftSize.width;
-  const int h = fftSize.height;
-  const int h_half = h / 2;
-  const int w_half = w / 2;
-
-  const double cx = w / 2.0;
-  const double cy = h / 2.0;
-  const double sx = CV_2PI / w;
-  const double sy = CV_2PI / h;
-
-  parallel_for(0, h, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float* __restrict dstp = FILTER[y];
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const double dy = (freq_y - cy) * sy;
-      const double dy2 = dy * dy;
-      for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const double dx = (freq_x - cx) * sx;
-        const double dx2 = dx * dx;
-        const double r = std::sqrt(dx2 + dy2);
-        dstp[x] = float(gain / (1.0 + std::pow(r / rc, order)));
-      }
-    }
-  });
-
-  return FILTER;
-}
 
 // Space Isotropic Gaussian-Based unsharp mask filter
 cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
@@ -1841,143 +2023,6 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
-/**
- * Space Isotropic Butterworth Band-Pass / Band-Reject Filter.
- *
- * @param fftSize      FFT matrix size.
- * @param grain_size   Central grain size in pixels (spatial).
- * @param grain_band   Grain bandwidth in pixels (spatial spread).
- * @param order        Butterworth filter order (roll-off steepness, n).
- * @param gain         Filtering depth (0.0 - no effect, 1.0 - full effect).
- * @param inverse      true: Grain suppression (Band-Reject), false: Grain isolation/enhancement (Band-Pass).
- * @param centerDC     Output spectrum format.
-**/
-cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
-    double grain_size, double grain_band, int order, double gain,
-    bool inverse, bool centerDC)
-{
-  cv::Mat1f FILTER(fftSize);
-
-  //  FIXME: check how to interpret abnormal input gain argument
-  //  if (grain_size <= 0) {
-  //    grain_size = 1;
-  //  }
-  //  if (grain_band >= grain_size) {
-  //    grain_band = grain_size - 0.5;
-  //  }
-  //  if (grain_band <= 0.0) {
-  //    grain_band = 0.5;
-  //  }
-  //  if (order < 1) {
-  //    order = 1;
-  //  }
-
-  const int w = fftSize.width;
-  const int h = fftSize.height;
-  const int h_half = h / 2;
-  const int w_half = w / 2;
-
-  // Central frequency and bandwidth in radians expressed via the difference between cutoff frequencies
-  const double rc = CV_2PI / grain_size;
-  const double rc_min = CV_2PI / (grain_size + 0.5 * grain_band);
-  const double rc_max = CV_2PI / (grain_size - 0.5 * grain_band);
-  const double half_B = (rc_max - rc_min) * 0.5;
-  const int bw_order = 2 * order;
-  const double cx = w / 2.0;
-  const double cy = h / 2.0;
-  const double sx = CV_2PI / w;
-  const double sy = CV_2PI / h;
-
-  parallel_for(0, h, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float* __restrict dstp = FILTER[y];
-
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const double dy = (freq_y - cy) * sy;
-      const double dy2 = dy * dy;
-
-      for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const double dx = (freq_x - cx) * sx;
-        const double dx2 = dx * dx;
-
-        const double r = std::sqrt(dx2 + dy2);
-
-        // Butterworth argument
-        const double arg = std::abs(r - rc) / half_B;
-        const double butterworthBP = 1.0 / (1.0 + std::pow(arg, bw_order));
-
-        if (inverse) { // Suppression mode
-          dstp[x] = float(1.0 - gain * butterworthBP);
-        }
-        else { // Boost mode
-          dstp[x] = float(1.0 + gain * butterworthBP);
-        }
-      }
-    }
-  });
-
-  return FILTER;
-}
-
-
-// Space Isotropic Moffat parameterized by FWHM
-// alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
-// PSF ~ (1 + (r / alpha_space)^2)^(-beta)
-cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
-    double fwhm, double beta, double gain,
-    bool inverse, bool centerDC)
-{
-  cv::Mat1f FILTER(fftSize);
-
-  if (fwhm <= 0.0) {
-    fwhm = 1.0;
-  }
-  if (beta <= 1.001) {
-    beta = 1.001;
-  }
-
-  const double alpha = fwhm / (2.0 * std::sqrt(std::pow(2.0, 1.0 / beta) - 1.0));
-
-  const int w = fftSize.width;
-  const int h = fftSize.height;
-  const int h_half = h / 2;
-  const int w_half = w / 2;
-
-  const double cx = w / 2.0;
-  const double cy = h / 2.0;
-
-  const double sx = alpha * CV_2PI / w;
-  const double sy = alpha * CV_2PI / h;
-
-  const double nu = beta - 1.0;
-  const double rmax = 40.0 + 2.0 * nu;
-  const double norm_factor = std::pow(2.0, 1.0 - nu) / std::tgamma(nu);
-  const float fgain = float(gain);
-
-  parallel_for(0, h, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER[y];
-
-      const int freq_y = centerDC ? y : (y < h_half ? y + h_half : y - h_half);
-      const double dy = (freq_y - cy) * sy;
-      const double dy2 = dy * dy;
-
-      for (int x = 0; x < w; ++x) {
-        const int freq_x = centerDC ? x : (x < w_half ? x + w_half : x - w_half);
-        const double dx = (freq_x - cx) * sx;
-        const double dx2 = dx * dx;
-        const double r = std::sqrt(dx2 + dy2);
-        const double otf = r > 0 ? (r < rmax ? norm_factor * std::pow(r, nu) * std::cyl_bessel_k(nu, r) : 0) : 1;
-        const float LPF = fgain * float(otf);
-        const float fltv = inverse ? (1.0f + fgain) / (1.0f + LPF) : (1.0f + LPF) / (1.0f + fgain);
-        dstp[x] = fltv;
-      }
-    }
-  });
-
-  return FILTER;
-}
 
 /**
  * @brief Generates an inverse frequency-domain cross-shaped filter to suppress rectangular window artifacts.

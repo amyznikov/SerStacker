@@ -328,6 +328,15 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return true;
   }
 
+//  if ( src.channels() == 3  ) {
+//
+//    cv::Mat ycrcb;
+//    cv::cvtColor(src, ycrcb, cv::COLOR_BGR2YCrCb);
+//
+//
+//  }
+
+
   std::vector<cv::Mat> real_channels(cn);
   std::vector<cv::Mat> complex_channels(cn);
   std::vector<cv::Mat> complex_channels_s(cn);

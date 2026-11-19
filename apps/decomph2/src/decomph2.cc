@@ -243,14 +243,14 @@ int main(int argc, char *argv[])
 
   c_image_registration_options opts;
   opts.motion_type = IMAGE_MOTION_HOMOGRAPHY;
-  opts.ecc_registration_channel = color_channel_gray;
+  //opts.ecc_registration_channel = color_channel_gray;
   opts.interpolation = ECC_INTER_LINEAR;
   opts.border_mode = ECC_BORDER_REFLECT101;
   opts.border_value = cv::Scalar(0, 0, 0);
 
   opts.enable_feature_registration = true;
   opts.feature_registration.scale = 0.5;
-  opts.feature_registration.registration_channel = color_channel_gray;
+  //opts.feature_registration.registration_channel = color_channel_gray;
 
   // TBF
   opts.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;

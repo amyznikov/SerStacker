@@ -213,7 +213,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.support_scale = 4;
     _stack_options.registration.eccflow.max_pyramid_level = 3;
 
-    _upscale_options.upscale_option = frame_upscale_none;
+    _upscale_options.upscale = frame_upscale_none;
     return true;
   }
 
@@ -251,7 +251,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.min_image_size = -1;
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 
-    _upscale_options.upscale_option = frame_upscale_none;
+    _upscale_options.upscale = frame_upscale_none;
     return true;
   }
 
@@ -637,12 +637,12 @@ bool c_image_stacking_pipeline::setup_stack_registration(const c_frame_registrat
   const c_image_registration_options & registration_options =
       frame_registration->options();
 
-  if( upscale_required(false) ) {
-
-    upscale_image(_upscale_options.upscale_option,
-        reference_frame, reference_mask,
-        reference_frame, reference_mask);
-  }
+//  if( upscale_required(false) ) {
+//
+//    upscale_image(_upscale_options.upscale_option,
+//        reference_frame, reference_mask,
+//        reference_frame, reference_mask);
+//  }
 
   if ( !_frame_registration->setup_reference_frame(reference_frame, reference_mask) ) {
     CF_ERROR("ERROR: frame_registration_->setup_reference_frame() fails");
@@ -819,10 +819,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     return false;
   }
 
-  if( reference_frame.channels() > 1 && master_options.master_channel != color_channel_dont_change ) {
+  if( reference_frame.channels() > 1 && _input_options.gray_channel != color_channel_dont_change ) {
 
-    if( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), master_options.master_channel) ) {
-      CF_ERROR("extract_channel(master_channel=%d) fails", master_options.master_channel);
+    if( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), _input_options.gray_channel) ) {
+      CF_ERROR("extract_channel(master_channel=%d) fails", _input_options.gray_channel);
       return false;
     }
 
@@ -964,7 +964,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat current_frame/*, current_grayscale_frame*/, current_mask, current_weights;
+  cv::Mat current_frame, current_grayscale_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
 
   const c_image_registration_options & registration_options =
@@ -994,11 +994,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
   }
 
-//  const auto grayscale_frame_required = [&]() -> bool {
-//    return _generating_master_frame || _input_options.enable_streak_checker ||
-//        _frame_registration != nullptr;
-//  };
-
+  const auto grayscale_frame_required = [&]() -> bool {
+    return _input_options.enable_streak_checker || _frame_registration != nullptr;
+  };
 
   _processed_frames = 0;
   _accumulated_frames = 0;
@@ -1079,45 +1077,23 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
     }
 
-//    if ( current_frame.channels() == 1 || !grayscale_frame_required() ) {
-//      current_grayscale_frame = current_frame;
-//    }
-//    else {
-//      color_channel_type channel = _generating_master_frame ? _master_options.master_channel;
-//    }
-
-
-    if( _generating_master_frame && current_frame.channels() > 1 ) {
-
-      if( _master_options.master_channel != color_channel_dont_change ) {
-
-        const bool fOk =
-            extract_channel(current_frame, current_frame,
-                cv::noArray(), cv::noArray(),
-                _master_options.master_channel);
-
-        if( !fOk ) {
-          CF_ERROR("extract_channel(master_channel=%d) fails",
-              _master_options.master_channel);
-          return false;
-        }
-
-        if( canceled() ) {
-          set_status_msg("canceled");
-          break;
-        }
-      }
+    if ( current_frame.channels() == 1 || !grayscale_frame_required() ) {
+      current_grayscale_frame = current_frame;
     }
+    else {
+      color_channel_type channel = _input_options.gray_channel;
+      if ( channel < 0 || channel == color_channel_dont_change ) {
+        channel = color_channel_gray;
+      }
 
-    if( _input_options.enable_streak_checker ) {
+      const bool fOk =
+          extract_channel(current_frame, current_grayscale_frame,
+              cv::noArray(), cv::noArray(),
+              channel);
 
-      const bool streaksDetected =
-          _streak_checker.check_for_streaks(_input_options.streak_checker,
-              current_frame, current_mask);
-
-      if( streaksDetected ) {
-        CF_ERROR("[F %4d] :  Streaks Detected, skip frame");
-        continue;
+      if( !fOk ) {
+        CF_ERROR("extract_channel(gray_channel=%d) fails", channel);
+        return false;
       }
 
       if( canceled() ) {
@@ -1125,6 +1101,29 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
     }
+
+
+//    if( _generating_master_frame && current_frame.channels() > 1 ) {
+//
+//      if( _master_options.master_channel != color_channel_dont_change ) {
+//
+//        const bool fOk =
+//            extract_channel(current_frame, current_frame,
+//                cv::noArray(), cv::noArray(),
+//                _master_options.master_channel);
+//
+//        if( !fOk ) {
+//          CF_ERROR("extract_channel(master_channel=%d) fails",
+//              _master_options.master_channel);
+//          return false;
+//        }
+//
+//        if( canceled() ) {
+//          set_status_msg("canceled");
+//          break;
+//        }
+//      }
+//    }
 
     if( !current_mask.empty() && current_mask.depth() != CV_8U ) {
       cv::compare(current_mask, 0, current_weights, cv::CMP_GT);
@@ -1138,33 +1137,21 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
     }
 
-    if ( upscale_required(_generating_master_frame) ) {
+    if( _input_options.enable_streak_checker ) {
 
-      upscale_image(_upscale_options.upscale_option,
-          current_frame, current_mask,
-          current_frame, current_mask);
+      const bool streaksDetected =
+          _streak_checker.check_for_streaks(_input_options.streak_checker,
+              current_grayscale_frame, current_mask);
 
-      if ( canceled() ) {
+      if( streaksDetected ) {
+        CF_ERROR("[F %4d] :  Streaks Detected, skip frame");
+        continue;
+      }
+
+      if( canceled() ) {
         set_status_msg("canceled");
         break;
       }
-
-      if( !current_weights.empty() ) {
-        upscale_image(_upscale_options.upscale_option,
-            current_weights, cv::noArray(),
-            current_weights, cv::noArray());
-      }
-
-      if ( canceled() ) {
-        set_status_msg("canceled");
-        break;
-      }
-    }
-
-
-    if ( canceled() ) {
-      set_status_msg("canceled");
-      break;
     }
 
     /////////////////////////////////////
@@ -1177,7 +1164,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
         else {
           CF_DEBUG("[F %6d] RESET REFERENCE FRAME", curpos);
-          _frame_registration->setup_reference_frame(current_frame, current_mask);
+          _frame_registration->setup_reference_frame(current_grayscale_frame, current_mask);
         }
       }
 
@@ -1187,7 +1174,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       CF_DEBUG("[F %d] CALL REGISTER", curpos);
 
       const bool registered =
-          _frame_registration->register_frame(current_frame,
+          _frame_registration->register_frame(current_grayscale_frame,
               current_mask);
 
       CF_DEBUG("[F %d] REGISTERED=%d", curpos, registered);
@@ -1267,15 +1254,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
       }
 
-      if( !upscale_required(_generating_master_frame) ) {
-        current_remap = _frame_registration->current_remap();
-      }
-      else {
-        current_remap.release();
-        upscale_remap(_upscale_options.upscale_option,
-            _frame_registration->current_remap(),
-            current_remap);
-      }
+      current_remap = _frame_registration->current_remap();
 
       if ( is_bayer_accumulate ) {
         if( !current_weights.empty() ) {
@@ -1367,6 +1346,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     /////////////////////////////////////////////////////////////////////////////////
+
+    //    CF_DEBUG("[F %4d] current_frame: %dx%d current_mask: %dx%d", curpos,
+    //        current_frame.cols, current_frame.rows,
+    //        current_mask.cols, current_mask.rows);
+
     if ( _frame_accumulation ) {
 
       if( c_bayer_drizzle *bayer_drizzle = dynamic_cast<c_bayer_drizzle*>(_frame_accumulation.get()) ) {
@@ -1382,6 +1366,17 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         bayer_drizzle->add(_raw_bayer_image, current_mask);
       }
       else {
+
+        if ( !_generating_master_frame && _upscale_options.upscale != frame_upscale_none ) {
+
+          upscale_image(_upscale_options.upscale, current_frame, current_mask,
+              current_frame, current_mask);
+
+          if ( canceled() ) {
+            set_status_msg("canceled");
+            break;
+          }
+        }
 
         lock_guard lock(mutex());
 
@@ -1442,36 +1437,36 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
   return true;
 }
-
-void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
-    cv::InputArray srcmap,
-    cv::OutputArray dstmap)
-{
-  INSTRUMENT_REGION("");
-
-  switch (scale) {
-  case frame_upscale_x15:
-  {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
-      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
-    }
-    break;
-  }
-  case frame_upscale_pyrUp:
-  {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      cv::pyrUp(srcmap, dstmap);
-    }
-    break;
-  }
-  default:
-    if( !srcmap.empty() && dstmap.needed() ) {
-      srcmap.copyTo(dstmap);
-    }
-    break;
-  }
-}
+//
+//void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
+//    cv::InputArray srcmap,
+//    cv::OutputArray dstmap)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  switch (scale) {
+//  case frame_upscale_x15:
+//  {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+//      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
+//    }
+//    break;
+//  }
+//  case frame_upscale_pyrUp:
+//  {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      cv::pyrUp(srcmap, dstmap);
+//    }
+//    break;
+//  }
+//  default:
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      srcmap.copyTo(dstmap);
+//    }
+//    break;
+//  }
+//}
 
 void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
     cv::InputArray srcmap,
@@ -1513,8 +1508,7 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
   INSTRUMENT_REGION("");
 
   switch (scale) {
-  case frame_upscale_x15:
-  {
+  case frame_upscale_x15: {
     const cv::Size dstsize(src.cols() * 3 / 2, src.rows() * 3 / 2);
     if( !src.empty() && dst.needed() ) {
       cv::resize(src, dst, dstsize, 0, 0, cv::INTER_LINEAR);
@@ -1524,8 +1518,7 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
     }
     break;
   }
-  case frame_upscale_pyrUp:
-  {
+  case frame_upscale_pyrUp: {
     if( !src.empty() && dst.needed() ) {
       cv::pyrUp(src, dst);
     }
@@ -1544,7 +1537,7 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
     return;
   }
 
-  if( !srcmask.empty() && dstmask.needed() ) {
+  if ( dstmask.needed() && !srcmask.empty() && srcmask.depth() == CV_8U  ) {
     cv::compare(dstmask, 255, dstmask, cv::CMP_GE);
   }
 
@@ -1634,14 +1627,14 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
 
 
 
-bool c_image_stacking_pipeline::upscale_required(bool generating_master_frame) const
-{
-  if ( generating_master_frame ) {
-    return false;
-  }
-
-  return _upscale_options.upscale_option != frame_upscale_none ;
-}
+//bool c_image_stacking_pipeline::upscale_required(bool generating_master_frame) const
+//{
+//  if ( generating_master_frame ) {
+//    return false;
+//  }
+//
+//  return _upscale_options.upscale_option != frame_upscale_none ;
+//}
 
 bool c_image_stacking_pipeline::write_image(const std::string & output_file_name,
     const c_image_stacking_output_options & output_options,
@@ -1672,7 +1665,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "input_options")) ) {
     serialize_base_image_stacking_input_options(section, save, _input_options);
-
+    SERIALIZE_OPTION(section, save, _input_options, gray_channel);
     SERIALIZE_OPTION(section, save, _input_options, enable_streak_checker);
     if( auto group = get_group(section, save, "streak_checker") ) {
       serialize_quick_streak_checker_options(group, save, _input_options.streak_checker);
@@ -1685,7 +1678,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
 
   if( (section = get_group(settings, save, "upscale")) ) {
-    SERIALIZE_OPTION(section, save, _upscale_options, upscale_option);
+    SERIALIZE_OPTION(section, save, _upscale_options, upscale);
   }
 
   if( (section = get_group(settings, save, "master_frame_options")) ) {
@@ -1699,7 +1692,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, max_frames_to_generate_master_frame);
     SERIALIZE_OPTION(section, save, opts, unsharp_sigma);
     SERIALIZE_OPTION(section, save, opts, unsharp_alpha);
-    SERIALIZE_OPTION(section, save, opts, master_channel);
+    //SERIALIZE_OPTION(section, save, opts, master_channel);
 
     if( (subsection = get_group(section, save, "master_frame_selection")) ) {
       SERIALIZE_OPTION(subsection, save, opts.master_selection, master_selection_method);
@@ -1911,7 +1904,7 @@ static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectTy
   ctlbind(ctls, "Generate Master Frame:", ctx(&S::generate_master_frame), "");
   ctlbind(ctls, ctx(&S::master_selection));
   ctlbind(ctls, "apply_input_image_processor", ctx(&S::apply_input_image_processor), "");
-  ctlbind(ctls, "master_channel", ctx(&S::master_channel), "");
+  //ctlbind(ctls, "master_channel", ctx(&S::master_channel), "");
   ctlbind(ctls, "unsharp_sigma", ctx(&S::unsharp_sigma), "Set positive value to apply unsharp mask to master frame");
   ctlbind(ctls, "unsharp_alpha", ctx(&S::unsharp_alpha), "Set positive value to apply unsharp mask to master frame");
 
@@ -2013,6 +2006,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
             ctlbind(ctls, "Enable Streak checker",  CTL_CONTEXT(cctx,  enable_streak_checker));
             ctlbind(ctls, CTL_CONTEXT(cctx,  streak_checker));
           });
+          ctlbind(ctls, "Gray channel:",  CTL_CONTEXT(cctx,  gray_channel));
         });
 
     ////////
@@ -2023,7 +2017,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
     ////////
     ctlbind_expandable_group(ctls, "3. Upscale options",
         [&, cctx = ctx(&this_class::_upscale_options)]() {
-          ctlbind(ctls, "Upscale:", CTL_CONTEXT(cctx, upscale_option), "");
+          ctlbind(ctls, "Upscale:", CTL_CONTEXT(cctx, upscale), "");
         });
 
     ////////
@@ -2535,9 +2529,6 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
 
   const std::vector<cv::Point2f> & rps =
       sm->matched_reference_positions();
-
-  const double scale =
-      _frame_registration->options().feature_registration.scale;
 
   const cv::Size sizes[2] = {
       current_feature_image.size(),

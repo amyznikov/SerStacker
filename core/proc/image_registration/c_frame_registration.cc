@@ -80,7 +80,7 @@ bool load_settings(c_config_setting settings, c_feature_registration_options * o
 
   LOAD_OPTION(settings, *opts, scale);
   LOAD_OPTION(settings, *opts, sp_eps);
-  LOAD_OPTION(settings, *opts, registration_channel);
+//  LOAD_OPTION(settings, *opts, registration_channel);
 
   if ( (section = settings["sparse_feature_detector"]).isGroup() ) {
     load_settings(section, &opts->sparse_feature_extractor_and_matcher.detector);
@@ -103,7 +103,7 @@ bool save_settings(c_config_setting settings, const c_feature_registration_optio
 
   SAVE_OPTION(settings, opts, scale);
   SAVE_OPTION(settings, opts, sp_eps);
-  SAVE_OPTION(settings, opts, registration_channel);
+//  SAVE_OPTION(settings, opts, registration_channel);
 
   if ( (section = settings.add_group("sparse_feature_detector")).isGroup() ) {
     save_settings(section, opts.sparse_feature_extractor_and_matcher.detector);
@@ -126,7 +126,7 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
   c_config_setting section;
 
   LOAD_OPTION(settings, *opts, motion_type);
-  LOAD_OPTION(settings, *opts, ecc_registration_channel);
+  //LOAD_OPTION(settings, *opts, ecc_registration_channel);
   LOAD_OPTION(settings, *opts, interpolation);
   LOAD_OPTION(settings, *opts, border_mode);
   LOAD_OPTION(settings, *opts, border_value);
@@ -163,7 +163,7 @@ bool save_settings(c_config_setting settings, const c_image_registration_options
   c_config_setting section;
 
   SAVE_OPTION(settings, opts, motion_type);
-  SAVE_OPTION(settings, opts, ecc_registration_channel);
+  // SAVE_OPTION(settings, opts, ecc_registration_channel);
   SAVE_OPTION(settings, opts, interpolation);
   SAVE_OPTION(settings, opts, border_mode);
   SAVE_OPTION(settings, opts, border_value);
@@ -542,17 +542,20 @@ const std::string& c_frame_registration::debug_path() const
   return _debug_path;
 }
 
-bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray _reference_mask)
+bool c_frame_registration::setup_reference_frame(cv::InputArray _reference_image, cv::InputArray _reference_mask)
 {
   INSTRUMENT_REGION("c_frame_registration");
 
-  cv::Mat reference_mask;
-  cv::Mat reference_ecc_image;
-  cv::Mat reference_ecc_mask;
+  cv::Mat reference_image, reference_mask;
+  cv::Mat reference_ecc_image, reference_ecc_mask;
   cv::Mat reference_eccflow_mask;
 
-  _reference_frame_size = reference_image.size();
-  memset(&_current_status.timings, 0, sizeof(_current_status.timings));
+  if ( _reference_image.channels() == 1 ) {
+    reference_image = _reference_image.getMat();
+  }
+  else {
+    cv::cvtColor(_reference_image, reference_image, cv::COLOR_BGR2GRAY);
+  }
 
   if( !_reference_mask.empty() ) {
     if( _reference_mask.depth() == CV_8U ) {
@@ -563,13 +566,18 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     }
   }
 
+  _reference_frame_size = reference_image.size();
+  memset(&_current_status.timings, 0, sizeof(_current_status.timings));
+
   /////////////////////////////////////////////////////////////////////////////
   if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
-    if( !extract_channel(reference_image, reference_ecc_image, reference_mask, reference_ecc_mask,
-        _options.ecc_registration_channel, CV_32F, true) ) {
-      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
-      return false;
-    }
+    reference_ecc_image = reference_image;
+    reference_ecc_mask = reference_mask;
+//    if( !extract_channel(reference_image, reference_ecc_image, reference_mask, reference_ecc_mask,
+//        _options.ecc_registration_channel, CV_32F, true) ) {
+//      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
+//      return false;
+//    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -662,14 +670,13 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   return true;
 }
 
-bool c_frame_registration::register_frame(cv::InputArray current_image, cv::InputArray _current_mask,
+bool c_frame_registration::register_frame(cv::InputArray _current_image, cv::InputArray _current_mask,
     cv::OutputArray dst, cv::OutputArray dstmask)
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat current_mask;
-  cv::Mat ecc_image;
-  cv::Mat ecc_mask;
+  cv::Mat current_image, current_mask;
+  cv::Mat ecc_image, ecc_mask;
   cv::Mat eccflow_mask;
   double rho = -1;
 
@@ -678,16 +685,31 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   bool have_transform = false;
 
-  start_time = get_realtime_ms();
 
-  _current_frame_size = current_image.size();
+  start_time = get_realtime_ms();
 
   if( !create_image_transfrom() ) {
     CF_ERROR("create_image_transfrom() fails");
     return false;
   }
 
-  //   CF_DEBUG("RESET IMAGE TRANSFORM");
+  if ( _current_image.channels() == 1 ) {
+    current_image = _current_image.getMat();
+  }
+  else {
+    cv::cvtColor(_current_image, current_image, cv::COLOR_BGR2GRAY);
+  }
+
+  if( !_current_mask.empty() ) {
+    if( _current_mask.depth() == CV_8U ) {
+      current_mask = _current_mask.getMat();
+    }
+    else {
+      cv::compare(_current_mask, 0, current_mask, cv::CMP_GT);
+    }
+  }
+
+  _current_frame_size = current_image.size();
 
   _image_transform->set_reference_points(cv::Vec2f(_reference_frame_size.width / 2, _reference_frame_size.height / 2),
       cv::Vec2f(_current_frame_size.width / 2, _current_frame_size.height / 2));
@@ -703,21 +725,15 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
-  if( !_current_mask.empty() ) {
-    if( _current_mask.depth() == CV_8U ) {
-      current_mask = _current_mask.getMat();
-    }
-    else {
-      cv::compare(_current_mask, 0, current_mask, cv::CMP_GT);
-    }
-  }
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
-    if( !extract_channel(current_image, ecc_image, current_mask, ecc_mask, _options.ecc_registration_channel, CV_32F, true) ) {
-      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
-      return false;
-    }
+    ecc_image = current_image;
+    ecc_mask = current_mask;
+  //    if( !extract_channel(current_image, ecc_image, current_mask, ecc_mask, _options.ecc_registration_channel, CV_32F, true) ) {
+  //      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
+  //      return false;
+  //    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -931,6 +947,11 @@ bool c_frame_registration::create_feature_image(cv::InputArray _src, cv::InputAr
 {
   INSTRUMENT_REGION("");
 
+  if ( _src.channels() != 1 ) {
+    CF_ERROR("APP BUG: single-channel _src image expected.");
+    return false;
+  }
+
   cv::Mat src, srcm;
 
   if ( !_feature_image_preprocessor ) {
@@ -944,15 +965,15 @@ bool c_frame_registration::create_feature_image(cv::InputArray _src, cv::InputAr
     _feature_image_preprocessor(src, srcm);
   }
 
-  if ( src.channels() != 1 ) {
-    if( _options.feature_registration.registration_channel != color_channel_dont_change ) {
-      if( !extract_channel(src, src, srcm, srcm, _options.feature_registration.registration_channel) ) {
-        CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails",
-            _options.feature_registration.registration_channel);
-        return false;
-      }
-    }
-  }
+//  if ( src.channels() != 1 ) {
+//    if( _options.feature_registration.registration_channel != color_channel_dont_change ) {
+//      if( !extract_channel(src, src, srcm, srcm, _options.feature_registration.registration_channel) ) {
+//        CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails",
+//            _options.feature_registration.registration_channel);
+//        return false;
+//      }
+//    }
+//  }
 
   if( _options.feature_registration.scale > 0 && _options.feature_registration.scale != 1 ) {
     scaleImage(_options.feature_registration.scale, src, srcm, src, srcm);

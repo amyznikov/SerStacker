@@ -254,42 +254,35 @@ bool c_quick_streak_checker::check_for_streaks(const c_quick_streak_checker_opti
   INSTRUMENT_REGION("");
   cv::Mat src;
 
-  if ( true ) {
+  if ( _src.channels() == 1 ) {
+    src = _src.getMat();
+  }
+  else {
     INSTRUMENT_REGION("cvtColor");
-
-    if ( _src.channels() == 1 ) {
-      src = _src.getMat();
-    }
-    else {
-      cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
-    }
+    cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
   }
 
-  if ( true ) {
-    /*
-     * Pyramid down to specific level
-     */
-    if ( opts.pyramidLevel < 1 ) {
-      cv::morphologyEx(src, _tophat, cv::MORPH_TOPHAT, morphse55(),
-          cv::Point(-1,-1), 1,
-          cv::BORDER_REPLICATE);
+  /*
+   * Pyramid down to specific level
+   */
+  if ( opts.pyramidLevel < 1 ) {
+    cv::morphologyEx(src, _tophat, cv::MORPH_TOPHAT, morphse55(),
+        cv::Point(-1,-1), 1,
+        cv::BORDER_REPLICATE);
+  }
+  else {
+    cv::pyrDown(src, _tophat);
+    for( int l = 1; l < opts.pyramidLevel; ++l ) {
+      cv::pyrDown(_tophat, _tophat);
     }
-    else {
-      cv::pyrDown(src, _tophat);
-      for( int l = 1; l < opts.pyramidLevel; ++l ) {
-        cv::pyrDown(_tophat, _tophat);
-      }
-      cv::morphologyEx(_tophat, _tophat, cv::MORPH_TOPHAT, morphse55(),
-          cv::Point(-1,-1), 1,
-          cv::BORDER_REPLICATE);
-    }
+    cv::morphologyEx(_tophat, _tophat, cv::MORPH_TOPHAT, morphse55(),
+        cv::Point(-1,-1), 1,
+        cv::BORDER_REPLICATE);
   }
 
-  if ( true ) {
-    _median = estimateMedianStdev(_tophat, &_sigma, 4, 4);
-    _threshold = _median + opts.noiseSigmaScale * _sigma;
-    cv::compare(_tophat, _threshold, _topmask, cv::CMP_GT);
-  }
+  _median = estimateMedianStdev(_tophat, &_sigma, 4, 4);
+  _threshold = _median + opts.noiseSigmaScale * _sigma;
+  cv::compare(_tophat, _threshold, _topmask, cv::CMP_GT);
 
   if ( !_mask.empty() ) {
     cv::Mat msk;

@@ -85,6 +85,13 @@ public:
     return _threshold;
   }
 
+  void clear()
+  {
+    _tophat.release();
+    _topmask.release();
+    _scratchBuf.clear(), _scratchBuf.shrink_to_fit();
+  }
+
 protected:
   cv::Mat _tophat;
   cv::Mat _topmask;

@@ -351,7 +351,7 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
 
   // Apply apodization window for orientation detection
   if (_apodizationWindow.size() != cropSize ) {
-    _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.4 * CV_2PI, 12);
+    fftGenerateButterworthFilter(_apodizationWindow, cropSize, 0.4 * CV_2PI, 12);
   }
 
   //
@@ -476,7 +476,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
 
   const cv::Size cropSize = _cropRC.size();
   if( VLAP.size() != cropSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, false);
+    fftGenerateDiscreteLaplacianFilter(VLAP, cropSize, false);
   }
 
   fftPPSDecomposition(_grayscaleImageCrop, VLAP, INTENSITY_P, cv::noArray());

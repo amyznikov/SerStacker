@@ -25,6 +25,7 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/ssprintf.h>
+#include <core/io/c_stdio_file.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -315,7 +316,7 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
     case frame_accumulation_bayer_drizzle:
-      return c_frame_accumulation::ptr(new c_bayer_drizzle(opts.drizzle_scale));
+      return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale));
     default:
       break;
   }
@@ -420,10 +421,16 @@ void c_image_stacking_pipeline::cleanup_pipeline()
 
   //_roi_selection.reset();
 
-  if ( true ) {
-    _frame_registration.reset();
-    _flow_accumulation.reset();
+  _streak_checker.clear();
+  _frame_registration.reset();
+  _flow_accumulation.reset();
+
+  if ( _frame_accumulation ) {
+    _frame_accumulation->clear();
+    _frame_accumulation.reset();
   }
+
+
 
   set_pipeline_stage(stacking_stage_idle);
 }
@@ -1273,6 +1280,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
       }
       else {
+
         _frame_registration->custom_remap(current_remap,
             current_frame, current_frame,
             current_mask, current_mask,
@@ -1353,7 +1361,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if ( _frame_accumulation ) {
 
-      if( c_bayer_drizzle *bayer_drizzle = dynamic_cast<c_bayer_drizzle*>(_frame_accumulation.get()) ) {
+      if( c_cfa_drizzle *bayer_drizzle = dynamic_cast<c_cfa_drizzle*>(_frame_accumulation.get()) ) {
         INSTRUMENT_REGION("bayer_drizzle_add");
 
         // lock_guard lock(mutex());
@@ -1437,36 +1445,34 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
   return true;
 }
-//
-//void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
-//    cv::InputArray srcmap,
-//    cv::OutputArray dstmap)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  switch (scale) {
-//  case frame_upscale_x15:
-//  {
-//    if( !srcmap.empty() && dstmap.needed() ) {
-//      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
-//      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
-//    }
-//    break;
-//  }
-//  case frame_upscale_pyrUp:
-//  {
-//    if( !srcmap.empty() && dstmap.needed() ) {
-//      cv::pyrUp(srcmap, dstmap);
-//    }
-//    break;
-//  }
-//  default:
-//    if( !srcmap.empty() && dstmap.needed() ) {
-//      srcmap.copyTo(dstmap);
-//    }
-//    break;
-//  }
-//}
+
+void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
+    cv::InputArray srcmap,
+    cv::OutputArray dstmap)
+{
+  INSTRUMENT_REGION("");
+
+  switch (scale) {
+  case frame_upscale_x15: {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_CUBIC);
+    }
+    break;
+  }
+  case frame_upscale_pyrUp: {
+    if( !srcmap.empty() && dstmap.needed() ) {
+      cv::pyrUp(srcmap, dstmap);
+    }
+    break;
+  }
+  default:
+    if( !srcmap.empty() && dstmap.needed() ) {
+      srcmap.copyTo(dstmap);
+    }
+    break;
+  }
+}
 
 void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
     cv::InputArray srcmap,
@@ -1589,6 +1595,17 @@ void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, con
 //  return estimated_noise_level;
 //}
 
+const c_enum_member * c_image_stacking_pipeline::get_preview_displays() const
+{
+  static const c_enum_member members[] = {
+      { 0, "ACC", "" },
+      { 1, "CNTR", "" },
+      { 0 },
+  };
+
+  return members;
+}
+
 bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::OutputArray dst_mask)
 {
   switch (_pipeline_stage) {
@@ -1610,12 +1627,19 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
     case stacking_stage_generate_reference_frame:
       case stacking_stage_in_progress:
       case stacking_stage_finishing: {
-        INSTRUMENT_REGION("get_display");
         if( _frame_accumulation && _frame_accumulation->accumulated_frames() > 0 ) {
-          if( !_frame_accumulation->compute(dst, dst_mask, _input_bpp > 1 ? (1 << _input_bpp) : 1) ) {
-            CF_ERROR("frame_accumulation_->compute() fails");
-            return false;
+
+          if ( _preview_display <= 0 ) {
+            if( !_frame_accumulation->compute(dst, dst_mask, _input_bpp > 1 ? (1 << _input_bpp) : 1) ) {
+              CF_ERROR("frame_accumulation_->compute() fails");
+              return false;
+            }
           }
+          else {
+            _frame_accumulation->get_counter().copyTo(dst);
+            dst_mask.release();
+          }
+
           return true;
         }
         break;

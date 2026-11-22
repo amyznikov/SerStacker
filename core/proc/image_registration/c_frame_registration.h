@@ -94,6 +94,7 @@ struct c_image_registration_options
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
+  double max_translation = 0;
 
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
@@ -123,6 +124,8 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "Interpolation:", ctx(&S::interpolation), "");
   ctlbind(ctls, "Border Mode:", ctx(&S::border_mode), "");
   ctlbind(ctls, "Border Value:", ctx(&S::border_value), "");
+  ctlbind(ctls, "Max Translation:", ctx(&S::max_translation), "");
+
   //ctlbind(ctls, "ECC Registration Channel:", ctx(&S::ecc_registration_channel), "");
   ctlbind(ctls, "Compute and Compensate Turbulent Flow:", ctx(&S::accumulate_and_compensate_turbulent_flow), "");
   //ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");

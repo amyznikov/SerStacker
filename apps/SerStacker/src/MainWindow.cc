@@ -1621,10 +1621,7 @@ void MainWindow::onSaveCurrentImageMask()
         imageView->currentMask();
 
     if( !currentMask.empty() ) {
-      saveImageFileAs(this,
-          imageView->currentMask(),
-          cv::Mat(),
-          nullptr,
+      saveImageFileAs(this, imageView->currentMask(), cv::Mat(), nullptr,
           qsprintf("%s.mask.%dx%d.png",
               inputSourceView->currentFileName().toUtf8().constData(),
               currentMask.cols, currentMask.rows));

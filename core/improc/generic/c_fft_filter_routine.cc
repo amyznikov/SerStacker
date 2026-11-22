@@ -18,6 +18,7 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_EXPONENTIAL, "EXPONENTIAL", },
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
       { c_fft_filter_routine::FILTER_MOFFAT, "MOFFAT", },
+      { c_fft_filter_routine::FILTER_DAG, "DAG", "DRIZZLE_ANTI_GIBBS"},
       { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH_BAND, "BUTTERWORTH_BAND", },
@@ -61,6 +62,7 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "Filter: ", CTL_CONTEXT(ctx, _filterType), "Select filter type");
   ctlbind(ctls, "ppsDecomposition", CTL_CONTEXT(ctx, _ppsDecomposition), "");
+  ctlbind(ctls, "lumaOnly", CTL_CONTEXT(ctx, _lumaOnly), "");
   ctlbind(ctls, "swapQuadrants: ", CTL_CONTEXT(ctx, _swapQuadrants), "swapQuadrants for spectrum displays");
 
   ctlbind_expandable_group(ctls, "Gaussian options",
@@ -86,6 +88,14 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
         ctlbind(ctls, "beta: ", CTL_CONTEXT(ctx, beta), "PSF curvature:  PSF ~ (1 + (r / alpha_space)^2)^(-beta)");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
         ctlbind(ctls, "inverse: ", CTL_CONTEXT(ctx, inverse), "");
+      });
+
+  ctlbind_expandable_group(ctls, "DAG options",
+      [&, ctx = CTL_CONTEXT(ctx, dag)]() {
+        ctlbind(ctls, "drizzle_scale: ", CTL_CONTEXT(ctx, drizzle_scale), "");
+        ctlbind(ctls, "pixfrac: ", CTL_CONTEXT(ctx, pixfrac), "");
+        ctlbind(ctls, "reg_lambda: ", CTL_CONTEXT(ctx, reg_lambda), "");
+        ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
   ctlbind_expandable_group(ctls, "Ramp options",
@@ -135,6 +145,7 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _filterType);
     SERIALIZE_OPTION(settings, save, *this, _ppsDecomposition);
+    SERIALIZE_OPTION(settings, save, *this, _lumaOnly);
     SERIALIZE_OPTION(settings, save, *this, _swapQuadrants);
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianFilter")) {
@@ -156,6 +167,13 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(group, save, moffat, beta);
       SERIALIZE_OPTION(group, save, moffat, gain);
       SERIALIZE_OPTION(group, save, moffat, inverse);
+    }
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "DagFilter")) {
+      SERIALIZE_OPTION(group, save, dag, drizzle_scale);
+      SERIALIZE_OPTION(group, save, dag, pixfrac);
+      SERIALIZE_OPTION(group, save, dag, reg_lambda);
+      SERIALIZE_OPTION(group, save, dag, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GradientFilter")) {
@@ -204,7 +222,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 
   cv::Rect rc;
   const cv::Mat src = image.getMat();
-  const int cn = src.channels();
+  const int cn = image.channels();
   cv::Size fftSize;
 
   switch (_filterType) {
@@ -212,7 +230,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian.sigma) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateGaussianFilter(fftSize, gaussian.sigma, gaussian.gain, false);
+        fftGenerateGaussianFilter(_FILTER, fftSize, gaussian.sigma, gaussian.gain, false);
       }
       break;
     }
@@ -221,7 +239,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = std::max(5, std::min(63, 2 * int(5 * exponential.lambda) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateExponentialFilter(fftSize, exponential.lambda, exponential.gain, false);
+        fftGenerateExponentialFilter(_FILTER, fftSize, exponential.lambda, exponential.gain, false);
       }
       break;
     }
@@ -230,7 +248,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateLaplacianFilter(fftSize, laplacian.gain, false);
+        fftGenerateLaplacianFilter(_FILTER, fftSize, laplacian.gain, false);
       }
       break;
     }
@@ -239,18 +257,27 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateMoffatFilter(fftSize, moffat.fwhm, moffat.beta, moffat.gain,
+        fftGenerateMoffatFilter(_FILTER, fftSize, moffat.fwhm, moffat.beta, moffat.gain,
             moffat.inverse, false);
       }
       break;
     }
 
+    case FILTER_DAG: { // DRIZZLE_ANTI_GIBBS
+      const int ksize = 0;
+      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      if ( _FILTER.size() != fftSize ) {
+        fftGenerateDrizzleAntiGibbsFilter(_FILTER, fftSize, dag.drizzle_scale, dag.pixfrac,
+            dag.reg_lambda, dag.gain,  false);
+      }
+      break;
+    }
 
     case FILTER_RAMP: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateRampFilter(fftSize, ramp.gain, false);
+        fftGenerateRampFilter(_FILTER, fftSize, ramp.gain, false);
       }
       break;
     }
@@ -259,7 +286,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateButterworthFilter(fftSize, butterworth.rc, butterworth.order, butterworth.gain, false);
+        fftGenerateButterworthFilter(_FILTER, fftSize, butterworth.rc, butterworth.order, butterworth.gain, false);
       }
       break;
     }
@@ -268,7 +295,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateButterworthBandFilter(fftSize, butterband.grain_size, butterband.grain_band,
+        fftGenerateButterworthBandFilter(_FILTER, fftSize, butterband.grain_size, butterband.grain_band,
             butterband.order, butterband.gain, butterband.inverse, false);
       }
       break;
@@ -278,7 +305,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian_sharp.sigma) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateGaussianUnsharpFilter(fftSize, gaussian_sharp.sigma, gaussian_sharp.gain, false);
+        fftGenerateGaussianUnsharpFilter(_FILTER, fftSize, gaussian_sharp.sigma, gaussian_sharp.gain, false);
       }
       break;
     }
@@ -287,7 +314,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        _FILTER = fftGenerateLaplacianUnsharpFilter(fftSize, laplacian_sharp.gain,
+        fftGenerateLaplacianUnsharpFilter(_FILTER, fftSize, laplacian_sharp.gain,
             laplacian_sharp.bwrc, laplacian_sharp.bworder, false);
       }
       break;
@@ -297,6 +324,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       CF_ERROR("Not supported filter=%d requested", _filterType);
       break;
   }
+
 
   if ( _display == DISPLAY_FILTER_MODULE ) {
     if ( _swapQuadrants ) {
@@ -313,8 +341,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     _VLAP.release();
   }
   else if( _VLAP.size() != fftSize ) {
-    _VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-    CF_DEBUG("VLAP: %dx%d", _VLAP.cols, _VLAP.rows);
+    fftGenerateDiscreteLaplacianFilter(_VLAP, fftSize, false);
   }
 
   if ( _display == DISPLAY_VLAP ) {
@@ -328,22 +355,24 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return true;
   }
 
-//  if ( src.channels() == 3  ) {
-//
-//    cv::Mat ycrcb;
-//    cv::cvtColor(src, ycrcb, cv::COLOR_BGR2YCrCb);
-//
-//
-//  }
-
 
   std::vector<cv::Mat> real_channels(cn);
   std::vector<cv::Mat> complex_channels(cn);
   std::vector<cv::Mat> complex_channels_s(cn);
   std::vector<cv::Mat> complex_channels_v(cn);
-  cv::split(src, real_channels);
 
-  for ( int i = 0; i < cn; ++i ) {
+  if( _lumaOnly && cn == 3 ) {
+    cv::Mat tmp;
+    cv::cvtColor(src, tmp, cv::COLOR_BGR2YCrCb);
+    cv::split(tmp, real_channels);
+  }
+  else {
+    cv::split(src, real_channels);
+  }
+
+  const int cnmax = _lumaOnly ? 1 : cn;
+
+  for ( int i = 0; i < cnmax; ++i ) {
     fftCopyMakeBorder(real_channels[i], real_channels[i], fftSize);
     real_channels[i].convertTo(real_channels[i], CV_32F);
 
@@ -362,15 +391,15 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   switch (_display) {
     case DISPLAY_SRC_SPECTRUM_MODULE:
     case DISPLAY_SRC_SPECTRUM_PHASE: {
-      std::vector<cv::Mat> planes(cn);
-      for( int i = 0; i < cn; ++i ) {
+      std::vector<cv::Mat> planes(cnmax);
+      for( int i = 0; i < cnmax; ++i ) {
         if( _ppsDecomposition ) {
           cv::add(complex_channels[i], complex_channels_s[i], complex_channels[i]);
         }
         fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
         cv::extractChannel(complex_channels[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_MODULE ? 0 : 1);
       }
-      if( cn == 1 ) {
+      if( cnmax == 1 ) {
         image.move(planes[0]);
       }
       else {
@@ -389,12 +418,12 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         image.release();
       }
       else {
-        std::vector<cv::Mat> planes(cn);
-        for( int i = 0; i < cn; ++i ) {
+        std::vector<cv::Mat> planes(cnmax);
+        for( int i = 0; i < cnmax; ++i ) {
           fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
           cv::extractChannel(complex_channels[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_P_MODULE ? 0 : 1);
         }
-        if( cn == 1 ) {
+        if( cnmax == 1 ) {
           image.move(planes[0]);
         }
         else {
@@ -415,12 +444,12 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         image.release();
       }
       else {
-        std::vector<cv::Mat> planes(cn);
-        for( int i = 0; i < cn; ++i ) {
+        std::vector<cv::Mat> planes(cnmax);
+        for( int i = 0; i < cnmax; ++i ) {
           fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
           cv::extractChannel(complex_channels_s[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_S_MODULE ? 0 : 1);
         }
-        if( cn == 1 ) {
+        if( cnmax == 1 ) {
           image.move(planes[0]);
         }
         else {
@@ -440,12 +469,12 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         image.release();
       }
       else {
-        std::vector<cv::Mat> planes(cn);
-        for( int i = 0; i < cn; ++i ) {
+        std::vector<cv::Mat> planes(cnmax);
+        for( int i = 0; i < cnmax; ++i ) {
           fftSpectrumToPolar(complex_channels[i], complex_channels[i]);
           cv::extractChannel(complex_channels_v[i], planes[i], _display == DISPLAY_SRC_SPECTRUM_V_MODULE ? 0 : 1);
         }
-        if( cn == 1 ) {
+        if( cnmax == 1 ) {
           image.move(planes[0]);
         }
         else {
@@ -463,7 +492,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
   }
 
-  for ( int i = 0; i < cn; ++i ) {
+  for ( int i = 0; i < cnmax; ++i ) {
 
     fftMulSpectrum(complex_channels[i], _FILTER, complex_channels[i]);
 
@@ -493,7 +522,20 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     }
   }
 
-  cv::merge(real_channels, image);
+  if ( _lumaOnly && cn == 3 ) {
+
+    if ( _display != DISPLAY_FILTERED_IMAGE ) {
+      image.assign(real_channels[0]);
+    }
+    else {
+      cv::merge(real_channels, image);
+      cv::cvtColor(image, image, cv::COLOR_YCrCb2BGR);
+    }
+  }
+  else {
+    cv::merge(real_channels, image);
+  }
+
   if ( _display != DISPLAY_FILTERED_IMAGE ) {
     mask.release();
   }

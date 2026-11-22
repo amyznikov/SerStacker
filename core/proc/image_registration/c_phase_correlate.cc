@@ -400,7 +400,7 @@ void c_phase_correlate::generateFilters()
       _bandpassFilter);
 
   if ( _vlapFilter.size() != _fftSize ) {
-    _vlapFilter = fftGenerateDiscreteLaplacianFilter(_fftSize, false);
+    fftGenerateDiscreteLaplacianFilter(_vlapFilter, _fftSize, false);
   }
 
   if ( _aalpha > 0 &&  _apodizationWindow.size() != _fftSize ) {

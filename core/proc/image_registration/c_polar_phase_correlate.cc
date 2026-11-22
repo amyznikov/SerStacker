@@ -28,67 +28,67 @@ static int getOptimalFFTSizeDown(int size)
   return sopt;
 }
 
-static void normalizeMedianMAD(cv::InputArray _src, cv::OutputArray dst, double drc, cv::InputArray mask = cv::noArray())
-{
-  const cv::Mat src = _src.getMat();
-  const int cn = src.channels();
-
-  if (_src.depth() != CV_32F) {
-    _src.copyTo(dst);
-    return;
-  }
-
-  const int step_y = 8;
-  const int step_x = 8;
-  std::vector<float> samples;
-  samples.reserve((src.rows / step_y) * (src.cols / step_x));
-
-  const cv::Mat msk = mask.empty() ? cv::Mat() : mask.getMat();
-  const uint8_t* const msk_base = msk.ptr();
-  const size_t msk_stride = msk.step;
-
-  const uint8_t* const src_base = src.ptr();
-  const size_t src_stride = src.step;
-
-  for (int y = 0; y < src.rows; y += step_y) {
-    const float* srcp = (const float*)(src_base + y * src_stride);
-    const uint8_t* mskp = msk.empty() ? nullptr : (msk_base + y * msk_stride);
-
-    for (int x = 0; x < src.cols; x += step_x) {
-      if (mskp && !mskp[x]) {
-        continue;
-      }
-      samples.push_back(srcp[x * cn]);
-    }
-  }
-
-  if (samples.empty()) {
-    _src.copyTo(dst);
-    return;
-  }
-
-  const size_t mid_idx = samples.size() / 2;
-  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
-  const float median = samples[mid_idx];
-  for (float & v : samples) {
-    v = std::abs(v - median);
-  }
-
-  // median of absolute deviations in O(N) time
-  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
-  const float mad = samples[mid_idx];
-
-  CF_DEBUG("Median: %g, MAD: %g, Samples: %zu", median, mad, samples.size());
-
-  // Scaling factor 1.4826 for normal distribution
-  const float scale = mad > std::numeric_limits<float>::min() ? 1.0f / (1.4826f * mad) : 1.0f;
-  if ( std::abs(drc) > std::numeric_limits<float>::epsilon()) {
-    tanh(src, dst, scale * drc, -median * scale * drc);
-  }
-  else {
-    src.convertTo(dst, dst.fixedType() ? dst.depth() : src.depth(), scale, -median * scale);
-  }
-}
+//static void normalizeMedianMAD(cv::InputArray _src, cv::OutputArray dst, double drc, cv::InputArray mask = cv::noArray())
+//{
+//  const cv::Mat src = _src.getMat();
+//  const int cn = src.channels();
+//
+//  if (_src.depth() != CV_32F) {
+//    _src.copyTo(dst);
+//    return;
+//  }
+//
+//  const int step_y = 8;
+//  const int step_x = 8;
+//  std::vector<float> samples;
+//  samples.reserve((src.rows / step_y) * (src.cols / step_x));
+//
+//  const cv::Mat msk = mask.empty() ? cv::Mat() : mask.getMat();
+//  const uint8_t* const msk_base = msk.ptr();
+//  const size_t msk_stride = msk.step;
+//
+//  const uint8_t* const src_base = src.ptr();
+//  const size_t src_stride = src.step;
+//
+//  for (int y = 0; y < src.rows; y += step_y) {
+//    const float* srcp = (const float*)(src_base + y * src_stride);
+//    const uint8_t* mskp = msk.empty() ? nullptr : (msk_base + y * msk_stride);
+//
+//    for (int x = 0; x < src.cols; x += step_x) {
+//      if (mskp && !mskp[x]) {
+//        continue;
+//      }
+//      samples.push_back(srcp[x * cn]);
+//    }
+//  }
+//
+//  if (samples.empty()) {
+//    _src.copyTo(dst);
+//    return;
+//  }
+//
+//  const size_t mid_idx = samples.size() / 2;
+//  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
+//  const float median = samples[mid_idx];
+//  for (float & v : samples) {
+//    v = std::abs(v - median);
+//  }
+//
+//  // median of absolute deviations in O(N) time
+//  std::nth_element(samples.begin(), samples.begin() + mid_idx, samples.end());
+//  const float mad = samples[mid_idx];
+//
+//  CF_DEBUG("Median: %g, MAD: %g, Samples: %zu", median, mad, samples.size());
+//
+//  // Scaling factor 1.4826 for normal distribution
+//  const float scale = mad > std::numeric_limits<float>::min() ? 1.0f / (1.4826f * mad) : 1.0f;
+//  if ( std::abs(drc) > std::numeric_limits<float>::epsilon()) {
+//    tanh(src, dst, scale * drc, -median * scale * drc);
+//  }
+//  else {
+//    src.convertTo(dst, dst.fixedType() ? dst.depth() : src.depth(), scale, -median * scale);
+//  }
+//}
 
 static bool normalizeMeanStdev(cv::InputArray _src, cv::OutputArray _dst, double drc, cv::InputArray mask = cv::noArray())
 {
@@ -761,7 +761,7 @@ bool c_polar_phase_correlate::setupInputFrame(cv::InputArray srcImage, cv::Input
 
     const cv::Size polarSize = frame->acmp.size();
     if (_vlap2.size() != polarSize ) {
-      _vlap2 = fftGenerateDiscreteLaplacianFilter(polarSize, false);
+      fftGenerateDiscreteLaplacianFilter(_vlap2, polarSize, false);
     }
 
     if (!fftPPSDecompositionCCS(frame->acmp, _vlap2, frame->polarSpec, cv::noArray())) {

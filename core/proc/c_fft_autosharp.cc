@@ -810,7 +810,7 @@ bool c_fft_autosharp::compute(const c_fft_autosharp_options & opts,
   cv::Rect rc(0, 0, srcSize.width, srcSize.height);
 
   if( _vlap_filter.size() != fftSize ) {
-    _vlap_filter = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+    fftGenerateDiscreteLaplacianFilter(_vlap_filter, fftSize, false);
   }
   if( _src_planes.empty() ) {
     _src_planes.emplace_back();

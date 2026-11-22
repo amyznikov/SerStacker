@@ -43,7 +43,7 @@ bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::Input
     VLAP.release();
   }
   else if( VLAP.size() != fftSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+    fftGenerateDiscreteLaplacianFilter(VLAP, fftSize, false);
   }
 
   for ( int i = 0; i < cn; ++i ) {

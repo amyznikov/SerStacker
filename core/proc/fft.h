@@ -99,56 +99,55 @@ bool fftSpectrumPolarToCart(cv::InputArray _polar, cv::OutputArray _cart);
 bool fftSpectrumToPolarCCS(cv::InputArray _ccsSpectrum, cv::OutputArray _polarSpectrum,
     bool centerDC = false);
 
-
 // Space Isotropic Gaussian
-cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
+bool fftGenerateGaussianFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double sigma_space = 2.0, double gain = 1.0,
     bool centerDC = true);
 
 // Space Isotropic Exponential
 // PSF ~ exp(-r / lambda_space)
-cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize,
+bool fftGenerateExponentialFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double lambda_space, double gain,
     bool centerDC = true);
 
-cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain = 1.0,
-    bool centerDC = true);
-
-cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain = 1.0,
-    double bwrc = 1, int bworder = 4,
-    bool centerDC = true);
-
-cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain = 1.0,
-    bool centerDC = true);
-
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
-cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
+bool fftGenerateButterworthFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double cutoff, int order = 2, double gain = 1,
     bool centerDC = true);
 
-// Space Isotropic Gaussian-Based unsharp mask filter
-cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
-    double sigma_space, double gain, bool centerDC = true);
-
-// Space Isotropic Butterworth-Based unsharp mask filter
-// Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
-cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
-    double rc, double order, double gain, bool centerDC = true);
-
 // Space Isotropic Butterworth Band-Pass / Band-Reject Filter.
-cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
+bool fftGenerateButterworthBandFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double grain_size, double grain_band, int order, double gain,
     bool inverse, bool centerDC);
 
 // Space Isotropic Moffat parameterized by FWHM
 // alpha = 0.5 * fwhm / sqrt(pow(2.0, 1.0 / beta) - 1.0)
 // PSF ~ (1 + (r / alpha_space)^2)^(-beta)
-cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
+bool fftGenerateMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double fwhm, double beta, double gain,
     bool inverse, bool centerDC);
 
+bool fftGenerateLaplacianFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain = 1.0,
+    bool centerDC = true);
+
+bool fftGenerateRampFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain = 1.0,
+    bool centerDC = true);
+
+bool fftGenerateLaplacianUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain = 1.0,
+    double bwrc = 1, int bworder = 4,
+    bool centerDC = true);
+
+// Space Isotropic Gaussian-Based unsharp mask
+bool fftGenerateGaussianUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double sigma_space, double gain, bool centerDC = true);
+
+// Space Isotropic Butterworth-Based unsharp mask filter
+// Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
+bool fftGenerateButterworthUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double rc, double order, double gain, bool centerDC = true);
+
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
-cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
+bool fftGenerateDiscreteLaplacianFilter(cv::OutputArray dst, const cv::Size & fftSize,
     bool centerDC = true);
 
 /**
@@ -182,6 +181,11 @@ void fftCreateEllipticalApodizationWindow(cv::OutputArray _dst, const cv::Size &
  */
 void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & rectSize, cv::OutputArray dst,
     double _csigma = 0.5, double _calpha = 0.01, bool centerDC = false);
+
+
+bool fftGenerateDrizzleAntiGibbsFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double drizzle_scale, double pixfrac, double reg_lambda, double gain,
+    bool centerDC);
 
 
 /**

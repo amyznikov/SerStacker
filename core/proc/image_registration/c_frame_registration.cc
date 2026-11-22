@@ -130,6 +130,7 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
   LOAD_OPTION(settings, *opts, interpolation);
   LOAD_OPTION(settings, *opts, border_mode);
   LOAD_OPTION(settings, *opts, border_value);
+  LOAD_OPTION(settings, *opts, max_translation);
   LOAD_OPTION(settings, *opts, enable_phase_correlate);
   LOAD_OPTION(settings, *opts, enable_feature_registration);
   LOAD_OPTION(settings, *opts, enable_ecc_registration);
@@ -167,6 +168,7 @@ bool save_settings(c_config_setting settings, const c_image_registration_options
   SAVE_OPTION(settings, opts, interpolation);
   SAVE_OPTION(settings, opts, border_mode);
   SAVE_OPTION(settings, opts, border_value);
+  SAVE_OPTION(settings, opts, max_translation);
   SAVE_OPTION(settings, opts, enable_phase_correlate);
   SAVE_OPTION(settings, opts, enable_feature_registration);
   SAVE_OPTION(settings, opts, enable_ecc_registration);
@@ -730,10 +732,6 @@ bool c_frame_registration::register_frame(cv::InputArray _current_image, cv::Inp
   if ( _options.enable_phase_correlate || _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
     ecc_image = current_image;
     ecc_mask = current_mask;
-  //    if( !extract_channel(current_image, ecc_image, current_mask, ecc_mask, _options.ecc_registration_channel, CV_32F, true) ) {
-  //      CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
-  //      return false;
-  //    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -794,6 +792,15 @@ bool c_frame_registration::register_frame(cv::InputArray _current_image, cv::Inp
     }
     _current_status.timings.estimate_feature_transform = (t1 = get_realtime_ms()) - t0, t0 = t1;
     have_transform = true;
+
+    if ( _options.max_translation > 0 ) {
+      const cv::Vec2f T= _image_transform->translation();
+      const double t = std::sqrt(T(0)*T(0) + T(1)*T(1));
+      if ( t > _options.max_translation ) {
+        CF_ERROR("Too big translation t=%g Tx=%g Ty=%g > %g", t, T(0), T(1), _options.max_translation);
+        return false;
+      }
+    }
   }
 
 

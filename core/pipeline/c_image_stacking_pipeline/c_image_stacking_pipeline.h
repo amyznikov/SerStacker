@@ -55,7 +55,7 @@ struct c_frame_upscale_options
 struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method = frame_accumulation_weighted_average;
-  c_bayer_drizzle::SCALE drizzle_scale = c_bayer_drizzle::SCALE_1x;
+  c_cfa_drizzle::SCALE drizzle_scale = c_cfa_drizzle::SCALE_10x;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
 };
@@ -192,6 +192,7 @@ protected:
   void cleanup_pipeline() override;
   bool run_pipeline() override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
+  const c_enum_member * get_preview_displays() const override;
 
   bool run_image_stacking();
   void set_pipeline_stage(int stage);
@@ -235,6 +236,10 @@ protected:
   static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,
       cv::OutputArray dst, cv::OutputArray dstmask);
+
+  static void upscale_remap(enum frame_upscale_option scale,
+      cv::InputArray srcmap,
+      cv::OutputArray dstmap);
 
   static void upscale_optflow(enum frame_upscale_option scale,
       cv::InputArray srcmap,

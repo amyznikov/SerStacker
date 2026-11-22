@@ -207,17 +207,21 @@ protected:
   int _accumulated_frames = 0;
 };
 
-class c_bayer_drizzle :
+class c_cfa_drizzle :
     public c_frame_accumulation
 {
 public:
-  typedef c_bayer_drizzle this_class;
+  typedef c_cfa_drizzle this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
-  enum SCALE {
-    SCALE_1x = 1,
-    SCALE_2x = 2,
+  enum SCALE
+  {
+    SCALE_10x = 1,
+    SCALE_15x = 2,
+    SCALE_20x = 3,
+    SCALE_30x = 4,
+    SCALE_40x = 5,
   };
 
   enum BAYER_COLOR_ID {
@@ -226,7 +230,7 @@ public:
     BAYER_R = 2,
   };
 
-  c_bayer_drizzle(SCALE scale = SCALE_1x) :
+  c_cfa_drizzle(SCALE scale = SCALE_10x) :
       _scale(scale)
   {
   }
@@ -242,16 +246,6 @@ public:
   COLORID bayer_pattern() const
   {
     return _colorid;
-  }
-
-  void set_pixfrac(double v)
-  {
-    _pixfrac = v;
-  }
-
-  double pixfrac() const
-  {
-    return _pixfrac;
   }
 
   void set_scale(SCALE v)
@@ -326,16 +320,15 @@ protected:
   }
 
 protected:
-  int _bayer_lookup[2][2] = {{0}};
+  int _cfa_lookup[2][2] = {{0}};
   mutable std::mutex _mtx;
   cv::Mat3f _accumulator;
   cv::Mat3f _counter;
   cv::Mat2f _rmap;
   cv::Mat2f _scaled_rmap;
   cv::Mat _scaled_weights;
-  double _pixfrac = 1;
   COLORID _colorid = COLORID_UNKNOWN;
-  SCALE _scale = SCALE_1x;
+  SCALE _scale = SCALE_10x;
 };
 
 

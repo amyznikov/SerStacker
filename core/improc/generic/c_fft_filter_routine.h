@@ -28,6 +28,7 @@ public:
     FILTER_GAUSSIAN_SHARP,
     FILTER_LAPLACIAN_SHARP,
     FILTER_MOFFAT,
+    FILTER_DAG,
   };
 
   enum DISPLAY {
@@ -54,9 +55,16 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  void parameter_changed()
+  void parameter_changed() final
   {
     _FILTER.release();
+  }
+  void state_changed() final
+  {
+    if ( !_enabled ) {
+      _FILTER.release();
+      _VLAP.release();
+    }
   }
 
 protected:
@@ -64,6 +72,7 @@ protected:
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
   bool _ppsDecomposition = false;
   bool _swapQuadrants = true;
+  bool _lumaOnly = false;
 
   struct c_gaussian_filter_opts {
     double sigma = 1;
@@ -85,6 +94,14 @@ protected:
     double gain = 1;
     bool inverse = false;
   } moffat;
+
+  struct c_dag_filter_opts {
+    double drizzle_scale = 1;
+    double pixfrac = 0.5;
+    double reg_lambda = 1e-5;
+    double gain = 1;
+  } dag;
+
 
 
   struct c_ramp_filter_opts {

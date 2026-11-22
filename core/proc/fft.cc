@@ -1431,9 +1431,22 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
 }
 
 // Space Isotropic Gaussian
-cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space, double gain, bool centerDC)
+bool fftGenerateGaussianFilter(cv::OutputArray dst, const cv::Size & fftSize, double sigma_space, double gain, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const bool inverse = sigma_space < 0;
   if( inverse ) {
@@ -1468,10 +1481,10 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
         }
       }
     });
-
   }
   else {
-    const float eps = float(1.0 / (gain * gain));
+    //const float eps = float(1.0 / (gain * gain));
+    const float eps = float(1.0 / (gain));
 
     parallel_for(0, h, [=, &FILTER](const auto & range) {
       for (int y = rbegin(range); y < rend(range); ++y) {
@@ -1491,23 +1504,35 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
 
   }
 
-  return FILTER;
+  return true;
 }
 
 // Space Isotropic Moffat parameterized by FWHM
 // alpha = fwhm / (2.0 * sqrt(pow(2.0, 1.0 / beta) - 1.0))
 // PSF ~ (1 + (r / alpha_space)^2)^(-beta)
-cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
+bool fftGenerateMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double fwhm, double beta, double gain,
     bool inverse, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   if (fwhm <= 0.0) {
     fwhm = 1.0;
   }
-  if (beta <= 1.001) {
-    beta = 1.001;
+  if (beta <= 1.0001) {
+    beta = 1.0001;
   }
 
   const int w = fftSize.width;
@@ -1542,7 +1567,9 @@ cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
     });
   }
   else {
+    //const double eps = gain > 1 ? 1.0 / (gain * gain - 1) : 0;
     const double eps = 1.0 / (gain * gain);
+
     parallel_for(0, h, [=, &FILTER](const auto & range) {
       for (int y = rbegin(range); y < rend(range); ++y) {
         float * __restrict dstp = FILTER[y];
@@ -1561,16 +1588,29 @@ cv::Mat1f fftGenerateMoffatFilter(const cv::Size & fftSize,
     });
   }
 
-  return FILTER;
+  return true;
 }
 
 // Space Isotropic Exponential
 // PSF ~ exp(-r / lambda_space)
 // Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)
 // Normalized such that when dx=0, dy=0, the value inside the parentheses equals 1.0
-cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_space, double gain, bool centerDC)
+bool fftGenerateExponentialFilter(cv::OutputArray dst, const cv::Size & fftSize, double lambda_space, double gain, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const bool inverse = lambda_space < 0;
   if( inverse ) {
@@ -1629,15 +1669,28 @@ cv::Mat1f fftGenerateExponentialFilter(const cv::Size & fftSize, double lambda_s
     });
   }
 
-  return FILTER;
+  return true;
 }
 
 // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
-cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
+bool fftGenerateButterworthFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double rc, int order, double gain,
     bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const bool inverse = rc < 0;
   if ( inverse ) {
@@ -1691,7 +1744,7 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     });
   }
 
-  return FILTER;
+  return true;
 }
 
 
@@ -1706,11 +1759,24 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
  * @param inverse      true: Grain suppression (Band-Reject), false: Grain isolation/enhancement (Band-Pass).
  * @param centerDC     Output spectrum format.
 **/
-cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
+bool fftGenerateButterworthBandFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double grain_size, double grain_band, int order, double gain,
     bool inverse, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const int w = fftSize.width;
   const int h = fftSize.height;
@@ -1745,15 +1811,27 @@ cv::Mat1f fftGenerateButterworthBandFilter(const cv::Size & fftSize,
     }
   });
 
-  return FILTER;
+  return true;
 }
 
 
-cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
+bool fftGenerateLaplacianFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double gain /* =1*/,
     bool centerDC /* =true */)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const int w = fftSize.width;
   const int h = fftSize.height;
@@ -1782,13 +1860,25 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     }
   });
 
-  return FILTER;
+  return true;
 }
 
-cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,
+bool fftGenerateLaplacianUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain, double bwrc, int bworder,
     bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const int w = fftSize.width;
   const int h = fftSize.height;
@@ -1824,10 +1914,10 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
     }
   });
 
-  return FILTER;
+  return true;
 }
 
-cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool centerDC)
+bool fftGenerateRampFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain, bool centerDC)
 {
   // Isotropic Gradient
   // The frequency step is tied to the physical dimensions of the matrix
@@ -1836,7 +1926,19 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
   // Gradient:
   //    2 * PI * sqrt(fx^2 + fy^2)
 
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const float scaleX = float(CV_2PI / fftSize.width);
   const float scaleY = float(CV_2PI / fftSize.height);
@@ -1884,14 +1986,26 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
     FILTER(0, 0) = 0.0f;
   }
 
-  return FILTER;
+  return true;
 }
 
 
 // Multiplicative Discrete Laplacian Filter for Periodic+Smooth Decomposition
-cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)
+bool fftGenerateDiscreteLaplacianFilter(cv::OutputArray dst, const cv::Size & fftSize, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   const double scaleX = CV_2PI / fftSize.width;
   const double scaleY = CV_2PI / fftSize.height;
@@ -1923,18 +2037,30 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool cent
 
   FILTER(cy, cx) = 0.f;
 
-  return FILTER;
+  return true;
 }
 
 
 // Space Isotropic Gaussian-Based unsharp mask filter
-cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
+bool fftGenerateGaussianUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double sigma_space, double gain, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
 
-  const bool inverseFilter = sigma_space < 0;
-  if (inverseFilter) {
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
+
+  const bool inverse = sigma_space < 0;
+  if (inverse) {
     sigma_space = -sigma_space;
   }
   else if (sigma_space == 0) {
@@ -1965,19 +2091,31 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
         const double LPF = std::exp(-(dx2 + dy2));
         const double unsharpHPF = 1.0 + gain * (1.0 - LPF);
         // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
-        dstp[x] = float(inverseFilter ? 1.0 + gain - unsharpHPF : unsharpHPF);
+        dstp[x] = float(inverse ? 1.0 + gain - unsharpHPF : unsharpHPF);
       }
     }
   });
 
-  return FILTER;
+  return true;
 }
 
 // Space Isotropic Butterworth-Based unsharp mask filter
-cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
+bool fftGenerateButterworthUnsharpFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double rc_space, double order, double gain, bool centerDC)
 {
-  cv::Mat1f FILTER(fftSize);
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
 
   if (rc_space <= 0.0) {
     rc_space = 1.0;
@@ -2020,7 +2158,7 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     }
   });
 
-  return FILTER;
+  return true;
 }
 
 
@@ -2100,6 +2238,161 @@ void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & re
     }
   });
 }
+
+bool fftGenerateDrizzleAntiGibbsFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double drizzle_scale, double pixfrac, double reg_lambda, double gain,
+    bool centerDC)
+{
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if ( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  if ( drizzle_scale <= 0.0 ) {
+    drizzle_scale = 1.0;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int cx = w / 2;
+  const int cy = h / 2;
+
+  const float p = float(std::max(0.0, pixfrac));
+  const float inv_s = 1.0f / float(drizzle_scale);
+  const float nyq_src = 0.5f * float(drizzle_scale); // edge frequency in cycles/src_pixel
+  const float lambda = float(std::max(1e-6, reg_lambda));
+  const float fgain = float(gain);
+
+  std::vector<float> hx(w);
+  std::vector<float> hy(h);
+
+  static const auto __sinc = [](float x) -> float {
+    if ( std::abs(x) < 1e-6f ) {
+      return 1.0f;
+    }
+    const float pix = float(CV_PI) * x;
+    return std::sin(pix) / pix;
+  };
+
+//  for ( int x = 0; x < w; ++x ) {
+//    const int fx_idx = centerDC ? x : (x < cx ? x + cx : x - cx);
+//    const float fx = (float(fx_idx - cx) / float(cx)) * nyq_src;
+//    hx[x] = __sinc(fx) * __sinc(p * fx) * __sinc(inv_s * fx);
+//  }
+//
+//  for ( int y = 0; y < h; ++y ) {
+//    const int fy_idx = centerDC ? y : (y < cy ? y + cy : y - cy);
+//    const float fy = (float(fy_idx - cy) / float(cy)) * nyq_src;
+//    hy[y] = __sinc(fy) * __sinc(p * fy) * __sinc(inv_s * fy);
+//  }
+
+  for ( int x = 0; x < w; ++x ) {
+    const int fx_idx = centerDC ? x : (x < cx ? x + cx : x - cx);
+    const float fx = (float(fx_idx - cx) / float(cx)) * nyq_src;
+    hx[x] = __sinc(p * fx) * __sinc(inv_s * fx);
+  }
+
+  for ( int y = 0; y < h; ++y ) {
+    const int fy_idx = centerDC ? y : (y < cy ? y + cy : y - cy);
+    const float fy = (float(fy_idx - cy) / float(cy)) * nyq_src;
+    hy[y] = __sinc(p * fy) * __sinc(inv_s * fy);
+  }
+
+  const float * const hxp = hx.data();
+  const float * const hyp = hy.data();
+
+  parallel_for(0, h, [=, &FILTER](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict dstp = FILTER[y];
+      const float hy_val = hyp[y];
+      for ( int x = 0; x < w; ++x ) {
+        const float H = hxp[x] * hy_val;
+        dstp[x] = fgain * (H / (H * H + lambda));
+      }
+    }
+  });
+
+  return true;
+}
+
+//bool fftGenerateDrizzleAntiGibbsFilter(cv::OutputArray dst, const cv::Size & fftSize,
+//    double drizzle_scale, double taper_alpha, double gain,
+//    bool centerDC)
+//{
+//  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+//    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+//    return false;
+//  }
+//
+//  if ( dst.fixedSize() && dst.size() != fftSize ) {
+//    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+//        fftSize.width, fftSize.height);
+//    return false;
+//  }
+//
+//  if ( drizzle_scale <= 0.0 ) {
+//    drizzle_scale = 1.0;
+//  }
+//
+//  dst.create(fftSize, CV_32FC1);
+//  cv::Mat1f FILTER = dst.getMatRef();
+//
+//  const int w = fftSize.width;
+//  const int h = fftSize.height;
+//  const int cx = w / 2;
+//  const int cy = h / 2;
+//
+//  /*
+//   * Normalized frequency coordinates:
+//   *   At frame edge (|fx| = w/2 or |fy| = h/2), normalized frequency is 1.0 (output Nyquist = 0.5 * drizzle_scale).
+//   *   First physical pixel aperture zero is at f = 1.0 cycle/src_pixel -> r_cut = 2.0 / drizzle_scale.
+//   */
+//  const float r_cut = float(std::min(1.0, 2.0 / drizzle_scale));
+//  const float alpha = float(std::clamp(taper_alpha, 0.0, 1.0));
+//  const float r_pass = r_cut * (1.0f - alpha);
+//  const float roll_width = std::max(1e-6f, r_cut - r_pass);
+//  const float inv_roll = float(CV_PI) / roll_width;
+//
+//  const float sx = 1.0f / float(cx);
+//  const float sy = 1.0f / float(cy);
+//  const float fgain = float(gain);
+//
+//  parallel_for(0, h, [=, &FILTER](const auto & range) {
+//    for ( int y = rbegin(range); y < rend(range); ++y ) {
+//      float * __restrict dstp = FILTER[y];
+//      const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+//      const float dy = (fy - cy) * sy;
+//      const float dy2 = dy * dy;
+//
+//      for ( int x = 0; x < w; ++x ) {
+//        const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+//        const float dx = (fx - cx) * sx;
+//        const float r = std::sqrt(dx * dx + dy2);
+//
+//        float H = 0.0f;
+//        if ( r <= r_pass ) {
+//          H = 1.0f;
+//        }
+//        else if ( r < r_cut ) {
+//          H = 0.5f * (1.0f + std::cos((r - r_pass) * inv_roll));
+//        }
+//
+//        dstp[x] = fgain * H;
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
 
 /**
  * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.

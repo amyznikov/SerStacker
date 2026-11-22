@@ -64,7 +64,7 @@ public:
 
 protected:
   cv::Mat _accumulator;
-  cv::Mat1f _weights;
+  cv::Mat _weights;
 };
 
 class c_laplacian_pyramid_focus_stacking :
@@ -146,7 +146,7 @@ public:
   const cv::Mat & accumulator() const {
     return _accumulator;
   }
-  const cv::Mat1f & counter() const {
+  const cv::Mat & counter() const {
     return _weights;
   }
   const cv::Rect & last_bbox() const {
@@ -201,7 +201,7 @@ protected:
 protected:
   mutable std::mutex _mtx;
   cv::Mat _accumulator;
-  cv::Mat1f _weights;
+  cv::Mat _weights;
   cv::Rect _last_bbox;
   cv::Size _canvasSize;
   int _accumulated_frames = 0;

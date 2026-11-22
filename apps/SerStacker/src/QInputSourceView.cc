@@ -771,20 +771,12 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
       if ( !mask.empty() && mask.channels() > image.channels() ) {
         reduce_color_channels(mask, cv::REDUCE_MAX);
       }
-      createHistogram(image,
-          mask,
-          hmin, hmax,
-          0,
-          H);
+      createHistogram(image, mask, hmin, hmax, 0, H);
       break;
     }
 
     case DisplayType_PointCloud:
-      createHistogram(_cloudView->mtfColors(),
-          _cloudView->currentMask(),
-          hmin, hmax,
-          0,
-          H);
+      createHistogram(_cloudView->mtfColors(), _cloudView->currentMask(), hmin, hmax, 0, H);
       break;
 
     default:

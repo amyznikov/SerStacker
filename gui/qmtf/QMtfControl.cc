@@ -220,7 +220,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
   connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged,
       [this](int slider, double value) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
 
           c_update_controls_lock lock(this);
 
@@ -230,73 +230,73 @@ QMtfControl::QMtfControl(QWidget * parent) :
           if ( slider == QMtfSliderBand::SLIDER_LCLIP ) {
             const double v = mtfSliderBand_ctl->lclip();
             setValue(lclip_ctl, v);
-            _displaySettings->setlclip(v);
+            _mtfDisplay->setlclip(v);
           }
           else if ( slider == QMtfSliderBand::SLIDER_HCLIP ) {
             const double v = mtfSliderBand_ctl->hclip();
             setValue(hclip_ctl, v);
-            _displaySettings->sethclip(v);
+            _mtfDisplay->sethclip(v);
           }
           else if ( slider == QMtfSliderBand::SLIDER_MIDTONES ) {
             const double v = mtfSliderBand_ctl->midtones();
             setValue(midtones_ctl, v);
-            _displaySettings->setMidtones(v);
+            _mtfDisplay->setMidtones(v);
           }
           else if ( slider == QMtfSliderBand::SLIDER_SHADOWS ) {
             const double v = mtfSliderBand_ctl->shadows();
             setValue(shadows_ctl, v);
-            _displaySettings->setShadows(v);
+            _mtfDisplay->setShadows(v);
           }
           else if ( slider == QMtfSliderBand::SLIDER_HIGHLIGHTS ) {
             const double v = mtfSliderBand_ctl->highlights();
             setValue(highlights_ctl, v);
-            _displaySettings->setHighlights(v);
+            _mtfDisplay->setHighlights(v);
           }
         }
       });
 
   connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
           c_update_controls_lock lock(this);
           mtfSliderBand_ctl->setlclip(v);
-          _displaySettings->setlclip(v);
+          _mtfDisplay->setlclip(v);
         }
       });
 
   connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
           c_update_controls_lock lock(this);
           mtfSliderBand_ctl->sethclip(v);
-          _displaySettings->sethclip(v);
+          _mtfDisplay->sethclip(v);
         }
       });
 
   connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
           c_update_controls_lock lock(this);
           mtfSliderBand_ctl->setMidtones(v);
-          _displaySettings->setMidtones(v);
+          _mtfDisplay->setMidtones(v);
         }
       });
 
   connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
           c_update_controls_lock lock(this);
           mtfSliderBand_ctl->setShadows(v);
-          _displaySettings->setShadows(v);
+          _mtfDisplay->setShadows(v);
         }
       });
 
   connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( _displaySettings && !updatingControls() ) {
+        if ( _mtfDisplay && !updatingControls() ) {
           c_update_controls_lock lock(this);
           mtfSliderBand_ctl->setHighlights(v);
-          _displaySettings->setHighlights(v);
+          _mtfDisplay->setHighlights(v);
         }
       });
 
@@ -317,25 +317,25 @@ const QIcon & QMtfControl::getMtfAutoClipIcon()
 
 void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 {
-  if( displaySettings != this->_displaySettings ) {
+  if( displaySettings != this->_mtfDisplay ) {
 
     c_update_controls_lock lock(this);
 
-    if ( _displaySettings ) {
-      _displaySettings->mtfDisplayEvents()->disconnect(this);
+    if ( _mtfDisplay ) {
+      _mtfDisplay->mtfDisplayEvents()->disconnect(this);
     }
 
-    _displaySettings = displaySettings;
+    _mtfDisplay = displaySettings;
     displayChannel_ctl->clear();
 
-    if( _displaySettings ) {
+    if( _mtfDisplay ) {
 
-      displayChannel_ctl->addItems(_displaySettings->displayChannels());
+      displayChannel_ctl->addItems(_mtfDisplay->displayChannels());
 
-      QObject::connect(_displaySettings->mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged,
+      QObject::connect(_mtfDisplay->mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged,
           this, &ThisClass::onDisplayImageChanged);
 
-      QObject::connect(_displaySettings->mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
+      QObject::connect(_mtfDisplay->mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
           this, &ThisClass::onDisplayChannelsChanged);
 
     }
@@ -347,7 +347,7 @@ void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 
 IMtfDisplay * QMtfControl::displaySettings() const
 {
-  return _displaySettings;
+  return _mtfDisplay;
 }
 
 void QMtfControl::setHistoramViewSizeHint(const QSize & s)
@@ -392,23 +392,23 @@ void QMtfControl::onChartTypeSelectorClicked()
 
 void QMtfControl::onResetMtfClicked()
 {
-  if( _displaySettings ) {
+  if( _mtfDisplay ) {
 
     c_mtf_options opts;
     double irange[2] = {-1, -1};
 
-    _displaySettings->getMtfInputRange(&irange[0], &irange[1]);
+    _mtfDisplay->getMtfInputRange(&irange[0], &irange[1]);
 
     if( irange[0] < irange[1] ) {
       irange[0] = irange[1] = -1;
     }
     else {
       QWaitCursor wait(this);
-      _displaySettings->getInputDataRange(&irange[0], &irange[1]);
+      _mtfDisplay->getInputDataRange(&irange[0], &irange[1]);
     }
 
-    _displaySettings->setMtf(irange[0], irange[1], &opts);
-    _displaySettings->saveParameters();
+    _mtfDisplay->setMtf(irange[0], irange[1], &opts);
+    _mtfDisplay->saveParameters();
 
     updateControls();
   }
@@ -416,7 +416,7 @@ void QMtfControl::onResetMtfClicked()
 
 void QMtfControl::onAutoClipCtrlClicked()
 {
-  if ( _displaySettings && _displaySettings->makeAutoClip() ) {
+  if ( _mtfDisplay && _mtfDisplay->makeAutoClip() ) {
     updateControls();
 
 //    double hmin = -1, hmax = -1;
@@ -452,14 +452,14 @@ void QMtfControl::onAutoClipCtrlClicked()
 
 void QMtfControl::onAutoMtfCtrlClicked()
 {
-  if ( _displaySettings ) {
+  if ( _mtfDisplay ) {
 
     double hmin = -1, hmax = -1;
     c_mtf_options opts;
     cv::Mat1d H;
 
-    _displaySettings->getInputDataRange(&hmin, &hmax);
-    _displaySettings->getInputHistogramm(H, &hmin, &hmax);
+    _mtfDisplay->getInputDataRange(&hmin, &hmax);
+    _mtfDisplay->getInputHistogramm(H, &hmin, &hmax);
     if( H.empty() || !(hmax > hmin) ) {
       CF_ERROR("_displaySettings->getInputHistogramm() fails");
     }
@@ -477,8 +477,8 @@ void QMtfControl::onAutoMtfCtrlClicked()
       opts.shadows = s;
       opts.highlights = h;
       opts.midtones = m;
-      _displaySettings->setMtf(hmin, hmax, &opts);
-      _displaySettings->saveParameters();
+      _mtfDisplay->setMtf(hmin, hmax, &opts);
+      _mtfDisplay->saveParameters();
       updateControls();
     }
   }
@@ -486,18 +486,18 @@ void QMtfControl::onAutoMtfCtrlClicked()
 
 void QMtfControl::onColormapCtlClicked()
 {
-  if( _displaySettings ) {
+  if( _mtfDisplay ) {
 
     QMenu menu;
     QAction * invertColormapAction;
 
     const COLORMAP current_colormap =
-        _displaySettings->colormap();
+        _mtfDisplay->colormap();
 
 
     menu.addAction(invertColormapAction = new QAction("Invert colormap"));
     invertColormapAction->setCheckable(true);
-    invertColormapAction->setChecked(_displaySettings->invertColormap());
+    invertColormapAction->setChecked(_mtfDisplay->invertColormap());
     menu.addSeparator();
 
     for( const c_enum_member *colormap = members_of<COLORMAP>(); !colormap->name.empty(); ++colormap ) {
@@ -521,13 +521,13 @@ void QMtfControl::onColormapCtlClicked()
     if ( action ) {
 
       if( action == invertColormapAction ) {
-        _displaySettings->setInvertColormap(invertColormapAction->isChecked());
+        _mtfDisplay->setInvertColormap(invertColormapAction->isChecked());
       }
       else {
-        _displaySettings->setColormap((COLORMAP) action->data().toInt());
+        _mtfDisplay->setColormap((COLORMAP) action->data().toInt());
       }
 
-      _displaySettings->saveParameters();
+      _mtfDisplay->saveParameters();
 
       updateColormapPixmap();
     }
@@ -536,7 +536,7 @@ void QMtfControl::onColormapCtlClicked()
 
 void QMtfControl::onDisplayChannelCurrentItemChanged()
 {
-  if( _displaySettings && !updatingControls() ) {
+  if( _mtfDisplay && !updatingControls() ) {
 
     c_update_controls_lock lock(this);
 
@@ -545,11 +545,11 @@ void QMtfControl::onDisplayChannelCurrentItemChanged()
 
     getInputDataRangeCtl(input_range);
 
-    _displaySettings->setDisplayChannel(displayChannel_ctl->currentText());
-    _displaySettings->saveParameters();
+    _mtfDisplay->setDisplayChannel(displayChannel_ctl->currentText());
+    _mtfDisplay->saveParameters();
 
-    _displaySettings->getMtf(&opts);
-    _displaySettings->getMtfInputRange(&input_range[0], &input_range[1]);
+    _mtfDisplay->getMtf(&opts);
+    _mtfDisplay->getMtfInputRange(&input_range[0], &input_range[1]);
 
     setValue(lclip_ctl, opts.lclip);
     setValue(hclip_ctl, opts.hclip);
@@ -576,13 +576,13 @@ void QMtfControl::setInputDataRangeCtl(const double range[2])
 
 void QMtfControl::onInputDataRangeChanged()
 {
-  if( _displaySettings && !updatingControls() ) {
+  if( _mtfDisplay && !updatingControls() ) {
 
     double range[2] = {-1, -1};
 
     if( getInputDataRangeCtl(range) ) {
-      _displaySettings->setMtf(range[0], range[1]);
-      _displaySettings->saveParameters();
+      _mtfDisplay->setMtf(range[0], range[1]);
+      _mtfDisplay->saveParameters();
     }
   }
 }
@@ -621,14 +621,14 @@ void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
 
 void QMtfControl::updateHistogramLevels()
 {
-  if ( _displaySettings && isVisible() ) {
+  if ( _mtfDisplay && isVisible() ) {
 
     cv::Mat1d H;
     std::vector<float> cy;
     double minv = -1, maxv = -1;
 
-    _displaySettings->getOutputHistogramm(H, &minv, &maxv);
-    _displaySettings->getMtfCurve(cy, 256);
+    _mtfDisplay->getOutputHistogramm(H, &minv, &maxv);
+    _mtfDisplay->getMtfCurve(cy, 256);
     levelsView_ctl->setHistogram(H, minv, maxv);
     levelsView_ctl->setMtfCurve(std::move(cy));
 
@@ -648,7 +648,7 @@ void QMtfControl::updateHistogramLevels()
 
 void QMtfControl::updateColormapPixmap()
 {
-  if ( _displaySettings ) {
+  if ( _mtfDisplay ) {
 
     cv::Mat1b gray_image(16, 256);
     QImage qimage;
@@ -660,7 +660,7 @@ void QMtfControl::updateColormapPixmap()
     }
 
     const COLORMAP cmap =
-        _displaySettings->colormap();
+        _mtfDisplay->colormap();
 
     if ( cmap == COLORMAP_NONE ) {
       cv2qt(gray_image, &qimage);
@@ -671,7 +671,7 @@ void QMtfControl::updateColormapPixmap()
       cv2qt(color_image, &qimage);
     }
 
-    if ( _displaySettings->invertColormap() ) {
+    if ( _mtfDisplay->invertColormap() ) {
 
       qimage = qimage.mirrored(true, false);
     }
@@ -716,13 +716,13 @@ void QMtfControl::hideEvent(QHideEvent *e)
 
 void QMtfControl::onDisplayChannelsChanged()
 {
-  if ( _displaySettings ) {
+  if ( _mtfDisplay ) {
 
     c_update_controls_lock lock(this);
 
     displayChannel_ctl->clear();
-    displayChannel_ctl->addItems(_displaySettings->displayChannels());
-    displayChannel_ctl->setCurrentIndex(std::max(0, displayChannel_ctl->findText(_displaySettings->displayChannel())));
+    displayChannel_ctl->addItems(_mtfDisplay->displayChannels());
+    displayChannel_ctl->setCurrentIndex(std::max(0, displayChannel_ctl->findText(_mtfDisplay->displayChannel())));
   }
 }
 
@@ -734,7 +734,7 @@ void QMtfControl::onDisplayImageChanged()
 
 void QMtfControl::onupdatecontrols()
 {
-  if( !_displaySettings ) {
+  if( !_mtfDisplay ) {
     setEnabled(false);
   }
   else {
@@ -742,13 +742,13 @@ void QMtfControl::onupdatecontrols()
     double irange[2] = {-1, -1};
     c_mtf_options opts;
 
-    const QString & displayChannel = _displaySettings->displayChannel();
+    const QString & displayChannel = _mtfDisplay->displayChannel();
     int idx = displayChannel_ctl->findText(displayChannel);
 
     displayChannel_ctl->setCurrentIndex(idx);
 
-    _displaySettings->getMtfInputRange(&irange[0], &irange[1]);
-    _displaySettings->getMtf(&opts);
+    _mtfDisplay->getMtfInputRange(&irange[0], &irange[1]);
+    _mtfDisplay->getMtf(&opts);
 
     setInputDataRangeCtl(irange);
 

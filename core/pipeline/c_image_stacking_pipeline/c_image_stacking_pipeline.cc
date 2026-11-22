@@ -25,7 +25,7 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/ssprintf.h>
-#include <core/io/c_stdio_file.h>
+//#include <core/io/c_stdio_file.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -1404,20 +1404,20 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         const int nframes = _frame_accumulation->accumulated_frames();
         if( nframes >= _output_options.substack_frames ) {
 
-          cv::Mat avg, msk;
+          cv::Mat avgc, avgw;
 
           if( true ) {
-            lock_guard lock(mutex());
-            if( !_frame_accumulation->compute(avg) ) {
+            // lock_guard lock(mutex());
+            if( !_frame_accumulation->compute(avgc) ) {
               CF_ERROR("_frame_accumulation->compute() fails for substack image");
             }
             else {
-              msk = _frame_accumulation->get_counter();
+              avgw = _frame_accumulation->get_counter();
             }
           }
 
-          if( !avg.empty() ) {
-            if( !flush_substack_frame(avg, msk) ) {
+          if( !avgc.empty() ) {
+            if( !flush_substack_frame(avgc, avgw) ) {
               CF_ERROR("flush_substack_frame() fails");
               return false;
             }
@@ -2641,7 +2641,7 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
   return true;
 }
 
-bool c_image_stacking_pipeline::flush_substack_frame(const cv::Mat & avg, const cv::Mat & msk)
+bool c_image_stacking_pipeline::flush_substack_frame(const cv::Mat & avg, const cv::Mat & w)
 {
   if( !avg.empty() ) {
 
@@ -2660,14 +2660,14 @@ bool c_image_stacking_pipeline::flush_substack_frame(const cv::Mat & avg, const 
       }
     }
 
-    cv::Mat w;
-    if ( msk.channels() == 1 ) {
-      w = msk;
-    }
-    else {
-      static const thread_local cv::Matx13f mtx(1.0f, 1.0f, 1.0f);
-      cv::transform(msk, w, mtx);
-    }
+//    cv::Mat w;
+//    if ( msk.channels() == 1 ) {
+//      w = msk;
+//    }
+//    else {
+//      static const thread_local cv::Matx13f mtx(1.0f, 1.0f, 1.0f);
+//      cv::transform(msk, w, mtx);
+//    }
 
     if( !_substack_writer.write(avg, w) ) {
       CF_ERROR("_substack_writer.write('%s') fails. disk full?", _substack_writer.filename().c_str());

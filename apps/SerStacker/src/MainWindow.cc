@@ -1131,8 +1131,7 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
-  IMtfDisplay * currentMtfDisplay =
-      getCurrentMtfDisplay();
+  IMtfDisplay * currentMtfDisplay = getCurrentMtfDisplay();
 
   mtfControl->setMtfDisplaySettings(currentMtfDisplay);
 

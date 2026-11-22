@@ -59,7 +59,7 @@ protected:
   void setInputDataRangeCtl(const double range[2]);
 
 protected:
-  IMtfDisplay * _displaySettings = nullptr;
+  IMtfDisplay * _mtfDisplay = nullptr;
 
   QVBoxLayout * _vbox = nullptr;
   QToolBar * topToolbar_ctl = nullptr;

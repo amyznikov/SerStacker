@@ -235,7 +235,7 @@ bool c_output_frame_writer::write(cv::InputArray image, cv::InputArray mask, int
         bool fOk =
             ser.create(filename(), out_image.cols, out_image.rows, colorid,
                 c_ser_file::bits_per_plane(out_image.depth()),
-                out_mask.empty() ? -1 : out_mask.depth());
+                out_mask.empty() ? -1 : out_mask.type());
 
         if( !fOk ) {
           CF_ERROR("Can not create SER file '%s'", filename().c_str());

@@ -104,21 +104,22 @@ public:
   const char * telescope() const;
 
   /// @brief get frame size in bytes based on image width x height x bytes_per_pixel
-  int frame_size() const;
+  size_t frame_size() const;
 
-  /// @brief Read-Only access to mask type
+  /// @brief Read-Only access to mask OpenCV type (e.g. CV_8UC1, CV_32FC3) or -1 if no mask
   int mask_type() const;
+
+  /// @brief Number of channels in mask (0 if no mask)
+  int mask_channels() const;
 
   /// @brief Read-Only access to file header.frames_count field
   int num_frames() const;
-
 
   /// @brief Read-Only access to frame timestamps array
   const std::vector<uint64_t> & timestamps() const;
 
   /// @brief Read-Only access to frame timestamps array item by index
   uint64_t timestamps(int index) const;
-
 
 protected:
   /// @brief use one from derived classes to instantiate SER reader or writer

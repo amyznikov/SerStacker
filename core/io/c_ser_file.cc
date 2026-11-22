@@ -200,43 +200,58 @@ const char * c_ser_file::telescope() const
   return _header.telescope;
 }
 
-int c_ser_file::frame_size() const
-{
-  const int img_size = _header.image_width * _header.image_height * bytes_per_pixel();
-  if( _mask_type < 0 ) {
-    return img_size;
-  }
-
-  size_t elem_size = 0;
-  switch (_mask_type) {
-    case CV_8U:
-    case CV_8S:
-      elem_size = 1;
-      break;
-    case CV_16U:
-    case CV_16S:
-      elem_size = 2;
-      break;
-    case CV_32S:
-    case CV_32F:
-      elem_size = 4;
-      break;
-    case CV_64F:
-      elem_size = 8;
-      break;
-    default:
-      elem_size = 0;
-      break;
-  }
-
-  return img_size + _header.image_width * _header.image_height * elem_size;
-}
+//size_t c_ser_file::frame_size() const
+//{
+//  const int img_size = _header.image_width * _header.image_height * bytes_per_pixel();
+//  if( _mask_type < 0 ) {
+//    return img_size;
+//  }
+//
+//  size_t elem_size = 0;
+//  switch (_mask_type) {
+//    case CV_8U:
+//    case CV_8S:
+//      elem_size = 1;
+//      break;
+//    case CV_16U:
+//    case CV_16S:
+//      elem_size = 2;
+//      break;
+//    case CV_32S:
+//    case CV_32F:
+//      elem_size = 4;
+//      break;
+//    case CV_64F:
+//      elem_size = 8;
+//      break;
+//    default:
+//      elem_size = 0;
+//      break;
+//  }
+//
+//  return img_size + _header.image_width * _header.image_height * elem_size;
+//}
+//
 
 int c_ser_file::mask_type() const
 {
   return _mask_type;
 }
 
+int c_ser_file::mask_channels() const
+{
+  return _mask_type < 0 ? 0 : CV_MAT_CN(_mask_type);
+}
+
+size_t c_ser_file::frame_size() const
+{
+  const size_t img_size = (size_t)_header.image_width * _header.image_height * bytes_per_pixel();
+  if ( _mask_type < 0 ) {
+    return img_size;
+  }
+
+  return img_size + (size_t)_header.image_width * _header.image_height * CV_ELEM_SIZE(_mask_type);
+}
 
 int c_ser_file::num_frames() const
 {
@@ -327,9 +342,24 @@ bool c_ser_reader::open(const std::string & filename)
     swap_endianess(&_header.date_time_utc, 1);
   }
 
+//  const int32_t packed_color_id = static_cast<int32_t>(_header.color_id);
+//  const int mask_marker = (packed_color_id >> 16) & 0xFFFF;
+//  _mask_type = (mask_marker > 0) ? (mask_marker - 1) : -1;
+//  _header.color_id = static_cast<enum COLORID>(packed_color_id & 0xFFFF);
+
   const int32_t packed_color_id = static_cast<int32_t>(_header.color_id);
   const int mask_marker = (packed_color_id >> 16) & 0xFFFF;
-  _mask_type = (mask_marker > 0) ? (mask_marker - 1) : -1;
+  if ( mask_marker == 0 ) {
+    _mask_type = -1;
+  }
+  else if ( mask_marker & 0x8000 ) {
+    // complete cvtype : (depth + channels)
+    _mask_type = mask_marker & 0x7FFF;
+  }
+  else {
+    // Backward compatibility with legacy files (1-channel mask: mask_marker = depth + 1)
+    _mask_type = CV_MAKETYPE(mask_marker - 1, 1);
+  }
   _header.color_id = static_cast<enum COLORID>(packed_color_id & 0xFFFF);
 
   if ( _header.image_width < 1 || _header.image_height < 1 ) {
@@ -373,11 +403,8 @@ bool c_ser_reader::open(const std::string & filename)
   _curpos = 0;
 
   // frame_size() is total size [image + mask]
-  const ssize_t timestamps_array_offset =
-      sizeof(file_header) + _header.frames_count * frame_size();
-
-  const ssize_t timestamps_array_size_required =
-      _header.frames_count * sizeof(_timestamps[0]);
+  const ssize_t timestamps_array_offset = sizeof(file_header) + ssize_t(_header.frames_count) * frame_size();
+  const ssize_t timestamps_array_size_required = _header.frames_count * sizeof(_timestamps[0]);
 
   if ( !(current_file_size >= timestamps_array_offset + timestamps_array_size_required) ) {
     // CF_DEBUG("No valid timestamps found");
@@ -526,19 +553,11 @@ bool c_ser_reader::read(cv::OutputArray output_image, cv::OutputArray output_mas
     }
   }
   else {
-    const int required_mask_type = CV_MAKETYPE(_mask_type, 1);
-
-    // mask size in bytes
-    size_t mask_elem_size = 1;
-    switch (_mask_type) {
-      case CV_16U: case CV_16S: mask_elem_size = 2; break;
-      case CV_32S: case CV_32F: mask_elem_size = 4; break;
-      case CV_64F:              mask_elem_size = 8; break;
-    }
+    const int required_mask_type = _mask_type;
+    const size_t mask_elem_size = CV_ELEM_SIZE(_mask_type);
     const ssize_t mask_bytes_to_read = image.total() * mask_elem_size;
 
     if ( !output_mask.needed() ) {
-      // skip mask if not requested
       if ( _fd.seek(mask_bytes_to_read, SEEK_CUR) < 0 ) {
         CF_ERROR("Failed to skip mask data in stream: %s", strerror(errno));
         _fd.seek(savedpos, SEEK_SET);
@@ -546,9 +565,10 @@ bool c_ser_reader::read(cv::OutputArray output_image, cv::OutputArray output_mas
       }
     }
     else {
-      // Read mask
       if ( output_mask.fixedType() && output_mask.type() != required_mask_type ) {
-        CF_ERROR("Requested output mask fixed type does not match mask type in SER file");
+        CF_ERROR("Requested output mask fixed type (depth=%d cn=%d) does not match mask type in SER file (depth=%d cn=%d)",
+            output_mask.depth(), output_mask.channels(),
+            CV_MAT_DEPTH(required_mask_type), CV_MAT_CN(required_mask_type));
         _fd.seek(savedpos, SEEK_SET);
         return false;
       }
@@ -574,7 +594,7 @@ bool c_ser_reader::read(cv::OutputArray output_image, cv::OutputArray output_mas
       }
 
       if ( _header.is_little_endian != is_current_machine_little_endian() ) {
-        switch (mask_elem_size) {
+        switch (CV_ELEM_SIZE1(_mask_type)) {
           case 2:
             swap_endianess(reinterpret_cast<uint16_t*>(mask.data), mask.total() * mask.channels());
             break;
@@ -588,6 +608,69 @@ bool c_ser_reader::read(cv::OutputArray output_image, cv::OutputArray output_mas
       }
     }
   }
+//  else {
+//    const int required_mask_type = CV_MAKETYPE(_mask_type, 1);
+//
+//    // mask size in bytes
+//    size_t mask_elem_size = 1;
+//    switch (_mask_type) {
+//      case CV_16U: case CV_16S: mask_elem_size = 2; break;
+//      case CV_32S: case CV_32F: mask_elem_size = 4; break;
+//      case CV_64F:              mask_elem_size = 8; break;
+//    }
+//    const ssize_t mask_bytes_to_read = image.total() * mask_elem_size;
+//
+//    if ( !output_mask.needed() ) {
+//      // skip mask if not requested
+//      if ( _fd.seek(mask_bytes_to_read, SEEK_CUR) < 0 ) {
+//        CF_ERROR("Failed to skip mask data in stream: %s", strerror(errno));
+//        _fd.seek(savedpos, SEEK_SET);
+//        return false;
+//      }
+//    }
+//    else {
+//      // Read mask
+//      if ( output_mask.fixedType() && output_mask.type() != required_mask_type ) {
+//        CF_ERROR("Requested output mask fixed type does not match mask type in SER file");
+//        _fd.seek(savedpos, SEEK_SET);
+//        return false;
+//      }
+//
+//      if ( output_mask.fixedSize() && output_mask.size() != required_image_size ) {
+//        CF_ERROR("Requested output mask fixed size does not match image size in SER file");
+//        _fd.seek(savedpos, SEEK_SET);
+//        return false;
+//      }
+//
+//      if ( !output_mask.empty() && !output_mask.isContinuous() ) {
+//        output_mask.release();
+//      }
+//
+//      output_mask.create(required_image_size, required_mask_type);
+//      cv::Mat & mask = output_mask.getMatRef();
+//
+//      const ssize_t mask_bytes_read = _fd.read(mask.data, mask_bytes_to_read);
+//      if ( mask_bytes_read != mask_bytes_to_read ) {
+//        CF_ERROR("read(mask) fails: %s. expected=%zd read=%zd", strerror(errno), mask_bytes_to_read, mask_bytes_read);
+//        _fd.seek(savedpos, SEEK_SET);
+//        return false;
+//      }
+//
+//      if ( _header.is_little_endian != is_current_machine_little_endian() ) {
+//        switch (mask_elem_size) {
+//          case 2:
+//            swap_endianess(reinterpret_cast<uint16_t*>(mask.data), mask.total() * mask.channels());
+//            break;
+//          case 4:
+//            swap_endianess(reinterpret_cast<uint32_t*>(mask.data), mask.total() * mask.channels());
+//            break;
+//          case 8:
+//            swap_endianess(reinterpret_cast<uint64_t*>(mask.data), mask.total() * mask.channels());
+//            break;
+//        }
+//      }
+//    }
+//  }
 
   ++_curpos;
 
@@ -645,8 +728,25 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
     return false;
   }
 
-  _mask_type = maskType;
-  const int32_t mask_marker = (maskType >= 0) ? (maskType + 1) : 0;
+  // _mask_type = maskType;
+  // const int32_t mask_marker = (maskType >= 0) ? (maskType + 1) : 0;
+  // const int32_t packed_color_id = static_cast<int32_t>(color_id) | (mask_marker << 16);
+
+  if ( maskType < 0 ) {
+    _mask_type = -1;
+  }
+  else {
+    const int mdepth = CV_MAT_DEPTH(maskType);
+    const int mcn = CV_MAT_CN(maskType);
+    if ( mdepth > CV_64F || mcn < 1 || mcn > 511 ) {
+      CF_FATAL("Invalid maskType specified: depth=%d channels=%d", mdepth, mcn);
+      errno = EINVAL;
+      return false;
+    }
+    _mask_type = CV_MAKETYPE(mdepth, mcn);
+  }
+
+  const int32_t mask_marker = (_mask_type >= 0) ? (0x8000 | (_mask_type & 0x7FFF)) : 0;
   const int32_t packed_color_id = static_cast<int32_t>(color_id) | (mask_marker << 16);
 
   _header.color_id = static_cast<enum COLORID>(packed_color_id);
@@ -685,8 +785,10 @@ bool c_ser_writer::close()
     _fd.seek(0, SEEK_SET);
 
     const enum COLORID base_color_id = _header.color_id;
-    int32_t mask_marker = (_mask_type >= 0) ? (_mask_type + 1) : 0;
-    int32_t packed_color_id = static_cast<int32_t>(base_color_id) | (mask_marker << 16);
+    const int32_t mask_marker = (_mask_type >= 0) ? (0x8000 | (_mask_type & 0x7FFF)) : 0;
+    const int32_t packed_color_id = static_cast<int32_t>(base_color_id) | (mask_marker << 16);
+    //    int32_t mask_marker = (_mask_type >= 0) ? (_mask_type + 1) : 0;
+    //    int32_t packed_color_id = static_cast<int32_t>(base_color_id) | (mask_marker << 16);
 
     _header.color_id = static_cast<enum COLORID>(packed_color_id);
 
@@ -757,6 +859,27 @@ bool c_ser_writer::write(cv::InputArray _image, cv::InputArray _mask, uint64_t t
     return false;
   }
 
+//  if( _mask_type >= 0 ) {
+//    if( !mask.empty() ) {
+//      if( mask.cols != _header.image_width || mask.rows != _header.image_height ) {
+//        CF_ERROR("Invalid mask size specified: %dx%d. Expected: %dx%d",
+//            mask.cols, mask.rows, _header.image_width, _header.image_height);
+//        errno = EINVAL;
+//        return false;
+//      }
+//      if( mask.channels() != 1 ) {
+//        CF_ERROR("Invalid number of channels in mask: %d. Expected 1 channel", mask.channels());
+//        errno = EINVAL;
+//        return false;
+//      }
+//      if( mask.depth() != _mask_type ) {
+//        CF_ERROR("Invalid mask depth specified: %d. Expected depth=%d (matching create() configuration)",
+//            mask.depth(), _mask_type);
+//        errno = EINVAL;
+//        return false;
+//      }
+//    }
+//  }
   if( _mask_type >= 0 ) {
     if( !mask.empty() ) {
       if( mask.cols != _header.image_width || mask.rows != _header.image_height ) {
@@ -765,14 +888,10 @@ bool c_ser_writer::write(cv::InputArray _image, cv::InputArray _mask, uint64_t t
         errno = EINVAL;
         return false;
       }
-      if( mask.channels() != 1 ) {
-        CF_ERROR("Invalid number of channels in mask: %d. Expected 1 channel", mask.channels());
-        errno = EINVAL;
-        return false;
-      }
-      if( mask.depth() != _mask_type ) {
-        CF_ERROR("Invalid mask depth specified: %d. Expected depth=%d (matching create() configuration)",
-            mask.depth(), _mask_type);
+      if( mask.type() != _mask_type ) {
+        CF_ERROR("Invalid mask type specified: depth=%d cn=%d. Expected: depth=%d cn=%d",
+            mask.depth(), mask.channels(),
+            CV_MAT_DEPTH(_mask_type), CV_MAT_CN(_mask_type));
         errno = EINVAL;
         return false;
       }
@@ -800,9 +919,13 @@ bool c_ser_writer::write(cv::InputArray _image, cv::InputArray _mask, uint64_t t
       mask_data_ptr = mask.data;
     }
     else {
-      if( _dummy_mask.size() != image.size() || _dummy_mask.depth() != _mask_type ) {
-        _dummy_mask = cv::Mat(_header.image_height, _header.image_width, CV_MAKETYPE(_mask_type, 1),
-            _mask_type == CV_8U ? 255 : 1);
+//      if( _dummy_mask.size() != image.size() || _dummy_mask.depth() != _mask_type ) {
+//        _dummy_mask = cv::Mat(_header.image_height, _header.image_width, CV_MAKETYPE(_mask_type, 1),
+//            _mask_type == CV_8U ? 255 : 1);
+//      }
+      if( _dummy_mask.size() != image.size() || _dummy_mask.type() != _mask_type ) {
+        _dummy_mask = cv::Mat(_header.image_height, _header.image_width, _mask_type,
+            cv::Scalar::all(CV_MAT_DEPTH(_mask_type) == CV_8U ? 255 : 1));
       }
 
       mask_bytes_to_write = _dummy_mask.total() * _dummy_mask.elemSize();

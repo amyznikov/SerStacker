@@ -598,6 +598,9 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray _reference_image
 
     // Must be called before create_feature_image() as the
     // detector and descryptor types are used for feature image pre-processing
+
+    CF_DEBUG("Call create_sparse_feature_extractor_and_matcher()");
+
     if( !create_sparse_feature_extractor_and_matcher() ) {
       CF_ERROR("create_sparse_feature_extractor_and_matcher() fails");
       return false;

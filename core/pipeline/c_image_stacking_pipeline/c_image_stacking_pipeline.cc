@@ -41,7 +41,7 @@ const c_enum_member* members_of<frame_accumulation_method>()
       { frame_accumulation_weighted_average, "WEIGHTED_AVERAGE",
           "Weighted average with weights proportional to local gradients" },
 
-      { frame_accumulation_bayer_drizzle, "CFA_DRIZZLE",
+      { frame_accumulation_cfa_drizzle, "CFA_DRIZZLE",
           "Experimental code for CFA pattern drizzle" },
 
       { frame_accumulation_focus_stack, "focus_stack",
@@ -315,7 +315,7 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
       return c_frame_accumulation::ptr(new c_weigthed_average());
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
-    case frame_accumulation_bayer_drizzle:
+    case frame_accumulation_cfa_drizzle:
       return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale));
     default:
       break;
@@ -488,6 +488,16 @@ bool c_image_stacking_pipeline::run_image_stacking()
         return false;
       }
 
+      if (reference_mask.empty() || reference_mask.type() == CV_8UC1 ) {
+      }
+      else if (reference_mask.channels() == 1 ){
+        cv::compare(reference_mask, 0, reference_mask, cv::CMP_GT);
+      }
+      else {
+        reduce_color_channels(reference_mask, cv::REDUCE_MIN);
+        cv::compare(reference_mask, 0, reference_mask, cv::CMP_GT);
+      }
+
       if ( !setup_stack_registration(_frame_registration, reference_frame, reference_mask) ) {
         CF_ERROR("setup_frame_registration() fails");
         return false;
@@ -644,13 +654,6 @@ bool c_image_stacking_pipeline::setup_stack_registration(const c_frame_registrat
   const c_image_registration_options & registration_options =
       frame_registration->options();
 
-//  if( upscale_required(false) ) {
-//
-//    upscale_image(_upscale_options.upscale_option,
-//        reference_frame, reference_mask,
-//        reference_frame, reference_mask);
-//  }
-
   if ( !_frame_registration->setup_reference_frame(reference_frame, reference_mask) ) {
     CF_ERROR("ERROR: frame_registration_->setup_reference_frame() fails");
     return false;
@@ -784,7 +787,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   const bool need_raw_bayer_image =
-      _master_options.accumulation.accumulation_method == frame_accumulation_bayer_drizzle;
+      _master_options.accumulation.accumulation_method == frame_accumulation_cfa_drizzle;
 
   if( !read_input_frame(input_sequence, _input_options, reference_frame, reference_mask, is_external_master_file, need_raw_bayer_image) ) {
     CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
@@ -984,7 +987,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           _stack_options.accumulation;
 
   const bool is_bayer_accumulate =
-      accopts.accumulation_method == frame_accumulation_bayer_drizzle;
+      accopts.accumulation_method == frame_accumulation_cfa_drizzle;
 
   if ( !input_sequence->seek(startpos) ) {
     CF_ERROR("input_sequence->seek(startpos=%d) fails", startpos);

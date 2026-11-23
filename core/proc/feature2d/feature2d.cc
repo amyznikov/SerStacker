@@ -91,7 +91,8 @@ c_sparse_feature_extractor_and_matcher::c_sparse_feature_extractor_and_matcher(c
 c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matcher::create(const c_sparse_feature_extractor_and_matcher_options & options)
 {
   if( options.detector.type == SPARSE_FEATURE_DETECTOR_UNKNOWN ) {
-    CF_ERROR("c_sparse_feature_extractor_and_matcher::create(): no sparse feature dtector type specified");
+    CF_ERROR("c_sparse_feature_extractor_and_matcher::create(): "
+        "no sparse feature detector type specified");
     return nullptr;
   }
 
@@ -105,17 +106,24 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
   }
 
   //////////////
+  CF_DEBUG("1) obj->_options.descriptor.type=%d (%s)", obj->_options.descriptor.type,
+      toCString(obj->_options.descriptor.type));
+
   if( obj->_options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
     switch (obj->_options.detector.type) {
 #if HAVE_STAR_EXTRACTOR
       case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
         obj->_options.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+        obj->_options.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
         break;
 #endif
       default:
         break;
     }
   }
+
+  CF_DEBUG("3) obj->_options.descriptor.type=%d (%s)", obj->_options.descriptor.type,
+      toCString(obj->_options.descriptor.type));
 
   if( obj->_options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
 

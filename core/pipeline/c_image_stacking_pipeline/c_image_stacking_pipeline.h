@@ -28,7 +28,7 @@ enum frame_accumulation_method
   frame_accumulation_none = -1,
   frame_accumulation_weighted_average,
   frame_accumulation_focus_stack,
-  frame_accumulation_bayer_drizzle,
+  frame_accumulation_cfa_drizzle,
 };
 
 enum frame_upscale_option

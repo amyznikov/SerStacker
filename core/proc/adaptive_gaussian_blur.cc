@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include "adaptive_gaussian_blur.h"
+#include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
 
 template<>
@@ -25,7 +26,7 @@ static void compute_gradient_map(cv::InputArray _src, cv::OutputArray _dst, int 
   cv::Mat g;
 
   const int mksize = 2 * gradius + 1;
-  const int gksize = 2 * gradius + 3;
+  const int gksize = 2 * gradius + 1;
 
   const cv::Mat SE =
       cv::getStructuringElement(mksize < 5 ? cv::MORPH_RECT : cv::MORPH_ELLIPSE,
@@ -33,6 +34,8 @@ static void compute_gradient_map(cv::InputArray _src, cv::OutputArray _dst, int 
 
   cv::morphologyEx(_src, g, cv::MORPH_GRADIENT, SE,
       cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+
+  cv::sqrt(g, g);
 
   cv::GaussianBlur(g, _dst, cv::Size(gksize, gksize), 0, 0,
       cv::BORDER_DEFAULT);
@@ -96,23 +99,22 @@ void adaptive_gaussian_blur(cv::InputArray _src, cv::OutputArray _dst,
   const cv::Size size = _src.size();
   dst.create(size, src.type());
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [&, size, cn, kscale](const auto & range) {
-        for ( int y = range.start; y < range.end; ++y ) {
-          const float * lpgp = lpg.ptr<const float>(y);
-          const float * blur1p = blur1.ptr<const float>(y);
-          const float * blur2p = blur2.ptr<const float>(y);
-          float * __restrict dstp = dst.ptr<float>(y);
+  parallel_for(0, size.height, [&, size, cn, kscale](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * lpgp = lpg.ptr<const float>(y);
+      const float * blur1p = blur1.ptr<const float>(y);
+      const float * blur2p = blur2.ptr<const float>(y);
+      float * __restrict dstp = dst.ptr<float>(y);
 
-          for ( int x = 0; x < size.width; ++x ) {
-            const float w = lpgp[x] * kscale;
-            const float K = 1.f / (w + 1.f);
-            for ( int c = 0; c < cn; ++c ) {
-              dstp[x * cn + c] = (blur1p[x * cn + c] * w + blur2p[x * cn + c]) * K;
-            }
-          }
+      for ( int x = 0; x < size.width; ++x ) {
+        const float w = lpgp[x] * kscale;
+        const float K = 1.f / (w + 1.f);
+        for ( int c = 0; c < cn; ++c ) {
+          dstp[x * cn + c] = (blur1p[x * cn + c] * w + blur2p[x * cn + c]) * K;
         }
-      });
+      }
+    }
+  });
 
   const int ddepth = _dst.fixedType() ? _dst.depth() : _src.depth();
   if ( ddepth == dst.depth() ) {

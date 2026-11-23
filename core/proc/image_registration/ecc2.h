@@ -141,7 +141,7 @@ protected:
   cv::Mat2f _rmap;    // Current remap
   c_image_transform * _transform = nullptr;
 
-  double _update_step_scale = 1.25;
+  double _update_step_scale = 1;
   double _xtol = 1e-1;
   double _ftol = 1e-4;
   double _gtol = 1e-6;
@@ -172,7 +172,7 @@ struct c_ecch_options
 
   double reference_smooth_sigma = 1;
   double input_smooth_sigma = 1;
-  double update_step_scale = 1.25;
+  double update_step_scale = 1;
 
   enum ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;

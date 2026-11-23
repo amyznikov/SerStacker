@@ -284,16 +284,18 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     if ( output_mask.empty() ) {
       _missing_pixel_mask.copyTo(output_mask);
     }
-    else if ( output_mask.depth() == CV_8U ) {
+    else if ( output_mask.type() == CV_8UC1 ) {
       cv::bitwise_and(output_mask, _missing_pixel_mask, output_mask);
     }
     else {
-      output_mask.setTo(0, ~_missing_pixel_mask);
+      output_mask.setTo(cv::Scalar::all(0), ~_missing_pixel_mask);
     }
   }
 
   if ( !_missing_pixel_mask.empty() && !output_mask.empty() && input_options.inpaint_missing_pixels ) {
-    average_pyramid_inpaint(output_image, output_mask, output_image, cv::noArray(), 32);
+    if ( output_mask.channels() == 1 ) {
+      average_pyramid_inpaint(output_image, output_mask, output_image, cv::noArray(), 32);
+    }
   }
 
   if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {

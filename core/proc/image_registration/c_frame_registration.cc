@@ -9,6 +9,7 @@
 #include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/image_correlation.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/morphse.h>
 #include <core/proc/histogram-tools.h>
 #include <core/get_time.h>
 #include <core/debug.h>
@@ -130,7 +131,6 @@ bool load_settings(c_config_setting settings, c_image_registration_options * opt
   LOAD_OPTION(settings, *opts, interpolation);
   LOAD_OPTION(settings, *opts, border_mode);
   LOAD_OPTION(settings, *opts, border_value);
-  LOAD_OPTION(settings, *opts, max_translation);
   LOAD_OPTION(settings, *opts, enable_phase_correlate);
   LOAD_OPTION(settings, *opts, enable_feature_registration);
   LOAD_OPTION(settings, *opts, enable_ecc_registration);
@@ -168,7 +168,6 @@ bool save_settings(c_config_setting settings, const c_image_registration_options
   SAVE_OPTION(settings, opts, interpolation);
   SAVE_OPTION(settings, opts, border_mode);
   SAVE_OPTION(settings, opts, border_value);
-  SAVE_OPTION(settings, opts, max_translation);
   SAVE_OPTION(settings, opts, enable_phase_correlate);
   SAVE_OPTION(settings, opts, enable_feature_registration);
   SAVE_OPTION(settings, opts, enable_ecc_registration);
@@ -552,6 +551,8 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray _reference_image
   cv::Mat reference_ecc_image, reference_ecc_mask;
   cv::Mat reference_eccflow_mask;
 
+  _current_remap.release();
+
   if ( _reference_image.channels() == 1 ) {
     reference_image = _reference_image.getMat();
   }
@@ -792,15 +793,6 @@ bool c_frame_registration::register_frame(cv::InputArray _current_image, cv::Inp
     }
     _current_status.timings.estimate_feature_transform = (t1 = get_realtime_ms()) - t0, t0 = t1;
     have_transform = true;
-
-    if ( _options.max_translation > 0 ) {
-      const cv::Vec2f T= _image_transform->translation();
-      const double t = std::sqrt(T(0)*T(0) + T(1)*T(1));
-      if ( t > _options.max_translation ) {
-        CF_ERROR("Too big translation t=%g Tx=%g Ty=%g > %g", t, T(0), T(1), _options.max_translation);
-        return false;
-      }
-    }
   }
 
 
@@ -1214,20 +1206,20 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
   }
 
   if ( dst_mask.needed() ) {
-    if ( !src_mask.empty() ) {
+
+    if ( src_mask.empty() ) {
+      cv::remap(cv::Mat1b(src_size, 255), dst_mask, rmap, cv::noArray(),
+          cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    }
+    else if (src_mask.type() != CV_8UC1 )  {
       cv::remap(src_mask, dst_mask, rmap, cv::noArray(),
-          interpolation_flags, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+          cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
     }
     else {
-      cv::remap(cv::Mat1b(src_size, 255), dst_mask, rmap, cv::noArray(),
-          interpolation_flags, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    }
-
-    cv::Mat & out_mask = dst_mask.getMatRef();
-    if ( out_mask.depth() == CV_8U ) {
       // reduce mask edge artifacts
-      cv::compare(out_mask, 255, out_mask, cv::CMP_GE);
-      cv::erode(out_mask, out_mask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1,
+      cv::remap(src_mask, dst_mask, rmap, cv::noArray(),
+          cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+      cv::erode(dst_mask, dst_mask, morphse33(), cv::Point(-1, -1), 1,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
   }

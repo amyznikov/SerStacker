@@ -82,8 +82,9 @@ struct c_image_stacking_output_options  :
     c_image_processing_pipeline_output_options
 {
   std::string output_file_name;
+  double max_substack_translation = 0;
   int substack_frames = 50;
-  bool update_substack_reference = true;
+  //bool update_substack_reference = true;
 
   bool save_substacks = false;
   bool save_preprocessed_frames = false;
@@ -228,8 +229,7 @@ protected:
   //bool save_incremental_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_accumulation_masks_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_sparse_matches_video(int seqindex);
-  //bool save_substack_frame();
-  bool flush_substack_frame(const cv::Mat & avg, const cv::Mat & msk);
+  bool flush_substack_frame(const cv::Mat & avg, const cv::Mat & weights);
 
   std::string generate_output_file_name() const;
 
@@ -245,12 +245,9 @@ protected:
       cv::InputArray srcmap,
       cv::OutputArray dstmap);
 
-  bool weights_required(const c_frame_accumulation_options & opts) const;
+  bool compute_weights_required(const c_frame_accumulation_options & opts) const;
   void compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
-  //static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
-
-  //bool upscale_required(bool generating_master_frame) const;
 
 protected:
   c_image_stacking_input_options _input_options;
@@ -262,10 +259,8 @@ protected:
   c_image_stacking_output_options _output_options;
   c_image_processing_options _image_processing_options;
 
-
   std::string _output_file_name;
 
-  // c_roi_selection::sptr _roi_selection;
   c_quick_streak_checker _streak_checker;
   c_frame_registration::sptr _frame_registration;
   c_frame_accumulation::ptr _frame_accumulation;

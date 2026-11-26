@@ -52,17 +52,35 @@ public:
   bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
   void clear() final;
 
-  cv::Size accumulator_size() const final {
+  cv::Size accumulator_size() const final
+  {
     return _accumulator.size();
   }
-  cv::Mat get_accumulator() const final {
+
+  cv::Mat get_accumulator() const final
+  {
     return _accumulator;
   }
-  cv::Mat get_counter() const final {
+
+  cv::Mat get_counter() const final
+  {
     return _weights;
   }
 
+  template<typename Fn>
+  inline auto synchronized(Fn && fn) const
+  {
+    std::scoped_lock lock(_mtx);
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
+
 protected:
+  mutable std::mutex _mtx;
   cv::Mat _accumulator;
   cv::Mat _weights;
 };

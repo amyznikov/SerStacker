@@ -315,29 +315,46 @@ bool c_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask, doub
 {
   INSTRUMENT_REGION("");
 
-  if ( _accumulated_frames < 1 ) {
+  cv::Mat acc, accw;
+  int accumulated_frames = 0;
+
+  synchronized([&]() {
+    acc = _accumulator;
+    accw = _weights;
+    accumulated_frames = _accumulated_frames;
+  });
+
+  if( accumulated_frames < 1 ) {
+    CF_ERROR("no frames");
     return false;
   }
 
-  if ( avg.needed() ) {
-    if ( ddepth < 0 ) {
-      ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
+  if( avg.fixedType() ) {
+    ddepth = avg.depth();
+  }
+  else if( ddepth < 0 ) {
+    ddepth = CV_32F;
+  }
+
+  if( avg.needed() ) {
+    if( ddepth < 0 ) {
+      ddepth = avg.fixedType() ? avg.depth() : acc.depth();
     }
-    if( ddepth == _accumulator.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
-      _accumulator.copyTo(avg);
+    if( ddepth == acc.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
+      acc.copyTo(avg);
     }
     else {
-      _accumulator.convertTo(avg, ddepth, dscale);
+      acc.convertTo(avg, ddepth, dscale);
     }
   }
 
-  if ( mask.needed() ) {
-    if ( _weights.channels() == 1 || (mask.fixedType() && mask.channels() == _weights.channels()) ) {
-      cv::compare(_weights, 0, mask, cv::CMP_GT);
+  if( mask.needed() ) {
+    if( accw.channels() == 1 || (mask.fixedType() && mask.channels() == accw.channels()) ) {
+      cv::compare(accw, 0, mask, cv::CMP_GT);
     }
     else {
       cv::Mat1f w_max;
-      reduce_color_channels(_weights, w_max, cv::REDUCE_MAX);
+      reduce_color_channels(accw, w_max, cv::REDUCE_MAX);
       cv::compare(w_max, 0, mask, cv::CMP_GT);
     }
   }
@@ -648,8 +665,7 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
       };
 
 
-  const cv::Mat image =
-      src.getMat();
+  const cv::Mat image = src.getMat();
 
   if ( _image_size.empty() ) {
     _image_size = image.size();

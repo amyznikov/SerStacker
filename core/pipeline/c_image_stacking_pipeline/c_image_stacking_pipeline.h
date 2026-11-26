@@ -233,9 +233,9 @@ protected:
 
   std::string generate_output_file_name() const;
 
-  static void upscale_image(enum frame_upscale_option scale,
-      cv::InputArray src, cv::InputArray srcmask,
-      cv::OutputArray dst, cv::OutputArray dstmask);
+//  static void upscale_image(enum frame_upscale_option scale,
+//      cv::InputArray src, cv::InputArray srcmask,
+//      cv::OutputArray dst, cv::OutputArray dstmask);
 
   static void upscale_remap(enum frame_upscale_option scale,
       cv::InputArray srcmap,

@@ -232,8 +232,8 @@ public:
 
   c_cfa_drizzle() = default;
 
-  c_cfa_drizzle(SCALE scale = SCALE_10x, float pixfrac = -1) :
-      _scale(scale), _pixfrac(pixfrac)
+  c_cfa_drizzle(SCALE scale = SCALE_10x) :
+      _scale(scale)
   {
   }
 
@@ -261,16 +261,6 @@ public:
   SCALE scale() const
   {
     return _scale;
-  }
-
-  void set_pixfrac(float v)
-  {
-    _pixfrac = v;
-  }
-
-  float pixfrac() const
-  {
-    return _pixfrac;
   }
 
   void set_remap(const cv::Mat2f & rmap)
@@ -341,7 +331,6 @@ protected:
   cv::Mat _scaled_weights;
   COLORID _colorid = COLORID_UNKNOWN;
   SCALE _scale = SCALE_10x;
-  float _pixfrac = -1.f;
 };
 
 

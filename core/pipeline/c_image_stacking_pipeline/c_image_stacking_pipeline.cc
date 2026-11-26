@@ -323,7 +323,7 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
     case frame_accumulation_cfa_drizzle:
-      return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale, opts.drizzle_pixfrac));
+      return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale));
     default:
       break;
   }
@@ -1784,7 +1784,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, drizzle_scale);
-    SERIALIZE_OPTION(section, save, opts, drizzle_pixfrac);
 
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, opts.sharpness_measure);
@@ -2023,8 +2022,6 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind_expandable_group(ctls, "CFA Drizzle Options...", "");
     ctlbind(ctls, "Drizzle scale:", ctx(&S::drizzle_scale));
-    ctlbind(ctls, "Pixfrac:", ctx(&S::drizzle_pixfrac), "Drizzle pixel fraction in source CFA image scale.\n"
-        "Normally it should be 1.0 / DrizzleScale");
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Sharpness measure", "");

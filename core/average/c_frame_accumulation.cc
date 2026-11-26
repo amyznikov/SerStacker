@@ -799,13 +799,24 @@ namespace {
   };
 }
 
+// weights for the Catmull-Rom bicubic spline (a = -0.5) for t in [0, 1]
+ALWAYS_INLINE
+static void catmull_rom_weights(float t, float w[4])
+{
+  const float t2 = t * t;
+  const float t3 = t * t * t;
+  w[0] = -0.5f * t + t2 - 0.5f * t3;
+  w[1] = 1.0f - 2.5f * t2 + 1.5f * t3;
+  w[2] = 0.5f * t + 2.0f * t2 - 1.5f * t3;
+  w[3] = -0.5f * t2 + 0.5f * t3;
+}
+
 template<class _Tp, class _Tpw, RmapMode _RmapMode>
 static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
     cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int cfa_lookup[2][2],
-    cv::InputArray weights,
-    float pixfrac)
+    cv::InputArray weights)
 {
   const cv::Mat_<_Tp> cfa_image = _cfa_image.getMat();
   const uint8_t * const cfa_base = cfa_image.ptr();
@@ -813,6 +824,7 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
 
   const uint8_t * const acc_base = acc.ptr();
   const size_t acc_stride = acc.step;
+
   const uint8_t * const cntr_base = cntr.ptr();
   const size_t cntr_stride = cntr.step;
 
@@ -831,46 +843,55 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
 
   const float step_x = float(cfa_cols) / float(acc_cols);
   const float step_y = float(cfa_rows) / float(acc_rows);
-  const float offset_x = 0.5f * step_x - 0.5f;
-  const float offset_y = 0.5f * step_y - 0.5f;
+
+  // Ensure 1 pixel of the sensor array covers no more than 2x2 pixels of the CFA
+  if ( step_x > 1.0f || step_y > 1.0f ) {
+    CF_ERROR("Downscaling is not supported in 2x2 CFA drizzle (step_x=%f, step_y=%f)", step_x, step_y);
+    return false;
+  }
 
   const int cfa_lut[2][2] = {
       { cfa_lookup[0][0], cfa_lookup[0][1] },
       { cfa_lookup[1][0], cfa_lookup[1][1] }
   };
 
-  // Half-size of source CFA pixel drop (pixfrac in (0, 2], fits strictly inside 3x3 window)
-  const float half_drop = 0.5f * std::clamp(pixfrac <= 0 ?
-      std::min(step_x, step_y) : pixfrac, 1e-2f, 2.0f);
-
   parallel_for(0, acc_rows, [=](const auto & range) {
 
-    // Half-size of target accumulator pixel footprint in cfa_image coordinates
+    // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
+    const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
     const float half_acc_x = 0.5f * step_x;
     const float half_acc_y = 0.5f * step_y;
+
+    const float offset_x = 0.5f * step_x - 0.5f;
+    const float offset_y = 0.5f * step_y - 0.5f;
 
     for ( int y = rbegin(range); y < rend(range); ++y ) {
       cv::Vec3f * __restrict accp = (cv::Vec3f *)(acc_base + y * acc_stride);
       cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
       const float rmap_y = y * step_y + offset_y;
 
-      // Pointers to rmap
       const cv::Vec2f * rmp0 = nullptr;
       const cv::Vec2f * rmp1 = nullptr;
-      float rfy0 = 0.0f, rfy1 = 1.0f;
-      int ry0 = 0, ry1 = 0;
+      const cv::Vec2f * rmp2 = nullptr;
+      const cv::Vec2f * rmp3 = nullptr;
+      float rwy[4] = {0.0f, 1.0f, 0.0f, 0.0f};
 
       if constexpr ( _RmapMode == RmapMode::Direct ) {
-        rmp0 = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
+        rmp1 = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
       }
       else if constexpr ( _RmapMode == RmapMode::Scaled ) {
         const float clamped_rmap_y = std::clamp(rmap_y, 0.0f, float(cfa_rows - 1));
-        ry0 = cvFloor(clamped_rmap_y);
-        ry1 = std::min(ry0 + 1, cfa_rows - 1);
-        rfy0 = clamped_rmap_y - ry0;
-        rfy1 = 1.0f - rfy0;
+        const int ry1 = cvFloor(clamped_rmap_y);
+        const int ry0 = std::max(ry1 - 1, 0);
+        const int ry2 = std::min(ry1 + 1, cfa_rows - 1);
+        const int ry3 = std::min(ry1 + 2, cfa_rows - 1);
+
+        catmull_rom_weights(clamped_rmap_y - ry1, rwy);
+
         rmp0 = (const cv::Vec2f *)(rmap_base + ry0 * rmap_stride);
         rmp1 = (const cv::Vec2f *)(rmap_base + ry1 * rmap_stride);
+        rmp2 = (const cv::Vec2f *)(rmap_base + ry2 * rmap_stride);
+        rmp3 = (const cv::Vec2f *)(rmap_base + ry3 * rmap_stride);
       }
 
       for ( int x = 0; x < acc_cols; ++x ) {
@@ -878,36 +899,34 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
 
         float px, py;
         if constexpr ( _RmapMode == RmapMode::Empty ) {
-          // no rmap
+          // no remap
           px = rmap_x;
           py = rmap_y;
         }
         else if constexpr ( _RmapMode == RmapMode::Direct ) {
-          // rmap.size() == acc.size()
-          const cv::Vec2f p = rmp0[x];
-          px = p(0);
-          py = p(1);
+          // remap.size() == acc.size()
+          const cv::Vec2f p = rmp1[x];
+          px = p[0];
+          py = p[1];
         }
-        else { // RmapMode::Scaled
-          // rmap.size() == cfa_image.size()
+        else { // RmapMode::Scaled (Bicubic Catmull-Rom)
+          // remap.size() == cfa_image.size()
           const float rx = std::clamp(rmap_x, 0.0f, float(cfa_cols - 1));
-          const int rx0 = cvFloor(rx);
-          const int rx1 = std::min(rx0 + 1, cfa_cols - 1);
-          const float rfx0 = rx - rx0;
-          const float rfx1 = 1.0f - rfx0;
+          const int rx1 = cvFloor(rx);
+          const int rx0 = std::max(rx1 - 1, 0);
+          const int rx2 = std::min(rx1 + 1, cfa_cols - 1);
+          const int rx3 = std::min(rx1 + 2, cfa_cols - 1);
 
-          const cv::Vec2f p00 = rmp0[rx0];
-          const cv::Vec2f p10 = rmp0[rx1];
-          const cv::Vec2f p01 = rmp1[rx0];
-          const cv::Vec2f p11 = rmp1[rx1];
+          float rwx[4];
+          catmull_rom_weights(rx - rx1, rwx);
 
-          const float k00 = rfx1 * rfy1;
-          const float k10 = rfx0 * rfy1;
-          const float k01 = rfx1 * rfy0;
-          const float k11 = rfx0 * rfy0;
-
-          px = p00(0) * k00 + p10(0) * k10 + p01(0) * k01 + p11(0) * k11;
-          py = p00(1) * k00 + p10(1) * k10 + p01(1) * k01 + p11(1) * k11;
+          const cv::Vec2f row0 = rmp0[rx0] * rwx[0] + rmp0[rx1] * rwx[1] + rmp0[rx2] * rwx[2] + rmp0[rx3] * rwx[3];
+          const cv::Vec2f row1 = rmp1[rx0] * rwx[0] + rmp1[rx1] * rwx[1] + rmp1[rx2] * rwx[2] + rmp1[rx3] * rwx[3];
+          const cv::Vec2f row2 = rmp2[rx0] * rwx[0] + rmp2[rx1] * rwx[1] + rmp2[rx2] * rwx[2] + rmp2[rx3] * rwx[3];
+          const cv::Vec2f row3 = rmp3[rx0] * rwx[0] + rmp3[rx1] * rwx[1] + rmp3[rx2] * rwx[2] + rmp3[rx3] * rwx[3];
+          const cv::Vec2f p = row0 * rwy[0] + row1 * rwy[1] + row2 * rwy[2] + row3 * rwy[3];
+          px = p[0];
+          py = p[1];
         }
 
         // Account for an external half-pixel border [-0.5, cols-0.5]
@@ -915,17 +934,13 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
           continue;
         }
 
-        // Integer coordinate of central pixel
-        const int cx = cvRound(px);
-        const int cy = cvRound(py);
-
         float w;
         if constexpr ( !has_weights ) {
           w = 1.0f;
         }
         else {
-          const int wy_idx = std::clamp(cy, 0, cfa_rows - 1);
-          const int wx_idx = std::clamp(cx, 0, cfa_cols - 1);
+          const int wy_idx = std::clamp(cvRound(py), 0, cfa_rows - 1);
+          const int wx_idx = std::clamp(cvRound(px), 0, cfa_cols - 1);
           const _Tpw ww = *((const _Tpw *)(wmap_base + wy_idx * wmap_stride) + wx_idx);
           if ( !(ww > 0) ) {
             continue;
@@ -938,84 +953,56 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
           }
         }
 
-        // 3x3 coordinates and boundary validity masks
-        const int sx0 = cx - 1, sx1 = cx, sx2 = cx + 1;
-        const int sy0 = cy - 1, sy1 = cy, sy2 = cy + 1;
-        const float vx0 = (sx0 >= 0) ? 1.0f : 0.0f;
-        const float vy0 = (sy0 >= 0) ? w : 0.0f;
-        const float vx2 = (sx2 < cfa_cols) ? 1.0f : 0.0f;
-        const float vy2 = (sy2 < cfa_rows) ? w : 0.0f;
+        // 2x2 neighborhood: sx0 <= px < sx1, sy0 <= py < sy1
+        const int sx0 = cvFloor(px), sy0 = cvFloor(py);
+        const int sx1 = sx0 + 1, sy1 = sy0 + 1;
 
-        // Safe indices for reading from memory
-        const int ix0 = std::max(sx0, 0);
-        const int ix1 = std::clamp(sx1, 0, cfa_cols - 1);
-        const int ix2 = std::min(sx2, cfa_cols - 1);
-
-        const int iy0 = std::max(sy0, 0);
-        const int iy1 = std::clamp(sy1, 0, cfa_rows - 1);
-        const int iy2 = std::min(sy2, cfa_rows - 1);
-
-        // Target pixel footprint bounds in CFA coordinates:
-        // [ax0, ax1] x [ay0, ay1]
+        // acc footprint boundaries in CFA coordinates
         const float ax0 = px - half_acc_x;
         const float ax1 = px + half_acc_x;
         const float ay0 = py - half_acc_y;
         const float ay1 = py + half_acc_y;
 
-        // 1D box overlap lengths between target footprint and 3x3 CFA drops [s - half_drop, s + half_drop]
-        const float ov_x0 = std::max(0.0f, std::min(ax1, float(sx0) + half_drop) - std::max(ax0, float(sx0) - half_drop));
-        const float ov_x1 = std::max(0.0f, std::min(ax1, float(sx1) + half_drop) - std::max(ax0, float(sx1) - half_drop));
-        const float ov_x2 = std::max(0.0f, std::min(ax1, float(sx2) + half_drop) - std::max(ax0, float(sx2) - half_drop));
+        // 1D intersections for 2x2 (given that sx0 <= px < sx1)
+        const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - ax0);
+        const float ov_x1 = std::max(0.0f, ax1 - std::max(ax0, sx1 - half_drop));
 
-        const float ov_y0 = std::max(0.0f, std::min(ay1, float(sy0) + half_drop) - std::max(ay0, float(sy0) - half_drop));
-        const float ov_y1 = std::max(0.0f, std::min(ay1, float(sy1) + half_drop) - std::max(ay0, float(sy1) - half_drop));
-        const float ov_y2 = std::max(0.0f, std::min(ay1, float(sy2) + half_drop) - std::max(ay0, float(sy2) - half_drop));
+        const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - ay0);
+        const float ov_y1 = std::max(0.0f, ay1 - std::max(ay0, sy1 - half_drop));
 
-        const float wx0 = ov_x0 * vx0;
-        const float wx1 = ov_x1;
-        const float wx2 = ov_x2 * vx2;
+        // Boundary validity masks
+        const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
+        const float wx1 = (sx1 < cfa_cols) ? ov_x1 : 0.0f;
+        const float wy0 = (sy0 >= 0) ? (ov_y0 * w) : 0.0f;
+        const float wy1 = (sy1 < cfa_rows) ? (ov_y1 * w) : 0.0f;
 
-        const float wy0 = ov_y0 * vy0;
-        const float wy1 = ov_y1 * w;
-        const float wy2 = ov_y2 * vy2;
+        // Safe read indices
+        const int ix0 = std::max(sx0, 0);
+        const int iy0 = std::max(sy0, 0);
+        const int ix1 = std::min(sx1, cfa_cols - 1);
+        const int iy1 = std::min(sy1, cfa_rows - 1);
 
-        // 9 CFA values and exact 2D overlap weights (w_ij = wy_i * wx_j)
-        const _Tp * const r0 = (const _Tp *)(cfa_base + iy0 * cfa_stride);
-        const _Tp * const r1 = (const _Tp *)(cfa_base + iy1 * cfa_stride);
-        const _Tp * const r2 = (const _Tp *)(cfa_base + iy2 * cfa_stride);
-        const float v00 = r0[ix0], v01 = r0[ix1], v02 = r0[ix2];
-        const float v10 = r1[ix0], v11 = r1[ix1], v12 = r1[ix2];
-        const float v20 = r2[ix0], v21 = r2[ix1], v22 = r2[ix2];
+        const _Tp * const srcp0 = (const _Tp *)(cfa_base + iy0 * cfa_stride);
+        const _Tp * const srcp1 = (const _Tp *)(cfa_base + iy1 * cfa_stride);
 
-        const float w00 = wy0 * wx0, w01 = wy0 * wx1, w02 = wy0 * wx2;
-        const float w10 = wy1 * wx0, w11 = wy1 * wx1, w12 = wy1 * wx2;
-        const float w20 = wy2 * wx0, w21 = wy2 * wx1, w22 = wy2 * wx2;
+        const float v00 = srcp0[ix0], v01 = srcp0[ix1];
+        const float v10 = srcp1[ix0], v11 = srcp1[ix1];
 
-        // Group the sums by 4 positions of the Bayer pattern before recording into 3 channels
-        const float sum_w_00 = w00 + w02 + w20 + w22;
-        const float sum_v_00 = v00 * w00 + v02 * w02 + v20 * w20 + v22 * w22;
-
-        const float sum_w_01 = w01 + w21;
-        const float sum_v_01 = v01 * w01 + v21 * w21;
-
-        const float sum_w_10 = w10 + w12;
-        const float sum_v_10 = v10 * w10 + v12 * w12;
-
-        const float sum_w_11 = w11;
-        const float sum_v_11 = v11 * w11;
-
-        cv::Vec3f a = accp[x];
-        cv::Vec3f cnt = cntrp[x];
+        const float w00 = wy0 * wx0, w01 = wy0 * wx1;
+        const float w10 = wy1 * wx0, w11 = wy1 * wx1;
 
         const int c00 = cfa_lut[sy0 & 1][sx0 & 1];
         const int c01 = cfa_lut[sy0 & 1][sx1 & 1];
         const int c10 = cfa_lut[sy1 & 1][sx0 & 1];
         const int c11 = cfa_lut[sy1 & 1][sx1 & 1];
 
-        a[c00] += sum_v_00; cnt[c00] += sum_w_00;
-        a[c01] += sum_v_01; cnt[c01] += sum_w_01;
-        a[c10] += sum_v_10; cnt[c10] += sum_w_10;
-        a[c11] += sum_v_11; cnt[c11] += sum_w_11;
+        cv::Vec3f a = accp[x];
+        cv::Vec3f cnt = cntrp[x];
+
+        a[c00] += v00 * w00; cnt[c00] += w00;
+        a[c01] += v01 * w01; cnt[c01] += w01;
+        a[c10] += v10 * w10; cnt[c10] += w10;
+        a[c11] += v11 * w11; cnt[c11] += w11;
 
         accp[x] = a;
         cntrp[x] = cnt;
@@ -1031,19 +1018,18 @@ static bool _cfa_accumulate_dispatch_rmap(cv::InputArray cfa_image,
     cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
-    cv::InputArray weights,
-    float pixfrac)
+    cv::InputArray weights)
 {
   if ( rmap.empty() ) {
-    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Empty>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Empty>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
   }
 
   if ( rmap.size() == acc.size() ) {
-    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Direct>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Direct>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
   }
 
   if ( rmap.size() == cfa_image.size() ) {
-    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Scaled>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+    return _cfa_accumulate_core<_Tp, _Tpw, RmapMode::Scaled>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
   }
 
   CF_ERROR("Invalid remap size (%dx%d) for src size (%dx%d) and acc size (%dx%d)",
@@ -1058,11 +1044,10 @@ static bool _cfa_accumulate_dispatch_weights(cv::InputArray cfa_image,
     cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
-    cv::InputArray weights,
-    float pixfrac)
+    cv::InputArray weights)
 {
   if ( weights.empty() ) {
-    return _cfa_accumulate_dispatch_rmap<_Tp, void>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+    return _cfa_accumulate_dispatch_rmap<_Tp, void>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
   }
 
   if ( weights.size() != cfa_image.size() ) {
@@ -1073,9 +1058,9 @@ static bool _cfa_accumulate_dispatch_weights(cv::InputArray cfa_image,
 
   switch ( weights.type() ) {
     case CV_8UC1:
-      return _cfa_accumulate_dispatch_rmap<_Tp, uint8_t>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      return _cfa_accumulate_dispatch_rmap<_Tp, uint8_t>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
     case CV_32FC1:
-      return _cfa_accumulate_dispatch_rmap<_Tp, float>(cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      return _cfa_accumulate_dispatch_rmap<_Tp, float>(cfa_image, acc, cntr, rmap, bayer_lookup, weights);
     default:
       break;
   }
@@ -1088,8 +1073,7 @@ static bool cfa_accumulate(cv::InputArray cfa_image,
     cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const int bayer_lookup[2][2],
-    cv::InputArray weights,
-    float pixfrac)
+    cv::InputArray weights)
 {
   INSTRUMENT_REGION("");
 
@@ -1106,7 +1090,7 @@ static bool cfa_accumulate(cv::InputArray cfa_image,
   }
 
   CV_DISPATCH(cfa_image.depth(), _cfa_accumulate_dispatch_weights,
-      cfa_image, acc, cntr, rmap, bayer_lookup, weights, pixfrac);
+      cfa_image, acc, cntr, rmap, bayer_lookup, weights);
 
   CF_ERROR("APP BUG: BAD cfa_image.depth()=%d encountered in cfa_accumulate()", cfa_image.depth());
   return false;
@@ -1226,7 +1210,7 @@ bool c_cfa_drizzle::add(cv::InputArray src, cv::InputArray weights)
     }
   }
 
-  if( !cfa_accumulate(src, _accumulator, _counter, _rmap, _cfa_lookup, weights, _pixfrac) ) {
+  if( !cfa_accumulate(src, _accumulator, _counter, _rmap, _cfa_lookup, weights) ) {
     CF_ERROR("cfa_accumulate() fails");
     return false;
   }

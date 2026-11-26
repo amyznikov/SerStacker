@@ -111,6 +111,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray _mask,
   cv::Moments m;
 
   if ( (src = frame.getMat()).empty() ) {
+    CF_ERROR("ERROR: frame is empty");
     return false;
   }
 
@@ -146,6 +147,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray _mask,
 
   se_radius = std::max(1, se_radius);
   const cv::Size se1_size(2 * se_radius + 1, 2 * se_radius + 1);
+
   static thread_local cv::Mat1b SE1;
   if ( SE1.size() != se1_size ) {
     SE1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, se1_size);
@@ -161,7 +163,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray _mask,
   const cv::Size se2_size(4 * se_radius + 1, 4 * se_radius + 1);
   static thread_local cv::Mat1b SE2;
   if ( SE2.size() != se2_size ) {
-    SE1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, se1_size);
+    SE2 = cv::getStructuringElement(cv::MORPH_ELLIPSE, se2_size);
   }
   cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE2, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   geo_fill_holes(comp, comp, 8);
@@ -214,7 +216,6 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray _mask,
   if ( optional_output_cmponent_mask ) {
     *optional_output_cmponent_mask = std::move(comp);
   }
-
 
   return true;
 }

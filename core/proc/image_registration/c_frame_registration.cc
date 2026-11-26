@@ -1054,10 +1054,13 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
     return false;
   }
 
+
+  CF_DEBUG("C _sparse_feature_extractor_and_matcher->match_current_frame");
   if( !_sparse_feature_extractor_and_matcher->match_current_frame(_current_feature_image, _current_feature_mask) ) {
     CF_ERROR("sparse_feature_extractor_and_matcher_->match_current_frame() fails");
     return false;
   }
+  CF_DEBUG("R _sparse_feature_extractor_and_matcher->match_current_frame");
 
   // Special processing for FEATURE2D_PLANETARY_DISK
   if ( _sparse_feature_extractor_and_matcher->detector()->type() == FEATURE2D_PLANETARY_DISK ) {

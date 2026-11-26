@@ -1591,6 +1591,134 @@ bool fftGenerateMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
   return true;
 }
 
+// Space Isotropic Dual-Moffat (Core + Halo) parameterized by core FWHM and relative halo scale
+// PSF_total ~ (1 - halo_weight) * Moffat(fwhm, beta) + halo_weight * Moffat(fwhm * halo_scale, beta2)
+bool fftGenerateDualMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double fwhm, double beta,
+    double halo_scale, double beta2, double halo_weight,
+    double gain, bool inverse, bool centerDC)
+{
+  if ( dst.fixedType() && dst.type() != CV_32FC1 ) {
+    CF_ERROR("Bad output fixed type %d. Must be CV_32FC1", dst.type());
+    return false;
+  }
+
+  if ( dst.fixedSize() && dst.size() != fftSize ) {
+    CF_ERROR("Bad output fixed size %dx%d. Must be fftSize=%dx%d", dst.cols(), dst.rows(),
+        fftSize.width, fftSize.height);
+    return false;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f FILTER = dst.getMatRef();
+
+  if ( fwhm <= 0.0 ) {
+    fwhm = 1.0;
+  }
+  if ( beta <= 1.0001 ) {
+    beta = 1.0001;
+  }
+  if ( halo_scale < 1.0 ) {
+    halo_scale = 1.0;
+  }
+  if ( beta2 <= 1.0001 ) {
+    beta2 = 1.0001;
+  }
+
+  const double w2 = std::clamp(halo_weight, 0.0, 1.0);
+  const double w1 = 1.0 - w2;
+
+  const int w = fftSize.width;
+  const int h = fftSize.height;
+  const int cx = w / 2;
+  const int cy = h / 2;
+
+  // Core parameters (Moffat 1)
+  const double alpha1 = fwhm / (2.0 * std::sqrt(std::pow(2.0, 1.0 / beta) - 1.0));
+  const double sx1 = alpha1 * CV_2PI / w;
+  const double sy1 = alpha1 * CV_2PI / h;
+  const double nu1 = beta - 1.0;
+  const double norm1 = w1 * std::pow(2.0, 1.0 - nu1) / std::tgamma(nu1);
+
+  // Halo parameters (Moffat 2)
+  const double fwhm2 = fwhm * halo_scale;
+  const double alpha2 = fwhm2 / (2.0 * std::sqrt(std::pow(2.0, 1.0 / beta2) - 1.0));
+  const double sx2 = alpha2 * CV_2PI / w;
+  const double sy2 = alpha2 * CV_2PI / h;
+  const double nu2 = beta2 - 1.0;
+  const double norm2 = w2 * std::pow(2.0, 1.0 - nu2) / std::tgamma(nu2);
+
+  if ( !inverse ) {
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const double dy_norm = double(fy - cy);
+
+        const double dy1 = dy_norm * sy1;
+        const double dy2 = dy_norm * sy2;
+        const double dy1_sq = dy1 * dy1;
+        const double dy2_sq = dy2 * dy2;
+
+        for ( int x = 0; x < w; ++x ) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const double dx_norm = double(fx - cx);
+
+          const double dx1 = dx_norm * sx1;
+          const double r1 = std::sqrt(dx1 * dx1 + dy1_sq);
+          const double H1 = (r1 > 0.0) ? (norm1 * std::pow(r1, nu1) * std::cyl_bessel_k(nu1, r1)) : w1;
+
+          double H2 = 0.0;
+          if ( w2 > 0.0 ) {
+            const double dx2 = dx_norm * sx2;
+            const double r2 = std::sqrt(dx2 * dx2 + dy2_sq);
+            H2 = (r2 > 0.0) ? (norm2 * std::pow(r2, nu2) * std::cyl_bessel_k(nu2, r2)) : w2;
+          }
+
+          dstp[x] = float(gain * (H1 + H2));
+        }
+      }
+    });
+  }
+  else {
+    const double eps = 1.0 / (gain * gain);
+
+    parallel_for(0, h, [=, &FILTER](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        float * __restrict dstp = FILTER[y];
+        const int fy = centerDC ? y : (y < cy ? y + cy : y - cy);
+        const double dy_norm = double(fy - cy);
+
+        const double dy1 = dy_norm * sy1;
+        const double dy2 = dy_norm * sy2;
+        const double dy1_sq = dy1 * dy1;
+        const double dy2_sq = dy2 * dy2;
+
+        for ( int x = 0; x < w; ++x ) {
+          const int fx = centerDC ? x : (x < cx ? x + cx : x - cx);
+          const double dx_norm = double(fx - cx);
+
+          const double dx1 = dx_norm * sx1;
+          const double r1 = std::sqrt(dx1 * dx1 + dy1_sq);
+          const double H1 = (r1 > 0.0) ? (norm1 * std::pow(r1, nu1) * std::cyl_bessel_k(nu1, r1)) : w1;
+
+          double H2 = 0.0;
+          if ( w2 > 0.0 ) {
+            const double dx2 = dx_norm * sx2;
+            const double r2 = std::sqrt(dx2 * dx2 + dy2_sq);
+            H2 = (r2 > 0.0) ? (norm2 * std::pow(r2, nu2) * std::cyl_bessel_k(nu2, r2)) : w2;
+          }
+
+          const double H = H1 + H2;
+          dstp[x] = float(std::sqrt((1.0 + eps) / (H * H + eps)));
+        }
+      }
+    });
+  }
+
+  return true;
+}
+
 // Space Isotropic Exponential
 // PSF ~ exp(-r / lambda_space)
 // Lorentz-Cauchy kernel in a cube (analytical spectrum of an exponential)

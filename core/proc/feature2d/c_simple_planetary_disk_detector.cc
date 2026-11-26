@@ -11,7 +11,7 @@
 
 c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gsigma, int se_radius) :
   _gsigma(gsigma),
-  _se_radius(_se_radius)
+  _se_radius(se_radius)
 {
 }
 
@@ -25,20 +25,18 @@ void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<c
 {
   cv::Point2f centrold;
 
-  CF_DEBUG("simple_planetary_disk_detector: src: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d ",
+  CF_DEBUG("simple_planetary_disk_detector: _gsigma=%g _se_radius=%d src: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d ",
+      _gsigma, _se_radius,
       _src.cols(), _src.rows(), _src.channels(), _src.depth(),
       _mask.cols(), _mask.rows(), _mask.channels(), _mask.depth());
 
   bool fOk =
-      simple_planetary_disk_detector(
-          _src,
-          _mask,
-          _gsigma,
-          _se_radius,
+      simple_planetary_disk_detector(_src, _mask, _gsigma, _se_radius,
           &centrold,
           &_component_rect,
           nullptr,
           nullptr);
+
 
   if( !fOk ) {
     CF_ERROR("simple_planetary_disk_detector() fails. Can not detect planetary disk on given image");

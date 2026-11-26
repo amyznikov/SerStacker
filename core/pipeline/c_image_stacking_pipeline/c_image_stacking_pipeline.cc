@@ -15,6 +15,7 @@
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/flow2HSV.h>
+#include <core/proc/run-loop.h>
 #include <core/proc/normalize.h>
 #include <core/proc/inpaint.h>
 #include <core/proc/reduce_channels.h>
@@ -25,7 +26,7 @@
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/ssprintf.h>
-//#include <core/io/c_stdio_file.h>
+#include <core/io/c_stdio_file.h>
 #include <tbb/tbb.h>
 #include <core/debug.h>
 
@@ -88,35 +89,41 @@ const c_enum_member* members_of<c_image_stacking_pipeline::STACKING_STAGE>()
 
 namespace {
 
-static cv::Mat2f compute_turbulent_flow(const c_image_transform * current_transform, const cv::Mat2f & current_remap )
-{
-  INSTRUMENT_REGION("");
-
-  cv::Mat2f uv;
-  const cv::Vec2f T = current_transform->translation();
-
-  uv.create(current_remap.size());
-
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, current_remap.rows, 256),
-      [&current_remap, &uv, T](const range & r) {
-        const int nx = current_remap.cols;
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0; x < nx; ++x ) {
-            if ( current_remap[y][x][0] >= 0 && current_remap[y][x][1] >= 0 ) {
-              uv[y][x][0] = current_remap[y][x][0] - x - T[0];
-              uv[y][x][1] = current_remap[y][x][1] - y - T[1];
-            }
-            else {
-              uv[y][x][0] = 0;
-              uv[y][x][1] = 0;
-            }
-          }
-        }
-      });
-
-  return uv;
-}
+//static bool compute_turbulent_flow(const c_image_transform * current_transform,
+//    cv::InputArray _current_remap, cv::OutputArray _outUV, cv::OutputArray _outUVMask  )
+//{
+//  INSTRUMENT_REGION("");
+//
+//  if ( _current_remap.type() != CV_32FC2 ) {
+//    CF_ERROR("APP BUG: _current_remap muste of CV_32FC2 type");
+//    return false;
+//  }
+//
+//  const cv::Vec2f T = current_transform->translation();
+//  const cv::Mat2f current_remap = _current_remap.getMat();
+//
+//  _outUV.create(current_remap.size(), CV_32FC2);
+//  cv::Mat2f uv = _outUV.getMatRef();
+//  //uv.create(current_remap.size());
+//
+//  no_parallel_for(0, current_remap.rows, [&current_remap, &uv, T](const auto & range) {
+//    const int nx = current_remap.cols;
+//    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+//      for ( int x = 0; x < nx; ++x ) {
+//        if ( current_remap[y][x][0] >= 0 && current_remap[y][x][1] >= 0 ) {
+//          uv[y][x][0] = current_remap[y][x][0] - x - T[0];
+//          uv[y][x][1] = current_remap[y][x][1] - y - T[1];
+//        }
+//        else {
+//          uv[y][x][0] = 0;
+//          uv[y][x][1] = 0;
+//        }
+//      }
+//    }
+//  });
+//
+//  return uv;
+//}
 
 
 c_frame_registration::image_preprocessor_function create_image_preprocessor(const c_image_processor::sptr &processor)
@@ -316,7 +323,7 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
     case frame_accumulation_focus_stack:
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
     case frame_accumulation_cfa_drizzle:
-      return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale));
+      return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale, opts.drizzle_pixfrac));
     default:
       break;
   }
@@ -478,7 +485,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    if ( !_stack_options.enable_registration || _master_options.stop_after_master_frame_generation ) {
+    if ( !_stack_options.enable_registration || (_master_options.generate_master_frame && _master_options.stop_after_master_frame_generation) ) {
       _frame_registration.reset();
     }
     else {
@@ -540,11 +547,8 @@ bool c_image_stacking_pipeline::run_image_stacking()
     const int start_pos =
         std::max(_input_options.start_frame_index, 0);
 
-    const int end_pos =
-        _input_options.max_input_frames < 1 ?
-            _input_sequence->size() :
-            std::min(_input_sequence->size(),
-                _input_options.start_frame_index + _input_options.max_input_frames);
+    const int end_pos = _input_options.max_input_frames < 1 ? _input_sequence->size() :
+        std::min(_input_sequence->size(), _input_options.start_frame_index + _input_options.max_input_frames);
 
 
     if ( !(fOk = process_input_sequence(_input_sequence, start_pos, end_pos)) ) {
@@ -921,7 +925,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 
     // Read accumulators back
     if( true ) {
-      lock_guard lock(mutex());
+      // lock_guard lock(mutex());
 
       if( _frame_accumulation->accumulated_frames() < 1 ) {
         CF_ERROR("ERROR: No frames accumulated for reference frame");
@@ -933,10 +937,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
         return false;
       }
 
-      linear_interpolation_inpaint(reference_frame,
-          reference_mask,
-          reference_frame);
+      average_pyramid_inpaint(reference_frame, reference_mask,
+          reference_frame, reference_mask, 20);
 
+    //      linear_interpolation_inpaint(reference_frame,
+    //          reference_mask,
+    //          reference_frame);
     }
 
     if( canceled() ) {
@@ -977,6 +983,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   cv::Mat current_frame, current_grayscale_frame;
   cv::Mat current_mask, current_binary_mask, current_weights;
   cv::Mat2f current_remap;
+
+#define DUMP_TRANS 1
+#if DUMP_TRANS
+  c_stdio_file fp;
+#endif
 
   const c_image_registration_options & registration_options =
       _generating_master_frame ? _master_options.registration :
@@ -1226,29 +1237,44 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      if( _flow_accumulation ) {
+//      if( _flow_accumulation ) {
+//
+//        const cv::Mat2f turbulence =
+//            compute_turbulent_flow(_frame_registration->image_transform().get(),
+//                _frame_registration->current_remap());
+//
+//        if( turbulence.empty() ) {
+//          CF_ERROR("compute_turbulence_flow() fails");
+//        }
+//        else {
+//          //  CF_DEBUG("H: turbulence=%dx%d", turbulence.cols, turbulence.rows);
+//          if( !_flow_accumulation->add(turbulence) ) {
+//            CF_ERROR("flow_accumulation_->add(turbulence) fails");
+//            break;
+//          }
+//        }
+//
+//        if( canceled() ) {
+//          set_status_msg("canceled");
+//          break;
+//        }
+//      }
 
-        const cv::Mat2f turbulence =
-            compute_turbulent_flow(_frame_registration->image_transform().get(),
-                _frame_registration->current_remap());
-
-        if( turbulence.empty() ) {
-          CF_ERROR("compute_turbulence_flow() fails");
+      /////////////////
+#if DUMP_TRANS
+      if ( !fp.is_open() ) {
+        if ( !fp.open("/home/projects/temp/TE/TRANS.txt", "w") ) {
+          CF_ERROR("ERROR: can not write TRANS.txt: %s", strerror(errno));
         }
         else {
-          //  CF_DEBUG("H: turbulence=%dx%d", turbulence.cols, turbulence.rows);
-          if( !_flow_accumulation->add(turbulence) ) {
-            CF_ERROR("flow_accumulation_->add(turbulence) fails");
-            break;
-          }
-        }
-
-        if( canceled() ) {
-          set_status_msg("canceled");
-          break;
+          fprintf(fp, "FRAME\tTx\tTy\n");
         }
       }
-
+      if ( fp.is_open() ) {
+        const auto T = _frame_registration->image_transform()->translation();
+        fprintf(fp, "%6d\t%+12g\t%+12g\n", curpos, T(0), T(1));
+      }
+#endif
       /////////////////
 
       bool reset_reference_frame = false;
@@ -1565,11 +1591,35 @@ void c_image_stacking_pipeline::compute_relative_weights(const cv::Mat & wc, con
 //  return estimated_noise_level;
 //}
 
+
+static bool remap2optflow(cv::InputArray src, cv::OutputArray dst)
+{
+  const cv::Mat2f rmap = src.getMat();
+
+  cv::Mat2f flow = createOutOfPlace(src,dst, src.size(), src.type());
+
+  no_parallel_for(0, rmap.rows, [&](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      const cv::Vec2f * mp = (const cv::Vec2f * )rmap[y];
+      cv::Vec2f * __restrict fp = (cv::Vec2f * )flow[y];
+      for( int x = 0; x < rmap.cols; ++x ) {
+        *fp++ = *mp++ - cv::Vec2f(x, y);
+      }
+    }
+  });
+
+  assignOutOfPlace(dst, flow);
+
+  return true;
+}
+
+
 const c_enum_member * c_image_stacking_pipeline::get_preview_displays() const
 {
   static const c_enum_member members[] = {
       { 0, "ACC", "" },
       { 1, "CNTR", "" },
+      //{ 2, "RFLOW", "" },
       { 0 },
   };
 
@@ -1605,10 +1655,19 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
               return false;
             }
           }
-          else {
+          else { // if (_preview_display == 1 ) {
             _frame_accumulation->get_counter().copyTo(dst);
             dst_mask.release();
           }
+//          else {
+//            if ( !_frame_registration )  {
+//              dst.release();
+//            }
+//            else {
+//              remap2optflow(_frame_registration->current_remap(), dst);
+//            }
+//            dst_mask.release();
+//          }
 
           return true;
         }
@@ -1725,6 +1784,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, drizzle_scale);
+    SERIALIZE_OPTION(section, save, opts, drizzle_pixfrac);
+
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, opts.sharpness_measure);
     }
@@ -1959,7 +2020,12 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   using S = c_frame_accumulation_options;
 
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
-  ctlbind(ctls, "Drizzle Scale:", ctx(&S::drizzle_scale));
+
+  ctlbind_expandable_group(ctls, "CFA Drizzle Options...", "");
+    ctlbind(ctls, "Drizzle scale:", ctx(&S::drizzle_scale));
+    ctlbind(ctls, "Pixfrac:", ctx(&S::drizzle_pixfrac), "Drizzle pixel fraction in source CFA image scale.\n"
+        "Normally it should be 1.0 / DrizzleScale");
+  ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, ctx(&S::sharpness_measure));

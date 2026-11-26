@@ -479,8 +479,13 @@ c_input_sequence::sptr c_image_stacking_pipeline_base::select_master_frame2(cons
   switch(selection_opts.master_selection_method)
   {
     case master_frame_specific_index:
-      master_frame_global_index = master_sequence->global_pos(master_source_index,
-          selection_opts.master_frame_index);
+      if ( master_sequence->size() == 1 ) {
+        master_frame_global_index = 0;
+      }
+      else {
+        master_frame_global_index = master_sequence->global_pos(master_source_index,
+            selection_opts.master_frame_index);
+      }
       break;
 
     case master_frame_middle_index: {

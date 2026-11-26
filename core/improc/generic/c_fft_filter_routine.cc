@@ -18,7 +18,7 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_EXPONENTIAL, "EXPONENTIAL", },
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
       { c_fft_filter_routine::FILTER_MOFFAT, "MOFFAT", },
-      { c_fft_filter_routine::FILTER_DAG, "DAG", "DRIZZLE_ANTI_GIBBS"},
+      { c_fft_filter_routine::FILTER_DUAL_MOFFAT, "DUAL_MOFFAT", "DUAL_MOFFAT"},
       { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH_BAND, "BUTTERWORTH_BAND", },
@@ -39,16 +39,16 @@ const c_enum_member* members_of<c_fft_filter_routine::DISPLAY>()
       { c_fft_filter_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
       { c_fft_filter_routine::DISPLAY_FILTERED_IMAGE, "FILTERED_IMAGE" },
       { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_MODULE, "SRC_SPECTRUM_MODULE" },
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_PHASE, "SRC_SPECTRUM_PHASE" },
-      { c_fft_filter_routine::DISPLAY_FILTER_MODULE, "FILTER_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_PHASE,  "SRC_SPECTRUM_PHASE" },
       { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_MODULE, "FILTERED_SPECTRUM_MODULE" },
-      { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_PHASE, "FILTERED_SPECTRUM_PHASE" },
+      { c_fft_filter_routine::DISPLAY_FILTERED_SPECTRUM_PHASE,  "FILTERED_SPECTRUM_PHASE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_MODULE, "SRC_SPECTRUM_P_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_PHASE,  "SRC_SPECTRUM_P_PHASE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_MODULE, "SRC_SPECTRUM_S_MODULE" },
+      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_PHASE,  "SRC_SPECTRUM_S_PHASE" },
+      { c_fft_filter_routine::DISPLAY_FILTER_MODULE, "FILTER_MODULE" },
       { c_fft_filter_routine::DISPLAY_VLAP, "VLAP" },
 
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_MODULE, "SRC_SPECTRUM_P_MODULE" },
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_P_PHASE, "SRC_SPECTRUM_P_PHASE" },
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_MODULE, "SRC_SPECTRUM_S_MODULE" },
-      { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_S_PHASE, "SRC_SPECTRUM_S_PHASE" },
       { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_V_MODULE, "SRC_SPECTRUM_V_MODULE" },
       { c_fft_filter_routine::DISPLAY_SRC_SPECTRUM_V_PHASE, "SRC_SPECTRUM_V_PHASE" },
 
@@ -90,12 +90,15 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
         ctlbind(ctls, "inverse: ", CTL_CONTEXT(ctx, inverse), "");
       });
 
-  ctlbind_expandable_group(ctls, "DAG options",
-      [&, ctx = CTL_CONTEXT(ctx, dag)]() {
-        ctlbind(ctls, "drizzle_scale: ", CTL_CONTEXT(ctx, drizzle_scale), "");
-        ctlbind(ctls, "pixfrac: ", CTL_CONTEXT(ctx, pixfrac), "");
-        ctlbind(ctls, "reg_lambda: ", CTL_CONTEXT(ctx, reg_lambda), "");
+  ctlbind_expandable_group(ctls, "Dual Moffat options",
+      [&, ctx = CTL_CONTEXT(ctx, dual_moffat)]() {
+        ctlbind(ctls, "fwhm: ", CTL_CONTEXT(ctx, fwhm), "PSF FWHM size in pixels:  PSF ~ (1 + (r / alpha)^2)^(-beta)");
+        ctlbind(ctls, "beta: ", CTL_CONTEXT(ctx, beta), "PSF curvature:  PSF ~ (1 + (r / alpha_space)^2)^(-beta)");
+        ctlbind(ctls, "halo_scale: ", CTL_CONTEXT(ctx, halo_scale), "");
+        ctlbind(ctls, "beta2: ", CTL_CONTEXT(ctx, beta2), "");
+        ctlbind(ctls, "halo_weight: ", CTL_CONTEXT(ctx, halo_weight), "");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+        ctlbind(ctls, "inverse: ", CTL_CONTEXT(ctx, inverse), "");
       });
 
   ctlbind_expandable_group(ctls, "Ramp options",
@@ -169,11 +172,14 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(group, save, moffat, inverse);
     }
 
-    if ( auto group = SERIALIZE_GROUP(settings, save, "DagFilter")) {
-      SERIALIZE_OPTION(group, save, dag, drizzle_scale);
-      SERIALIZE_OPTION(group, save, dag, pixfrac);
-      SERIALIZE_OPTION(group, save, dag, reg_lambda);
-      SERIALIZE_OPTION(group, save, dag, gain);
+    if ( auto group = SERIALIZE_GROUP(settings, save, "DualMoffatFilter")) {
+      SERIALIZE_OPTION(group, save, dual_moffat, fwhm);
+      SERIALIZE_OPTION(group, save, dual_moffat, beta);
+      SERIALIZE_OPTION(group, save, dual_moffat, halo_scale);
+      SERIALIZE_OPTION(group, save, dual_moffat, beta2);
+      SERIALIZE_OPTION(group, save, dual_moffat, halo_weight);
+      SERIALIZE_OPTION(group, save, dual_moffat, gain);
+      SERIALIZE_OPTION(group, save, dual_moffat, inverse);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GradientFilter")) {
@@ -263,12 +269,15 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
     }
 
-    case FILTER_DAG: { // DRIZZLE_ANTI_GIBBS
+    // Space Isotropic Dual-Moffat (Core + Halo) parameterized by FWHM
+    // PSF_total ~ (1 - halo_weight) * Moffat(fwhm1, beta1) + halo_weight * Moffat(fwhm2, beta2)
+    case FILTER_DUAL_MOFFAT: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
       if ( _FILTER.size() != fftSize ) {
-        fftGenerateDrizzleAntiGibbsFilter(_FILTER, fftSize, dag.drizzle_scale, dag.pixfrac,
-            dag.reg_lambda, dag.gain,  false);
+        fftGenerateDualMoffatFilter(_FILTER, fftSize, dual_moffat.fwhm, dual_moffat.beta,
+            dual_moffat.halo_scale, dual_moffat.beta2, dual_moffat.halo_weight,
+            dual_moffat.gain, dual_moffat.inverse, false);
       }
       break;
     }

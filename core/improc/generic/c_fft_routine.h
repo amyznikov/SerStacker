@@ -21,7 +21,6 @@ public:
 
   enum DisplayType {
     DisplayMagnitude,
-    DisplayPower,
     DisplayPhase,
     DisplayReal,
     DisplayImag,
@@ -34,8 +33,18 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DisplayType _outputDisplay = DisplayPower;
+  void state_changed() final
+  {
+    if ( !_enabled ) {
+      VLAP.release();
+      polarReamp.release();
+    }
+  }
+
+protected:
+  DisplayType _outputDisplay = DisplayMagnitude;
   cv::Mat2f polarReamp;
+  cv::Mat1f VLAP;
   bool _dftComplex = false;
   bool _dftScale = false;
   bool _centerDC = false;

@@ -28,7 +28,7 @@ public:
     FILTER_GAUSSIAN_SHARP,
     FILTER_LAPLACIAN_SHARP,
     FILTER_MOFFAT,
-    FILTER_DAG,
+    FILTER_DUAL_MOFFAT
   };
 
   enum DISPLAY {
@@ -89,20 +89,21 @@ protected:
   } laplacian;
 
   struct c_moffat_filter_opts {
-    double fwhm = 3;
-    double beta = 4.5;
+    double fwhm = 3.35;
+    double beta = 2.5;
     double gain = 1;
     bool inverse = false;
   } moffat;
 
-  struct c_dag_filter_opts {
-    double drizzle_scale = 1;
-    double pixfrac = 0.5;
-    double reg_lambda = 1e-5;
-    double gain = 1;
-  } dag;
-
-
+  struct c_dual_moffat_filter_opts {
+    double fwhm = 2.5;
+    double beta = 2.5;
+    double halo_scale = 2.5;
+    double beta2 = 2.5;
+    double halo_weight = 0;
+    double gain = 5;
+    bool inverse = true;
+  } dual_moffat;
 
   struct c_ramp_filter_opts {
     double gain = 1;

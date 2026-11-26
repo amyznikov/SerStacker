@@ -1546,8 +1546,7 @@ public:
   typedef c_feature2d_planetary_disk_detector this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     double gsigma = 1;

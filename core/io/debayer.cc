@@ -801,7 +801,7 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
           const int y2 = (y1 == size.height - 1) ? size.height - 2 : y1 + 1;
 
           const _Tp1 * __restrict s0 = (const _Tp1 *)(bayer_base + y0 * src_stride);
-          const _Tp1 * __restrict s1 = (const _Tp1 *)(bayer_base + y1 * src_stride);
+          const _Tp1 * __restrict s1   = (const _Tp1 *)(bayer_base + y1 * src_stride);
           const _Tp1 * __restrict s2 = (const _Tp1 *)(bayer_base + y2 * src_stride);
           _Tp2 * __restrict dstp = (_Tp2 *)(dst_base + y1 * dst_stride);
 
@@ -815,40 +815,40 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
             dstp += 6;
 
             for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
-              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
-              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
-              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
-              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
-              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
-              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2);
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // B
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]); // R
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2); // B
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]); // G
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2); // R
             }
 
             if (size.width > 2) {
               const int x = size.width - 2;
-              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
-              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
-              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
-              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
-              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
-              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2);
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // B
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]); // R
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2); // B
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]); // G
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2); // R
             }
           }
           else { // G B
-            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2);
-            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]);
-            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2);
-            dstp[3] = cv::saturate_cast<_Tp2>(s1[1]);
-            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4);
-            dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4);
+            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2); // B
+            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]); // G
+            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2); // R
+            dstp[3] = cv::saturate_cast<_Tp2>(s1[1]); // B
+            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4); // G
+            dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4); // R
             dstp += 6;
 
             for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
-              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
-              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
-              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
-              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]);
-              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4);
-              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4);
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2); // B
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]); // G
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2); // R
+              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]); // B
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
+              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // R
             }
 
             if (size.width > 2) {

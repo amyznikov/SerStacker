@@ -86,7 +86,6 @@ const c_enum_member * members_of<c_fft_routine::DisplayType>()
 
   static const c_enum_member members[] = {
       {c_fft_routine::DisplayMagnitude, "Magnitude", "Display spectrum magnitude"},
-      {c_fft_routine::DisplayPower, "Power", "Display power spectrum"},
       {c_fft_routine::DisplayPhase, "Phase", "Display phase spectrum"},
       {c_fft_routine::DisplayReal, "Real", "Display Real part of spectrum"},
       {c_fft_routine::DisplayImag, "Imag", "Display Imaginary part of spectrum"},
@@ -127,6 +126,7 @@ bool c_fft_routine::serialize(c_config_setting settings, bool save)
 
 bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  const cv::Size size = image.size();
   const int cn = image.channels();
 
   std::vector<cv::Mat> channels(cn);
@@ -147,7 +147,16 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
   }
 
   for( int c = 0; c < cn; ++c ) {
-    cv::dft(channels[c], channels[c], flags);
+
+    if ( !_ppsDecomposition ) {
+      cv::dft(channels[c], channels[c], flags);
+    }
+    else {
+      if ( VLAP.size() != size ) {
+        fftGenerateDiscreteLaplacianFilter(VLAP, size, false);
+      }
+      fftPPSDecomposition(channels[c], VLAP, channels[c], cv::noArray());
+    }
   }
 
   switch (_outputDisplay) {
@@ -161,18 +170,6 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
         }
       }
       break;
-
-    case DisplayPower:
-      for( int c = 0; c < cn; ++c ) {
-        if ( channels[c].channels() == 2 ) {
-          fftSpectrumPower(channels[c], channels[c], _centerDC);
-        }
-        else {
-          fftSpectrumPowerCCS(channels[c], channels[c], _centerDC);
-        }
-      }
-      break;
-
 
     case DisplayPolar:
       for( int c = 0; c < cn; ++c ) {

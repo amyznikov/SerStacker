@@ -76,3 +76,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # ----------------------------------------------------------------------------
+
+#set_source_files_properties(
+#    average/c_frame_accumulation.cc
+#    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/c_frame_accumulation_vec_report.txt"
+#)

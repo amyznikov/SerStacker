@@ -127,6 +127,13 @@ bool fftGenerateMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
     double fwhm, double beta, double gain,
     bool inverse, bool centerDC);
 
+// Space Isotropic Dual-Moffat (Core + Halo) parameterized by core FWHM and relative halo scale
+// PSF_total ~ (1 - halo_weight) * Moffat(fwhm, beta) + halo_weight * Moffat(fwhm * halo_scale, beta2)
+bool fftGenerateDualMoffatFilter(cv::OutputArray dst, const cv::Size & fftSize,
+    double fwhm, double beta,
+    double halo_scale, double beta2, double halo_weight,
+    double gain, bool inverse, bool centerDC);
+
 bool fftGenerateLaplacianFilter(cv::OutputArray dst, const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
 

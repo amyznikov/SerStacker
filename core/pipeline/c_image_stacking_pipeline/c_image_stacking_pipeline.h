@@ -56,6 +56,7 @@ struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method = frame_accumulation_weighted_average;
   c_cfa_drizzle::SCALE drizzle_scale = c_cfa_drizzle::SCALE_10x;
+  float drizzle_pixfrac = -1;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
 };

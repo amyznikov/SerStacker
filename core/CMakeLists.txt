@@ -78,6 +78,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # ----------------------------------------------------------------------------
 
 #set_source_files_properties(
-#    average/c_frame_accumulation.cc
-#    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/c_frame_accumulation_vec_report.txt"
+#    proc/upscale_remap.cc
+#    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/upscale_remap_report.txt"
+#)
+
+#set_source_files_properties(
+#    proc/area_remap.cc
+#    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/area_remap_report.txt"
 #)

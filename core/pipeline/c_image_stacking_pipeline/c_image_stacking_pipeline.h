@@ -34,8 +34,10 @@ enum frame_accumulation_method
 enum frame_upscale_option
 {
   frame_upscale_none = 0,
-  frame_upscale_pyrUp = 1,
-  frame_upscale_x15 = 2,
+  frame_upscale_x15 = 1,
+  frame_upscale_x20 = 2,
+  frame_upscale_x30 = 3,
+  frame_upscale_x40 = 4,
 };
 
 struct c_image_stacking_input_options :

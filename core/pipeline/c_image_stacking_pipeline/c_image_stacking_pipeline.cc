@@ -21,13 +21,15 @@
 #include <core/proc/reduce_channels.h>
 #include <core/proc/fft.h>
 #include <core/proc/focus.h>
+#include <core/proc/area_remap.h>
+#include <core/proc/upscale_remap.h>
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
 #include <core/readdir.h>
 #include <core/get_time.h>
 #include <core/ssprintf.h>
 #include <core/io/c_stdio_file.h>
-#include <tbb/tbb.h>
+//#include <tbb/tbb.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +63,10 @@ const c_enum_member * members_of<frame_upscale_option>()
 {
   static const c_enum_member members[] = {
       {frame_upscale_none, "none", },
-      {frame_upscale_pyrUp, "x2.0", },
       {frame_upscale_x15, "x1.5", },
+      {frame_upscale_x20, "x2.0", },
+      {frame_upscale_x30, "x3.0", },
+      {frame_upscale_x40, "x4.0", },
       {frame_upscale_none},
   };
   return members;
@@ -1331,22 +1335,77 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
         if ( !current_remap.empty() ) {
 
-          if ( !_generating_master_frame && _upscale_options.upscale != frame_upscale_none ) {
+//          if ( _generating_master_frame || _upscale_options.upscale == frame_upscale_none ) {
+//            _frame_registration->custom_remap(current_remap,
+//                current_frame, current_frame,
+//                current_weights, current_weights,
+//                registration_options.interpolation,
+//                _generating_master_frame ? ECC_BORDER_REFLECT101 : registration_options.border_mode,
+//                registration_options.border_value);
+//          }
+//          else
+          {
 
-            upscale_remap(_upscale_options.upscale, current_remap, current_remap);
+            cv::Size dstSize = current_remap.size();
 
-            if ( canceled() ) {
-              set_status_msg("canceled");
-              break;
+            if ( !_generating_master_frame && _upscale_options.upscale != frame_upscale_none ) {
+              switch(_upscale_options.upscale) {
+                case frame_upscale_x15:
+                  dstSize.width = dstSize.width * 3 / 2;
+                  dstSize.height = dstSize.height * 3 / 2;
+                  break;
+                case frame_upscale_x20:
+                  dstSize.width = dstSize.width * 2;
+                  dstSize.height = dstSize.height * 2;
+                  break;
+                case frame_upscale_x30:
+                  dstSize.width = dstSize.width * 3;
+                  dstSize.height = dstSize.height * 3;
+                  break;
+                case frame_upscale_x40:
+                  dstSize.width = dstSize.width * 4;
+                  dstSize.height = dstSize.height * 4;
+                  break;
+              }
+
+              if ( !upscaleRemap(current_remap, current_remap, dstSize) ) {
+                CF_ERROR("upscaleRemap() fails");
+                return false;
+              }
             }
+
+//            CF_DEBUG("[F %d] INPUT: \n"
+//                "  current_frame      : %dx%d\n"
+//                "  current_weights    : %dx%d\n"
+//                "  current_mask       : %dx%d\n"
+//                "  current_binary_mask: %dx%d",
+//                curpos,
+//                current_frame.cols, current_frame.rows,
+//                current_weights.cols, current_weights.rows,
+//                current_mask.cols, current_mask.rows,
+//                current_binary_mask.cols, current_binary_mask.rows);
+
+            if ( !areaRemap(current_frame, current_weights, current_remap, current_frame, current_weights) ) {
+              CF_ERROR("areaRemap() fails");
+              return false;
+            }
+
+//            CF_DEBUG("[F %d] OUTPUT: \n"
+//                "  current_frame      : %dx%d\n"
+//                "  current_weights    : %dx%d\n"
+//                "  current_mask       : %dx%d\n"
+//                "  current_binary_mask: %dx%d",
+//                curpos,
+//                current_frame.cols, current_frame.rows,
+//                current_weights.cols, current_weights.rows,
+//                current_mask.cols, current_mask.rows,
+//                current_binary_mask.cols, current_binary_mask.rows);
           }
 
-          _frame_registration->custom_remap(current_remap,
-              current_frame, current_frame,
-              current_weights, current_weights,
-              registration_options.interpolation,
-              _generating_master_frame ? ECC_BORDER_REFLECT101 : registration_options.border_mode,
-              registration_options.border_value);
+          if ( canceled() ) {
+            set_status_msg("canceled");
+            break;
+          }
         }
 
         if( !save_aligned_video(current_frame, current_weights, input_sequence->current_pos() - 1) ) {
@@ -1499,7 +1558,7 @@ void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
     }
     break;
   }
-  case frame_upscale_pyrUp: {
+  case frame_upscale_x20: {
     if( !srcmap.empty() && dstmap.needed() ) {
       cv::pyrUp(srcmap, dstmap);
     }
@@ -1529,7 +1588,7 @@ void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
     }
     break;
   }
-  case frame_upscale_pyrUp:
+  case frame_upscale_x20:
   {
     if( !srcmap.empty() && dstmap.needed() ) {
       cv::pyrUp(srcmap, dstmap);

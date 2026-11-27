@@ -157,4 +157,10 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image,
 bool bayer_denoise(cv::Mat & image, double variation_threshold,
     COLORID color_id, bool returnBayerPlanes = false);
 
+
+bool debayer_ea(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid, int ddepth = -1);
+
+bool interpolate_bayer_planes_ea(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid, int ddepth = -1);
 #endif /* __debayer_h__ */

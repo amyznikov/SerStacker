@@ -866,12 +866,13 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
     return false;
   }
 
-  const int cfa_lut[2][2] = {
-      { cfa_lookup[0][0], cfa_lookup[0][1] },
-      { cfa_lookup[1][0], cfa_lookup[1][1] }
-  };
 
   parallel_for(0, acc_rows, [=](const auto & range) {
+
+    const int cfa_lut[2][2] = {
+        { cfa_lookup[0][0], cfa_lookup[0][1] },
+        { cfa_lookup[1][0], cfa_lookup[1][1] }
+    };
 
     // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
     const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
@@ -893,9 +894,11 @@ static bool _cfa_accumulate_core(cv::InputArray _cfa_image,
       float rwy[4] = {0.0f, 1.0f, 0.0f, 0.0f};
 
       if constexpr ( _RmapMode == RmapMode::Direct ) {
+        // remap.size() == acc.size()
         rmp1 = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
       }
       else if constexpr ( _RmapMode == RmapMode::Scaled ) {
+        // remap.size() == cfa_image.size()
         const float clamped_rmap_y = std::clamp(rmap_y, 0.0f, float(cfa_rows - 1));
         const int ry1 = cvFloor(clamped_rmap_y);
         const int ry0 = std::max(ry1 - 1, 0);

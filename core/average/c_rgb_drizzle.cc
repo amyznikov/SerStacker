@@ -21,9 +21,18 @@
 #endif // ALWAYS_INLINE
 
 
+namespace {
+// Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
+struct alignas(16) XTap {
+  int x0;
+  float wx0;
+  float wx1;
+  float wx2;
+};
+
 // weights for the Catmull-Rom bicubic spline (a = -0.5) for t in [0, 1]
-ALWAYS_INLINE
-static void catmull_rom_weights(float t, float w[4])
+static ALWAYS_INLINE
+void catmull_rom_weights(float t, float w[4])
 {
   const float t2 = t * t;
   const float t3 = t * t * t;
@@ -32,6 +41,138 @@ static void catmull_rom_weights(float t, float w[4])
   w[2] = 0.5f * t + 2.0f * t2 - 1.5f * t3;
   w[3] = -0.5f * t2 + 0.5f * t3;
 }
+
+static void generate_xtabs(const cv::Size & srcSize, const cv::Size & dstSize, std::vector<XTap> & xtabs,
+    int & out_x_begin, int & out_x_end)
+{
+  int x_begin = 0;
+  int x_end = dstSize.width;
+
+  const int max_x = srcSize.width - 1;
+  const float scale_x = float(srcSize.width) / float(dstSize.width);
+
+  xtabs.resize(dstSize.width);
+
+  for ( int x = 0; x < dstSize.width; ++x ) {
+    const float fx = (float(x) + 0.5f) * scale_x - 0.5f;
+    const int xc = cvFloor(fx + 0.5f);
+    const float dx = fx - xc; // [-0.5, 0.5]
+
+    if ( xc - 1 < 0 ) {
+      x_begin = x + 1;
+    }
+    if ( xc + 1 > max_x && x < x_end ) {
+      x_end = x;
+    }
+
+    XTap & tap = xtabs[x];
+    tap.x0 = xc - 1;
+    tap.wx0 = 0.5f * (0.5f - dx) * (0.5f - dx);
+    tap.wx1 = 0.75f - dx * dx;
+    tap.wx2 = 0.5f * (0.5f + dx) * (0.5f + dx);
+  }
+
+  if ( x_begin > x_end ) {
+    x_begin = x_end;
+  }
+}
+
+template<class _Tp, class _Tpw>
+static ALWAYS_INLINE
+void accumualate_pixel(float px, float py,
+    const int src_cols, const int src_rows,
+    const float half_drop, const float half_acc_x, const float half_acc_y,
+    const uint8_t * src_base, const size_t src_stride,
+    const uint8_t * wmap_base, const size_t wmap_stride,
+    float * __restrict accp, float * __restrict cntrp,
+    const int src_channels, const int wmap_channels)
+{
+  constexpr bool has_weights = !std::is_void_v<_Tpw>;
+
+  const bool in_bounds = (px >= -0.5f) & (px <= src_cols - 0.5f) & (py >= -0.5f) & (py <= src_rows - 0.5f);
+  const float valid_mask = in_bounds ? 1.0f : 0.0f;
+
+  const int sx0 = cvFloor(px), sy0 = cvFloor(py);
+  const int sx1 = sx0 + 1, sy1 = sy0 + 1;
+  const int ix0 = std::clamp(sx0, 0, src_cols - 1);
+  const int iy0 = std::clamp(sy0, 0, src_rows - 1);
+  const int ix1 = std::clamp(sx1, 0, src_cols - 1);
+  const int iy1 = std::clamp(sy1, 0, src_rows - 1);
+
+  const _Tp * const src0 = (const _Tp*) (src_base + iy0 * src_stride);
+  const _Tp * const src1 = (const _Tp*) (src_base + iy1 * src_stride);
+  const _Tp * const s00 = src0 + ix0 * src_channels;
+  const _Tp * const s01 = src0 + ix1 * src_channels;
+  const _Tp * const s10 = src1 + ix0 * src_channels;
+  const _Tp * const s11 = src1 + ix1 * src_channels;
+
+  const float ax0 = px - half_acc_x, ax1 = px + half_acc_x;
+  const float ay0 = py - half_acc_y, ay1 = py + half_acc_y;
+  const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
+  const float ov_x1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
+  const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop));
+  const float ov_y1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop));
+  const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
+  const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
+  const float wy0 = (sy0 >= 0) ? (ov_y0 * valid_mask) : 0.0f;
+  const float wy1 = (sy1 < src_rows) ? (ov_y1 * valid_mask) : 0.0f;
+
+  if constexpr ( !has_weights ) {
+    const float w00 = wy0 * wx0, w01 = wy0 * wx1;
+    const float w10 = wy1 * wx0, w11 = wy1 * wx1;
+    const float wsum = w00 + w01 + w10 + w11;
+
+    if( wmap_channels == 1 ) {
+      *cntrp += wsum;
+      for( int c = 0; c < src_channels; ++c ) {
+        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        accp[c] += val;
+      }
+    }
+    else {
+      for( int c = 0; c < src_channels; ++c ) {
+        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        accp[c] += val;
+        cntrp[c] += wsum;
+      }
+    }
+  }
+  else { // wmap_channels == cntr_channels always when has_weights
+    const _Tpw * const m00 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix0 * wmap_channels;
+    const _Tpw * const m01 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix1 * wmap_channels;
+    const _Tpw * const m10 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix0 * wmap_channels;
+    const _Tpw * const m11 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix1 * wmap_channels;
+
+    if( wmap_channels == 1 ) {
+      const float w00 = wy0 * wx0 * m00[0];
+      const float w01 = wy0 * wx1 * m01[0];
+      const float w10 = wy1 * wx0 * m10[0];
+      const float w11 = wy1 * wx1 * m11[0];
+      const float wsum = w00 + w01 + w10 + w11;
+      *cntrp += wsum;
+      for( int c = 0; c < src_channels; ++c ) {
+        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        accp[c] += val;
+      }
+    }
+    else {
+      for( int c = 0; c < src_channels; ++c ) {
+        const float w00 = wy0 * wx0 * m00[c];
+        const float w01 = wy0 * wx1 * m01[c];
+        const float w10 = wy1 * wx0 * m10[c];
+        const float w11 = wy1 * wx1 * m11[c];
+        const float wsum = w00 + w01 + w10 + w11;
+        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        cntrp[c] += wsum;
+        accp[c] += val;
+      }
+    }
+  }
+}
+
+} // namespace
+
+
 
 template<class _Tp, class _Tpw>
 static bool _rgb_drizzle_core(cv::InputArray _src_image,
@@ -74,7 +215,7 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const int src_channels = _src_image.channels();
   const int acc_channels = _acc.channels();
   const int cntr_channels = _cntr.channels();
-  const int wmap_channels = has_weights ? 0 : weights.channels();
+  const int wmap_channels = has_weights ? weights.channels() :  1;
 
   if ( src_channels != acc_channels ) {
     CF_ERROR("Bad src image channels: %d. Must be acc_channels=%d", src_channels, acc_channels);
@@ -112,6 +253,8 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const uint8_t * const rmap_base = rmap.empty() ? nullptr : rmap.ptr();
   const size_t rmap_stride = rmap.empty() ? 0 : rmap.step;
 
+  const cv::Size srcSize = src.size();
+  const cv::Size dstSize = acc.size();
   const int src_rows = src.rows;
   const int src_cols = src.cols;
   const int acc_rows = acc.rows;
@@ -125,6 +268,12 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
     return false;
   }
 
+//  // Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
+//  std::vector<XTap> xtabs(dstSize.width);
+//  int x_begin = 0, x_end = dstSize.width;
+//  generate_xtabs(srcSize, dstSize, xtabs, x_begin, x_end);
+//
+//  const XTap * const __restrict xtabs_ptr = xtabs.data();
   parallel_for(0, acc_rows, [=](const auto & range) {
 
     // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
@@ -189,62 +338,70 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
           py = p[1];
         }
 
-        const bool in_bounds = (px >= -0.5f) & (px <= src_cols - 0.5f) & (py >= -0.5f) & (py <= src_rows - 0.5f);
+        accumualate_pixel<_Tp, _Tpw>(px, py, src_cols, src_rows,
+            half_drop, half_acc_x, half_acc_y,
+            src_base, src_stride,
+            wmap_base, wmap_stride,
+            accp, cntrp,
+            src_channels, wmap_channels);
 
-        const int sx0 = cvFloor(px), sy0 = cvFloor(py);
-        const int sx1 = sx0 + 1, sy1 = sy0 + 1;
 
-        const int ix0 = std::clamp(sx0, 0, src_cols - 1);
-        const int iy0 = std::clamp(sy0, 0, src_rows - 1);
-        const int ix1 = std::clamp(sx1, 0, src_cols - 1);
-        const int iy1 = std::clamp(sy1, 0, src_rows - 1);
-
-        const float ax0 = px - half_acc_x;
-        const float ax1 = px + half_acc_x;
-        const float ay0 = py - half_acc_y;
-        const float ay1 = py + half_acc_y;
-
-        const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
-        const float ov_x1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
-        const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop));
-        const float ov_y1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop));
-
-        const float valid_mask = in_bounds ? 1.0f : 0.0f;
-        const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
-        const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
-        const float wy0 = (sy0 >= 0) ? (ov_y0 * valid_mask) : 0.0f;
-        const float wy1 = (sy1 < src_rows) ? (ov_y1 * valid_mask) : 0.0f;
-
-        float w00, w01, w10, w11;
-
-        if constexpr (!has_weights ) {
-          w00 = wy0 * wx0;
-          w01 = wy0 * wx1;
-          w10 = wy1 * wx0;
-          w11 = wy1 * wx1;
-        }
-        else {
-          const _Tpw * const m0 = (const _Tpw * )(wmap_base + iy0 * wmap_stride);
-          const _Tpw * const m1 = (const _Tpw * )(wmap_base + iy1 * wmap_stride);
-          w00 = wy0 * wx0 * m0[ix0];
-          w01 = wy0 * wx1 * m0[ix1];
-          w10 = wy1 * wx0 * m1[ix0];
-          w11 = wy1 * wx1 * m1[ix1];
-        }
-
-        const _Tp * const src0 = (const _Tp *)(src_base + iy0 * src_stride);
-        const _Tp * const src1 = (const _Tp *)(src_base + iy1 * src_stride);
-        const _Tp * const s00 = src0 + ix0 * cn;
-        const _Tp * const s01 = src0 + ix1 * cn;
-        const _Tp * const s10 = src1 + ix0 * cn;
-        const _Tp * const s11 = src1 + ix1 * cn;
-
-        const float wsum = w00 + w01 + w10 + w11;
-        *cntrp += wsum;
-        for ( int c = 0; c < cn; ++c ) {
-          const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-          accp[c] += val;
-        }
+//        const bool in_bounds = (px >= -0.5f) & (px <= src_cols - 0.5f) & (py >= -0.5f) & (py <= src_rows - 0.5f);
+//
+//        const int sx0 = cvFloor(px), sy0 = cvFloor(py);
+//        const int sx1 = sx0 + 1, sy1 = sy0 + 1;
+//
+//        const int ix0 = std::clamp(sx0, 0, src_cols - 1);
+//        const int iy0 = std::clamp(sy0, 0, src_rows - 1);
+//        const int ix1 = std::clamp(sx1, 0, src_cols - 1);
+//        const int iy1 = std::clamp(sy1, 0, src_rows - 1);
+//
+//        const float ax0 = px - half_acc_x;
+//        const float ax1 = px + half_acc_x;
+//        const float ay0 = py - half_acc_y;
+//        const float ay1 = py + half_acc_y;
+//
+//        const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
+//        const float ov_x1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
+//        const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop));
+//        const float ov_y1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop));
+//
+//        const float valid_mask = in_bounds ? 1.0f : 0.0f;
+//        const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
+//        const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
+//        const float wy0 = (sy0 >= 0) ? (ov_y0 * valid_mask) : 0.0f;
+//        const float wy1 = (sy1 < src_rows) ? (ov_y1 * valid_mask) : 0.0f;
+//
+//        float w00, w01, w10, w11;
+//
+//        if constexpr (!has_weights ) {
+//          w00 = wy0 * wx0;
+//          w01 = wy0 * wx1;
+//          w10 = wy1 * wx0;
+//          w11 = wy1 * wx1;
+//        }
+//        else {
+//          const _Tpw * const m0 = (const _Tpw * )(wmap_base + iy0 * wmap_stride);
+//          const _Tpw * const m1 = (const _Tpw * )(wmap_base + iy1 * wmap_stride);
+//          w00 = wy0 * wx0 * m0[ix0];
+//          w01 = wy0 * wx1 * m0[ix1];
+//          w10 = wy1 * wx0 * m1[ix0];
+//          w11 = wy1 * wx1 * m1[ix1];
+//        }
+//
+//        const _Tp * const src0 = (const _Tp *)(src_base + iy0 * src_stride);
+//        const _Tp * const src1 = (const _Tp *)(src_base + iy1 * src_stride);
+//        const _Tp * const s00 = src0 + ix0 * cn;
+//        const _Tp * const s01 = src0 + ix1 * cn;
+//        const _Tp * const s10 = src1 + ix0 * cn;
+//        const _Tp * const s11 = src1 + ix1 * cn;
+//
+//        const float wsum = w00 + w01 + w10 + w11;
+//        *cntrp += wsum;
+//        for ( int c = 0; c < cn; ++c ) {
+//          const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+//          accp[c] += val;
+//        }
       }
     }
   });

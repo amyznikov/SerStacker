@@ -22,6 +22,7 @@
 
 
 namespace {
+
 // Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
 struct alignas(16) XTap {
   int x0;
@@ -29,18 +30,6 @@ struct alignas(16) XTap {
   float wx1;
   float wx2;
 };
-
-// weights for the Catmull-Rom bicubic spline (a = -0.5) for t in [0, 1]
-static ALWAYS_INLINE
-void catmull_rom_weights(float t, float w[4])
-{
-  const float t2 = t * t;
-  const float t3 = t * t * t;
-  w[0] = -0.5f * t + t2 - 0.5f * t3;
-  w[1] = 1.0f - 2.5f * t2 + 1.5f * t3;
-  w[2] = 0.5f * t + 2.0f * t2 - 1.5f * t3;
-  w[3] = -0.5f * t2 + 0.5f * t3;
-}
 
 static void generate_xtabs(const cv::Size & srcSize, const cv::Size & dstSize, std::vector<XTap> & xtabs,
     int & out_x_begin, int & out_x_end)
@@ -75,6 +64,9 @@ static void generate_xtabs(const cv::Size & srcSize, const cv::Size & dstSize, s
   if ( x_begin > x_end ) {
     x_begin = x_end;
   }
+
+  out_x_begin = x_begin;
+  out_x_end = x_end;
 }
 
 template<class _Tp, class _Tpw>
@@ -173,7 +165,6 @@ void accumualate_pixel(float px, float py,
 } // namespace
 
 
-
 template<class _Tp, class _Tpw>
 static bool _rgb_drizzle_core(cv::InputArray _src_image,
     cv::InputOutputArray _acc, // cv::Mat_<Tp, acc_channels>
@@ -183,29 +174,29 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
 {
   constexpr bool has_weights = !std::is_void_v<_Tpw>;
 
-  if ( _src_image.empty() ) {
+  if( _src_image.empty() ) {
     CF_ERROR("Bad _src_image: empty");
     return false;
   }
 
-  if ( _acc.empty() ) {
+  if( _acc.empty() ) {
     CF_ERROR("Bad _acc: not initialized");
     return false;
   }
 
-  if ( _cntr.empty() ) {
+  if( _cntr.empty() ) {
     CF_ERROR("Bad _cntr: not initialized");
     return false;
   }
 
-  if ( !rmap.empty() && rmap.size() != _src_image.size()) {
+  if( !rmap.empty() && rmap.size() != _src_image.size() ) {
     CF_ERROR("Bad rmap size: %dx%d. Must be %dx%d", rmap.cols, rmap.rows,
         _src_image.cols(), _src_image.rows());
     return false;
   }
 
-  if constexpr (has_weights) {
-    if ( weights.size() != _src_image.size()) {
+  if constexpr ( has_weights ) {
+    if( weights.size() != _src_image.size() ) {
       CF_ERROR("Bad weights size: %dx%d. Must be %dx%d", weights.cols(), weights.rows(),
           _src_image.cols(), _src_image.rows());
       return false;
@@ -215,20 +206,20 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const int src_channels = _src_image.channels();
   const int acc_channels = _acc.channels();
   const int cntr_channels = _cntr.channels();
-  const int wmap_channels = has_weights ? weights.channels() :  1;
+  const int wmap_channels = has_weights ? weights.channels() : 1;
 
-  if ( src_channels != acc_channels ) {
+  if( src_channels != acc_channels ) {
     CF_ERROR("Bad src image channels: %d. Must be acc_channels=%d", src_channels, acc_channels);
     return false;
   }
 
-  if ( cntr_channels != 1 && cntr_channels != acc_channels ) {
+  if( cntr_channels != 1 && cntr_channels != acc_channels ) {
     CF_ERROR("Bad cntr channels: %d. Must be 1 or acc_channels=%d", cntr_channels, acc_channels);
     return false;
   }
 
-  if constexpr (has_weights) {
-    if ( wmap_channels != 1 && wmap_channels != src_channels ) {
+  if constexpr ( has_weights ) {
+    if( wmap_channels != 1 && wmap_channels != src_channels ) {
       CF_ERROR("Bad wmap channels: %d. Must be 1 or src_channels=%d", wmap_channels, src_channels);
       return false;
     }
@@ -263,148 +254,131 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const float step_y = float(src_rows) / float(acc_rows);
 
   // Ensure 1 pixel of the sensor array covers no more than 2x2 pixels of the CFA
-  if ( step_x > 1.0f || step_y > 1.0f ) {
+  if( step_x > 1.0f || step_y > 1.0f ) {
     CF_ERROR("Downscaling is not supported in 2x2 drizzle (step_x=%f, step_y=%f)", step_x, step_y);
     return false;
   }
 
-//  // Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
-//  std::vector<XTap> xtabs(dstSize.width);
-//  int x_begin = 0, x_end = dstSize.width;
-//  generate_xtabs(srcSize, dstSize, xtabs, x_begin, x_end);
-//
-//  const XTap * const __restrict xtabs_ptr = xtabs.data();
+//  CF_DEBUG("step_x=%f, step_y=%f", step_x, step_y);
+
+  // Quadratic B-spline interpolation
+  // Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
+  std::vector<XTap> xtabs(dstSize.width);
+  int x_begin = 0, x_end = dstSize.width;
+  if( rmap_base ) {
+    generate_xtabs(srcSize, dstSize, xtabs, x_begin, x_end);
+  }
+
+  const XTap * const __restrict xtabs_ptr = xtabs.data();
+
   parallel_for(0, acc_rows, [=](const auto & range) {
 
     // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
-    const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
-    const float half_acc_x = 0.5f * step_x;
-    const float half_acc_y = 0.5f * step_y;
-    const float offset_x = 0.5f * step_x - 0.5f;
-    const float offset_y = 0.5f * step_y - 0.5f;
-    const int cn = src_channels;
+      const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
+      const float half_acc_x = 0.5f * step_x;
+      const float half_acc_y = 0.5f * step_y;
+      const float offset_x = 0.5f * step_x - 0.5f;
+      const float offset_y = 0.5f * step_y - 0.5f;
+      const int cn = src_channels;
+      const int xbeg = x_begin;
+      const int xend = x_end;
+      const int max_x = src_cols - 1;
+      const int max_y = src_rows - 1;
 
-    for ( int y = rbegin(range); y < rend(range); ++y ) {
-      float * __restrict accp = (float *)(acc_base + y * acc_stride);
-      float * __restrict cntrp = (float *)(cntr_base + y * cntr_stride);
-      const float rmap_y = y * step_y + offset_y;
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        float * __restrict accp = (float *)(acc_base + y * acc_stride);
+        float * __restrict cntrp = (float *)(cntr_base + y * cntr_stride);
+        const float rmap_y = y * step_y + offset_y;
 
-      const cv::Vec2f * rmp0 = nullptr;
-      const cv::Vec2f * rmp1 = nullptr;
-      const cv::Vec2f * rmp2 = nullptr;
-      const cv::Vec2f * rmp3 = nullptr;
-      float rwy[4] = {0.0f, 1.0f, 0.0f, 0.0f};
-
-      if ( rmap_base ) { // remap.size() == src_image.size()
-        const float clamped_rmap_y = std::clamp(rmap_y, 0.0f, float(src_rows - 1));
-        const int ry1 = cvFloor(clamped_rmap_y);
-        const int ry0 = std::max(ry1 - 1, 0);
-        const int ry2 = std::min(ry1 + 1, src_rows - 1);
-        const int ry3 = std::min(ry1 + 2, src_rows - 1);
-
-        catmull_rom_weights(clamped_rmap_y - ry1, rwy);
-
-        rmp0 = (const cv::Vec2f *)(rmap_base + ry0 * rmap_stride);
-        rmp1 = (const cv::Vec2f *)(rmap_base + ry1 * rmap_stride);
-        rmp2 = (const cv::Vec2f *)(rmap_base + ry2 * rmap_stride);
-        rmp3 = (const cv::Vec2f *)(rmap_base + ry3 * rmap_stride);
-      }
-
-      for ( int x = 0; x < acc_cols; ++x, accp += cn, ++cntrp ) {
-        const float rmap_x = x * step_x + offset_x;
-
-        float px, py;
         if ( !rmap_base ) { // no remap
-          px = rmap_x;
-          py = rmap_y;
+          for ( int x = 0; x < acc_cols; ++x, accp += cn, ++cntrp ) {
+            const float rmap_x = x * step_x + offset_x;
+            accumualate_pixel<_Tp, _Tpw>(rmap_x, rmap_y, src_cols, src_rows,
+                half_drop, half_acc_x, half_acc_y,
+                src_base, src_stride,
+                wmap_base, wmap_stride,
+                accp, cntrp,
+                src_channels, wmap_channels);
+          }
         }
-        else { // Bicubic Catmull-Rom
-          // remap.size() == cfa_image.size()
-          const float rx = std::clamp(rmap_x, 0.0f, float(src_cols - 1));
-          const int rx1 = cvFloor(rx);
-          const int rx0 = std::max(rx1 - 1, 0);
-          const int rx2 = std::min(rx1 + 1, src_cols - 1);
-          const int rx3 = std::min(rx1 + 2, src_cols - 1);
+        else { // Quadratic B-spline interpolation
+          const int yc = cvFloor(rmap_y + 0.5f);
+          const float dy = rmap_y - yc;// [-0.5, 0.5]
 
-          float rwx[4];
-          catmull_rom_weights(rx - rx1, rwx);
+          const int y0 = std::max(0, std::min(yc - 1, max_y));
+          const int y1 = std::max(0, std::min(yc, max_y));
+          const int y2 = std::max(0, std::min(yc + 1, max_y));
 
-          const cv::Vec2f row0 = rmp0[rx0] * rwx[0] + rmp0[rx1] * rwx[1] + rmp0[rx2] * rwx[2] + rmp0[rx3] * rwx[3];
-          const cv::Vec2f row1 = rmp1[rx0] * rwx[0] + rmp1[rx1] * rwx[1] + rmp1[rx2] * rwx[2] + rmp1[rx3] * rwx[3];
-          const cv::Vec2f row2 = rmp2[rx0] * rwx[0] + rmp2[rx1] * rwx[1] + rmp2[rx2] * rwx[2] + rmp2[rx3] * rwx[3];
-          const cv::Vec2f row3 = rmp3[rx0] * rwx[0] + rmp3[rx1] * rwx[1] + rmp3[rx2] * rwx[2] + rmp3[rx3] * rwx[3];
-          const cv::Vec2f p = row0 * rwy[0] + row1 * rwy[1] + row2 * rwy[2] + row3 * rwy[3];
-          px = p[0];
-          py = p[1];
+          const cv::Vec2f * __restrict rmp0 = (const cv::Vec2f *)(rmap_base + y0 * rmap_stride);
+          const cv::Vec2f * __restrict rmp1 = (const cv::Vec2f *)(rmap_base + y1 * rmap_stride);
+          const cv::Vec2f * __restrict rmp2 = (const cv::Vec2f *)(rmap_base + y2 * rmap_stride);
+
+          const float wy0 = 0.5f * (0.5f - dy) * (0.5f - dy);
+          const float wy1 = 0.75f - dy * dy;
+          const float wy2 = 0.5f * (0.5f + dy) * (0.5f + dy);
+
+          // Left edge with bounds checking
+          for ( int x = 0; x < xbeg; ++x, accp += cn, ++cntrp ) {
+            const XTap & t = xtabs_ptr[x];
+            const int x0 = std::max(0, std::min(t.x0, max_x));
+            const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
+            const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
+
+            const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
+            const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
+            const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
+            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
+                half_drop, half_acc_x, half_acc_y,
+                src_base, src_stride,
+                wmap_base, wmap_stride,
+                accp, cntrp,
+                src_channels, wmap_channels);
+          }
+
+          // Central zone with no branching, sequential memory access
+          for ( int x = xbeg; x < xend; ++x, accp += cn, ++cntrp ) {
+            const XTap & t = xtabs_ptr[x];
+            const cv::Vec2f * __restrict p0 = rmp0 + t.x0;
+            const cv::Vec2f * __restrict p1 = rmp1 + t.x0;
+            const cv::Vec2f * __restrict p2 = rmp2 + t.x0;
+
+            const cv::Vec2f v0 = p0[0] * t.wx0 + p0[1] * t.wx1 + p0[2] * t.wx2;
+            const cv::Vec2f v1 = p1[0] * t.wx0 + p1[1] * t.wx1 + p1[2] * t.wx2;
+            const cv::Vec2f v2 = p2[0] * t.wx0 + p2[1] * t.wx1 + p2[2] * t.wx2;
+            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
+                half_drop, half_acc_x, half_acc_y,
+                src_base, src_stride,
+                wmap_base, wmap_stride,
+                accp, cntrp,
+                src_channels, wmap_channels);
+          }
+
+          // Right edge with bounds checking
+          for ( int x = xend; x < acc_cols; ++x, accp += cn, ++cntrp ) {
+            const XTap & t = xtabs_ptr[x];
+            const int x0 = std::max(0, std::min(t.x0, max_x));
+            const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
+            const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
+
+            const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
+            const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
+            const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
+            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
+                half_drop, half_acc_x, half_acc_y,
+                src_base, src_stride,
+                wmap_base, wmap_stride,
+                accp, cntrp,
+                src_channels, wmap_channels);
+          }
         }
-
-        accumualate_pixel<_Tp, _Tpw>(px, py, src_cols, src_rows,
-            half_drop, half_acc_x, half_acc_y,
-            src_base, src_stride,
-            wmap_base, wmap_stride,
-            accp, cntrp,
-            src_channels, wmap_channels);
-
-
-//        const bool in_bounds = (px >= -0.5f) & (px <= src_cols - 0.5f) & (py >= -0.5f) & (py <= src_rows - 0.5f);
-//
-//        const int sx0 = cvFloor(px), sy0 = cvFloor(py);
-//        const int sx1 = sx0 + 1, sy1 = sy0 + 1;
-//
-//        const int ix0 = std::clamp(sx0, 0, src_cols - 1);
-//        const int iy0 = std::clamp(sy0, 0, src_rows - 1);
-//        const int ix1 = std::clamp(sx1, 0, src_cols - 1);
-//        const int iy1 = std::clamp(sy1, 0, src_rows - 1);
-//
-//        const float ax0 = px - half_acc_x;
-//        const float ax1 = px + half_acc_x;
-//        const float ay0 = py - half_acc_y;
-//        const float ay1 = py + half_acc_y;
-//
-//        const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
-//        const float ov_x1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
-//        const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop));
-//        const float ov_y1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop));
-//
-//        const float valid_mask = in_bounds ? 1.0f : 0.0f;
-//        const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
-//        const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
-//        const float wy0 = (sy0 >= 0) ? (ov_y0 * valid_mask) : 0.0f;
-//        const float wy1 = (sy1 < src_rows) ? (ov_y1 * valid_mask) : 0.0f;
-//
-//        float w00, w01, w10, w11;
-//
-//        if constexpr (!has_weights ) {
-//          w00 = wy0 * wx0;
-//          w01 = wy0 * wx1;
-//          w10 = wy1 * wx0;
-//          w11 = wy1 * wx1;
-//        }
-//        else {
-//          const _Tpw * const m0 = (const _Tpw * )(wmap_base + iy0 * wmap_stride);
-//          const _Tpw * const m1 = (const _Tpw * )(wmap_base + iy1 * wmap_stride);
-//          w00 = wy0 * wx0 * m0[ix0];
-//          w01 = wy0 * wx1 * m0[ix1];
-//          w10 = wy1 * wx0 * m1[ix0];
-//          w11 = wy1 * wx1 * m1[ix1];
-//        }
-//
-//        const _Tp * const src0 = (const _Tp *)(src_base + iy0 * src_stride);
-//        const _Tp * const src1 = (const _Tp *)(src_base + iy1 * src_stride);
-//        const _Tp * const s00 = src0 + ix0 * cn;
-//        const _Tp * const s01 = src0 + ix1 * cn;
-//        const _Tp * const s10 = src1 + ix0 * cn;
-//        const _Tp * const s11 = src1 + ix1 * cn;
-//
-//        const float wsum = w00 + w01 + w10 + w11;
-//        *cntrp += wsum;
-//        for ( int c = 0; c < cn; ++c ) {
-//          const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-//          accp[c] += val;
-//        }
       }
-    }
-  });
+    });
 
   return true;
 }

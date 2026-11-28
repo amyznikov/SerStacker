@@ -44,8 +44,12 @@ const c_enum_member* members_of<frame_accumulation_method>()
       { frame_accumulation_weighted_average, "WEIGHTED_AVERAGE",
           "Weighted average with weights proportional to local gradients" },
 
+      { frame_accumulation_rgb_drizzle, "RGB_DRIZZLE",
+          "Experimental code for RGB area drizzle remap" },
+
       { frame_accumulation_cfa_drizzle, "CFA_DRIZZLE",
           "Experimental code for CFA pattern drizzle" },
+
 
       { frame_accumulation_focus_stack, "focus_stack",
           "Focus stacking based on paper of Wang and Chang 2011" },
@@ -58,19 +62,19 @@ const c_enum_member* members_of<frame_accumulation_method>()
   return members;
 }
 
-template<>
-const c_enum_member * members_of<frame_upscale_option>()
-{
-  static const c_enum_member members[] = {
-      {frame_upscale_none, "none", },
-      {frame_upscale_x15, "x1.5", },
-      {frame_upscale_x20, "x2.0", },
-      {frame_upscale_x30, "x3.0", },
-      {frame_upscale_x40, "x4.0", },
-      {frame_upscale_none},
-  };
-  return members;
-}
+//template<>
+//const c_enum_member * members_of<frame_upscale_option>()
+//{
+//  static const c_enum_member members[] = {
+//      {frame_upscale_none, "none", },
+//      {frame_upscale_x15, "x1.5", },
+//      {frame_upscale_x20, "x2.0", },
+//      {frame_upscale_x30, "x3.0", },
+//      {frame_upscale_x40, "x4.0", },
+//      {frame_upscale_none},
+//  };
+//  return members;
+//}
 
 template<>
 const c_enum_member* members_of<c_image_stacking_pipeline::STACKING_STAGE>()
@@ -225,7 +229,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.support_scale = 4;
     _stack_options.registration.eccflow.max_pyramid_level = 3;
 
-    _upscale_options.upscale = frame_upscale_none;
+    // _upscale_options.upscale = frame_upscale_none;
     return true;
   }
 
@@ -263,7 +267,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.min_image_size = -1;
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
 
-    _upscale_options.upscale = frame_upscale_none;
+    //_upscale_options.upscale = frame_upscale_none;
     return true;
   }
 
@@ -328,6 +332,8 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
       return c_frame_accumulation::ptr(new c_laplacian_pyramid_focus_stacking(opts.fs));
     case frame_accumulation_cfa_drizzle:
       return c_frame_accumulation::ptr(new c_cfa_drizzle(opts.drizzle_scale));
+    case frame_accumulation_rgb_drizzle:
+      return c_frame_accumulation::ptr(new c_rgb_drizzle(opts.drizzle_scale));
     default:
       break;
   }
@@ -570,34 +576,42 @@ bool c_image_stacking_pipeline::run_image_stacking()
       if ( true ) {
         // lock_guard lock(mutex());
 
+        CF_DEBUG("X");
+
         if( !_frame_accumulation->compute(avg, msk) ) {
           CF_ERROR("ERROR: frame_accumulation->compute() fails");
         }
         else {
+          CF_DEBUG("X");
           if( _output_options.save_acc ) {
             if( (acc = _frame_accumulation->get_accumulator()).empty() ) {
               CF_ERROR("frame_accumulation->get_accumulator() returned empty acc image");
             }
           }
+          CF_DEBUG("X");
           if( _output_options.save_accw || _output_options.save_substacks ) {
             if( (accw = _frame_accumulation->get_counter()).empty() ) {
               CF_ERROR("frame_accumulation->get_acc_counters() returned empty accw image");
             }
           }
         }
+          CF_DEBUG("X");
       }
 
+      CF_DEBUG("X");
       if ( avg.empty() ) {
         CF_ERROR("NOT SAVING Empty final avg after _frame_accumulation->compute()");
       }
       else {
 
+      CF_DEBUG("X");
         if (  _output_options.save_substacks && _substack_writer.is_open() ) {
           if ( !flush_substack_frame(avg, accw) ) {
             CF_ERROR("ERROR: flush_substack_frame() fails");
           }
         }
 
+      CF_DEBUG("X");
         output_file_name = generate_output_file_name();
         CF_DEBUG("Saving '%s'", output_file_name.c_str());
         if ( !write_image(_output_file_name = output_file_name, _output_options, avg, msk) ) {
@@ -621,6 +635,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
           }
         }
 
+      CF_DEBUG("X");
         if ( _image_processing_options.accumulated_image_processor ) {
           if ( !_image_processing_options.accumulated_image_processor->process(avg, msk) ) {
             CF_ERROR("post-processor '%s' fails", _image_processing_options.accumulated_image_processor->cname());
@@ -642,6 +657,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       }
     }
 
+      CF_DEBUG("X");
     //////////////////
   }
 
@@ -1001,6 +1017,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   const bool is_bayer_accumulate =
       accopts.accumulation_method == frame_accumulation_cfa_drizzle;
 
+  const bool is_drizzle_accumulate =
+      accopts.accumulation_method == frame_accumulation_cfa_drizzle ||
+      accopts.accumulation_method == frame_accumulation_rgb_drizzle;
+
   if ( !input_sequence->seek(startpos) ) {
     CF_ERROR("input_sequence->seek(startpos=%d) fails", startpos);
     return false;
@@ -1331,104 +1351,16 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       current_remap = _frame_registration->current_remap();
 
-      if ( !is_bayer_accumulate ) {
+      if ( !is_drizzle_accumulate && !current_remap.empty() ) {
 
-        if ( !current_remap.empty() ) {
+        _frame_registration->custom_remap(current_remap,
+            current_frame, current_frame,
+            current_weights, current_weights,
+            registration_options.interpolation,
+            _generating_master_frame ? ECC_BORDER_REFLECT101 : registration_options.border_mode,
+            registration_options.border_value);
 
-//          if ( _generating_master_frame || _upscale_options.upscale == frame_upscale_none ) {
-//            _frame_registration->custom_remap(current_remap,
-//                current_frame, current_frame,
-//                current_weights, current_weights,
-//                registration_options.interpolation,
-//                _generating_master_frame ? ECC_BORDER_REFLECT101 : registration_options.border_mode,
-//                registration_options.border_value);
-//          }
-//          else
-          {
-
-            cv::Size dstSize = current_remap.size();
-            float drop_size = 1.0f;
-
-            if ( !_generating_master_frame && _upscale_options.upscale != frame_upscale_none ) {
-              switch(_upscale_options.upscale) {
-                case frame_upscale_x15:
-                  dstSize.width = dstSize.width * 3 / 2;
-                  dstSize.height = dstSize.height * 3 / 2;
-                  drop_size = float(2.0/3.);
-                  break;
-                case frame_upscale_x20:
-                  dstSize.width = dstSize.width * 2;
-                  dstSize.height = dstSize.height * 2;
-                  drop_size = float(1.0/2.);
-                  break;
-                case frame_upscale_x30:
-                  dstSize.width = dstSize.width * 3;
-                  dstSize.height = dstSize.height * 3;
-                  drop_size = float(1.0/3.);
-                  break;
-                case frame_upscale_x40:
-                  dstSize.width = dstSize.width * 4;
-                  dstSize.height = dstSize.height * 4;
-                  drop_size = float(1.0/4.);
-                  break;
-              }
-
-              if ( !upscaleRemap(current_remap, current_remap, dstSize) ) {
-                CF_ERROR("upscaleRemap() fails");
-                return false;
-              }
-            }
-
-            CF_DEBUG("[F %d] INPUT drop_size=%g: \n"
-                "  current_frame      : %dx%d depth=%d channels=%d\n"
-                "  current_weights    : %dx%d depth=%d channels=%d\n"
-                "  current_mask       : %dx%d depth=%d channels=%d\n"
-                "  current_binary_mask: %dx%d depth=%d channels=%d",
-                curpos, drop_size,
-                current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
-                current_weights.cols, current_weights.rows, current_weights.depth(), current_weights.channels(),
-                current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels(),
-                current_binary_mask.cols, current_binary_mask.rows, current_binary_mask.depth(), current_binary_mask.channels());
-
-            if( !areaRemap(current_frame, current_weights, current_remap, current_frame, current_weights, -1, drop_size) ) {
-              CF_ERROR("areaRemap() fails");
-              return false;
-            }
-
-            CF_DEBUG("[F %d] OUTPUT: \n"
-                "  current_frame      : %dx%d depth=%d channels=%d\n"
-                "  current_weights    : %dx%d depth=%d channels=%d\n"
-                "  current_mask       : %dx%d depth=%d channels=%d\n"
-                "  current_binary_mask: %dx%d depth=%d channels=%d",
-                curpos,
-                current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
-                current_weights.cols, current_weights.rows, current_weights.depth(), current_weights.channels(),
-                current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels(),
-                current_binary_mask.cols, current_binary_mask.rows, current_binary_mask.depth(), current_binary_mask.channels());
-          }
-
-          if ( canceled() ) {
-            set_status_msg("canceled");
-            break;
-          }
-        }
-
-        if( !save_aligned_video(current_frame, current_weights, input_sequence->current_pos() - 1) ) {
-          CF_ERROR("save_aligned_frame() fails");
-          return false;
-        }
-
-        if( canceled() ) {
-          set_status_msg("canceled");
-          break;
-        }
-
-        if( !save_eccflow_video(curpos) ) {
-          CF_ERROR("save_eccflow_video() fails");
-          return false;
-        }
-
-        if( canceled() ) {
+        if ( canceled() ) {
           set_status_msg("canceled");
           break;
         }
@@ -1443,31 +1375,56 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
             break;
           }
         }
-      }
-    }
 
-    if ( canceled() ) {
-      set_status_msg("canceled");
-      break;
+        if( _output_options.save_aligned_frames ) {
+          if( !save_aligned_video(current_frame, current_weights, input_sequence->current_pos() - 1) ) {
+            CF_ERROR("save_aligned_frame() fails");
+            return false;
+          }
+          if( canceled() ) {
+            set_status_msg("canceled");
+            break;
+          }
+        }
+
+        if( _output_options.save_eccflow_frames ) {
+          if( !save_eccflow_video(curpos) ) {
+            CF_ERROR("save_eccflow_video() fails");
+            return false;
+          }
+
+          if( canceled() ) {
+            set_status_msg("canceled");
+            break;
+          }
+        }
+      }
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    if( !save_accumulation_masks_video(current_frame, current_weights, input_sequence->current_pos() - 1) ) {
-      CF_ERROR("save_accumulation_masks_video() fails");
-      return false;
-    }
-
-    if ( canceled() ) {
-      set_status_msg("canceled");
-      break;
+    if( _output_options.save_accm ) {
+      if( !save_accumulation_masks_video(current_frame, current_weights, input_sequence->current_pos() - 1) ) {
+        CF_ERROR("save_accumulation_masks_video() fails");
+        return false;
+      }
+      if( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
     if ( _frame_accumulation ) {
 
-      if( c_cfa_drizzle *drizzle = dynamic_cast<c_cfa_drizzle*>(_frame_accumulation.get()) ) {
+      if( c_rgb_drizzle *drizzle = dynamic_cast<c_rgb_drizzle*>(_frame_accumulation.get()) ) {
+        INSTRUMENT_REGION("rgb_drizzle");
+
+        drizzle->set_remap(current_remap);
+        drizzle->add(current_frame, current_weights);
+      }
+      else if( c_cfa_drizzle *drizzle = dynamic_cast<c_cfa_drizzle*>(_frame_accumulation.get()) ) {
         INSTRUMENT_REGION("cfa_drizzle");
 
         if( drizzle->accumulated_frames() < 1 ) {
@@ -1478,14 +1435,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         drizzle->add(_raw_bayer_image, current_weights);
       }
       else {
-
-        lock_guard lock(mutex());
-
+        INSTRUMENT_REGION("frame_accumulation");
+        // lock_guard lock(mutex());
         if ( !_frame_accumulation->add(current_frame, current_weights) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
           return false;
         }
-
       }
 
       if ( canceled() ) {
@@ -1496,7 +1451,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     /////////////////////////////////////
-
 
     ///////////////
     ++_accumulated_frames;
@@ -1549,65 +1503,65 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 //
 //}
 
-void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
-    cv::InputArray srcmap,
-    cv::OutputArray dstmap)
-{
-  INSTRUMENT_REGION("");
+//void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
+//    cv::InputArray srcmap,
+//    cv::OutputArray dstmap)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  switch (scale) {
+//  case frame_upscale_x15: {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+//      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
+//    }
+//    break;
+//  }
+//  case frame_upscale_x20: {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      cv::pyrUp(srcmap, dstmap);
+//    }
+//    break;
+//  }
+//  default:
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      srcmap.copyTo(dstmap);
+//    }
+//    break;
+//  }
+//}
 
-  switch (scale) {
-  case frame_upscale_x15: {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
-      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
-    }
-    break;
-  }
-  case frame_upscale_x20: {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      cv::pyrUp(srcmap, dstmap);
-    }
-    break;
-  }
-  default:
-    if( !srcmap.empty() && dstmap.needed() ) {
-      srcmap.copyTo(dstmap);
-    }
-    break;
-  }
-}
-
-void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
-    cv::InputArray srcmap,
-    cv::OutputArray dstmap)
-{
-  INSTRUMENT_REGION("");
-
-  switch (scale) {
-  case frame_upscale_x15:
-  {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
-      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
-      cv::multiply(dstmap, 3.0 / 2.0, dstmap);
-    }
-    break;
-  }
-  case frame_upscale_x20:
-  {
-    if( !srcmap.empty() && dstmap.needed() ) {
-      cv::pyrUp(srcmap, dstmap);
-      cv::multiply(dstmap, 2.0, dstmap);
-    }
-    break;
-  }
-  default:
-    if( !srcmap.empty() && dstmap.needed() ) {
-      srcmap.copyTo(dstmap);
-    }
-    break;
-  }
-}
+//void c_image_stacking_pipeline::upscale_optflow(enum frame_upscale_option scale,
+//    cv::InputArray srcmap,
+//    cv::OutputArray dstmap)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  switch (scale) {
+//  case frame_upscale_x15:
+//  {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      const cv::Size dstsize(srcmap.cols() * 3 / 2, srcmap.rows() * 3 / 2);
+//      cv::resize(srcmap, dstmap, dstsize, 0, 0, cv::INTER_LINEAR);
+//      cv::multiply(dstmap, 3.0 / 2.0, dstmap);
+//    }
+//    break;
+//  }
+//  case frame_upscale_x20:
+//  {
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      cv::pyrUp(srcmap, dstmap);
+//      cv::multiply(dstmap, 2.0, dstmap);
+//    }
+//    break;
+//  }
+//  default:
+//    if( !srcmap.empty() && dstmap.needed() ) {
+//      srcmap.copyTo(dstmap);
+//    }
+//    break;
+//  }
+//}
 
 bool c_image_stacking_pipeline::compute_weights_required(const c_frame_accumulation_options & opts) const
 {
@@ -1794,9 +1748,9 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   }
 
 
-  if( (section = get_group(settings, save, "upscale")) ) {
-    SERIALIZE_OPTION(section, save, _upscale_options, upscale);
-  }
+//  if( (section = get_group(settings, save, "upscale")) ) {
+//    SERIALIZE_OPTION(section, save, _upscale_options, upscale);
+//  }
 
   if( (section = get_group(settings, save, "master_frame_options")) ) {
 
@@ -2084,7 +2038,7 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
 
-  ctlbind_expandable_group(ctls, "CFA Drizzle Options...", "");
+  ctlbind_expandable_group(ctls, "Drizzle Options...", "");
     ctlbind(ctls, "Drizzle scale:", ctx(&S::drizzle_scale));
   ctlbind_end_group(ctls);
 
@@ -2136,11 +2090,11 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
       ctlbind(ctls, ctx(&this_class::_roi_selection_options));
     ctlbind_end_group(ctls);
 
-    ////////
-    ctlbind_expandable_group(ctls, "3. Upscale options",
-        [&, cctx = ctx(&this_class::_upscale_options)]() {
-          ctlbind(ctls, "Upscale:", CTL_CONTEXT(cctx, upscale), "");
-        });
+//    ////////
+//    ctlbind_expandable_group(ctls, "3. Upscale options",
+//        [&, cctx = ctx(&this_class::_upscale_options)]() {
+//          ctlbind(ctls, "Upscale:", CTL_CONTEXT(cctx, upscale), "");
+//        });
 
     ////////
     ctlbind_expandable_group(ctls, "4. Frame Registration", "");
@@ -2314,7 +2268,7 @@ bool c_image_stacking_pipeline::copy_parameters(const c_image_processing_pipelin
 
   p->_input_options = this->_input_options;
   p->_roi_selection_options = this->_roi_selection_options;
-  p->_upscale_options = this->_upscale_options;
+  //p->_upscale_options = this->_upscale_options;
   p->_master_options = this->_master_options;
   p->_stack_options = this->_stack_options ;
   p->_output_options = this->_output_options;

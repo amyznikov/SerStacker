@@ -225,6 +225,15 @@ protected:
   int _accumulated_frames = 0;
 };
 
+enum DRIZZLE_SCALE
+{
+  DRIZZLE_SCALE_10x = 1,
+  DRIZZLE_SCALE_15x = 2,
+  DRIZZLE_SCALE_20x = 3,
+  DRIZZLE_SCALE_30x = 4,
+  DRIZZLE_SCALE_40x = 5,
+};
+
 class c_cfa_drizzle :
     public c_frame_accumulation
 {
@@ -232,15 +241,6 @@ public:
   typedef c_cfa_drizzle this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
-
-  enum SCALE
-  {
-    SCALE_10x = 1,
-    SCALE_15x = 2,
-    SCALE_20x = 3,
-    SCALE_30x = 4,
-    SCALE_40x = 5,
-  };
 
   enum BAYER_COLOR_ID {
     BAYER_B = 0,
@@ -250,7 +250,7 @@ public:
 
   c_cfa_drizzle() = default;
 
-  c_cfa_drizzle(SCALE scale = SCALE_10x) :
+  c_cfa_drizzle(DRIZZLE_SCALE scale = DRIZZLE_SCALE_10x) :
       _scale(scale)
   {
   }
@@ -268,7 +268,7 @@ public:
     return _colorid;
   }
 
-  void set_scale(SCALE v)
+  void set_scale(DRIZZLE_SCALE v)
   {
     if ( _scale != v ) {
       clear();
@@ -276,7 +276,7 @@ public:
     }
   }
 
-  SCALE scale() const
+  DRIZZLE_SCALE scale() const
   {
     return _scale;
   }
@@ -348,7 +348,99 @@ protected:
   cv::Mat2f _scaled_rmap;
   cv::Mat _scaled_weights;
   COLORID _colorid = COLORID_UNKNOWN;
-  SCALE _scale = SCALE_10x;
+  DRIZZLE_SCALE _scale = DRIZZLE_SCALE_10x;
+};
+
+
+
+class c_rgb_drizzle :
+    public c_frame_accumulation
+{
+public:
+  typedef c_rgb_drizzle this_class;
+  typedef c_frame_accumulation base;
+  typedef std::shared_ptr<this_class> ptr;
+
+  c_rgb_drizzle() = default;
+
+  c_rgb_drizzle(DRIZZLE_SCALE scale = DRIZZLE_SCALE_10x) :
+      _scale(scale)
+  {
+  }
+
+  void set_scale(DRIZZLE_SCALE v)
+  {
+    if ( _scale != v ) {
+      clear();
+      _scale = v;
+    }
+  }
+
+  DRIZZLE_SCALE scale() const
+  {
+    return _scale;
+  }
+
+  void set_remap(const cv::Mat2f & rmap)
+  {
+    _rmap = rmap;
+  }
+
+  const cv::Mat2f & remap() const
+  {
+    return _rmap;
+  }
+
+  cv::Size accumulator_size() const final
+  {
+    return _accumulator.size();
+  }
+
+  cv::Mat get_accumulator() const final
+  {
+    return _accumulator;
+  }
+
+  cv::Mat get_counter() const final
+  {
+    return _counter;
+  }
+
+  void clear() final
+  {
+    _accumulator.release();
+    _counter.release();
+    _rmap.release();
+    _accumulated_frames = 0;
+  }
+
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final
+  {
+    return false;
+  }
+
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+
+protected:
+  template<typename Fn>
+  inline auto synchronized(Fn && fn) const
+  {
+    std::scoped_lock lock(_mtx);
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
+
+protected:
+  mutable std::mutex _mtx;
+  cv::Mat _accumulator;
+  cv::Mat _counter;
+  cv::Mat2f _rmap;
+  DRIZZLE_SCALE _scale = DRIZZLE_SCALE_10x;
 };
 
 

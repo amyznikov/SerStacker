@@ -20,23 +20,6 @@
 #endif
 #endif // ALWAYS_INLINE
 
-
-
-template<>
-const c_enum_member * members_of<c_cfa_drizzle::SCALE>()
-{
-  static const c_enum_member members[] = {
-      { c_cfa_drizzle::SCALE_10x, "DRIZZLE_x1.0", "" },
-      { c_cfa_drizzle::SCALE_15x, "DRIZZLE_x1.5", "" },
-      { c_cfa_drizzle::SCALE_20x, "DRIZZLE_x2.0", "" },
-      { c_cfa_drizzle::SCALE_30x, "DRIZZLE_x3.0", "" },
-      { c_cfa_drizzle::SCALE_40x, "DRIZZLE_x4.0", "" },
-      { c_cfa_drizzle::SCALE_10x}
-  };
-  return members;
-}
-
-
 namespace {
   enum class RmapMode {
     Empty,
@@ -399,22 +382,22 @@ bool c_cfa_drizzle::add(cv::InputArray src, cv::InputArray weights)
   cv::Size dst_size;
 
   switch (_scale) {
-    case SCALE_10x:
+    case DRIZZLE_SCALE_10x:
       dst_size = src_size;
       break;
-    case SCALE_15x:
+    case DRIZZLE_SCALE_15x:
       dst_size.width = src_size.width * 3 / 2;
       dst_size.height = src_size.height * 3 / 2;
       break;
-    case SCALE_20x:
+    case DRIZZLE_SCALE_20x:
       dst_size.width = src_size.width * 2;
       dst_size.height = src_size.height * 2;
       break;
-    case SCALE_30x:
+    case DRIZZLE_SCALE_30x:
       dst_size.width = src_size.width * 3;
       dst_size.height = src_size.height * 3;
       break;
-    case SCALE_40x:
+    case DRIZZLE_SCALE_40x:
       dst_size.width = src_size.width * 4;
       dst_size.height = src_size.height * 4;
       break;

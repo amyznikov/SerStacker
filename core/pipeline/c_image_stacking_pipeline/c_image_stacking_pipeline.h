@@ -28,17 +28,18 @@ enum frame_accumulation_method
   frame_accumulation_none = -1,
   frame_accumulation_weighted_average,
   frame_accumulation_focus_stack,
+  frame_accumulation_rgb_drizzle,
   frame_accumulation_cfa_drizzle,
 };
 
-enum frame_upscale_option
-{
-  frame_upscale_none = 0,
-  frame_upscale_x15 = 1,
-  frame_upscale_x20 = 2,
-  frame_upscale_x30 = 3,
-  frame_upscale_x40 = 4,
-};
+//enum frame_upscale_option
+//{
+//  frame_upscale_none = 0,
+//  frame_upscale_x15 = 1,
+//  frame_upscale_x20 = 2,
+//  frame_upscale_x30 = 3,
+//  frame_upscale_x40 = 4,
+//};
 
 struct c_image_stacking_input_options :
     c_image_stacking_pipeline_base_input_options
@@ -49,15 +50,15 @@ struct c_image_stacking_input_options :
 };
 
 
-struct c_frame_upscale_options
-{
-  enum frame_upscale_option upscale = frame_upscale_none;
-};
-
+//struct c_frame_upscale_options
+//{
+//  enum frame_upscale_option upscale = frame_upscale_none;
+//};
+//
 struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method = frame_accumulation_weighted_average;
-  c_cfa_drizzle::SCALE drizzle_scale = c_cfa_drizzle::SCALE_10x;
+  DRIZZLE_SCALE drizzle_scale = DRIZZLE_SCALE_10x;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
 };
@@ -239,13 +240,13 @@ protected:
 //      cv::InputArray src, cv::InputArray srcmask,
 //      cv::OutputArray dst, cv::OutputArray dstmask);
 
-  static void upscale_remap(enum frame_upscale_option scale,
-      cv::InputArray srcmap,
-      cv::OutputArray dstmap);
-
-  static void upscale_optflow(enum frame_upscale_option scale,
-      cv::InputArray srcmap,
-      cv::OutputArray dstmap);
+//  static void upscale_remap(enum frame_upscale_option scale,
+//      cv::InputArray srcmap,
+//      cv::OutputArray dstmap);
+//
+//  static void upscale_optflow(enum frame_upscale_option scale,
+//      cv::InputArray srcmap,
+//      cv::OutputArray dstmap);
 
   bool compute_weights_required(const c_frame_accumulation_options & opts) const;
   void compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
@@ -254,7 +255,7 @@ protected:
 protected:
   c_image_stacking_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
-  c_frame_upscale_options _upscale_options;
+  //c_frame_upscale_options _upscale_options;
   c_image_stacking_master_options _master_options;
   c_image_stacking_options _stack_options;
   c_camera_intrinsics _camera_intrinsics;

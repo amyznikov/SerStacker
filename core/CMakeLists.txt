@@ -86,3 +86,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 #    proc/area_remap.cc
 #    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/area_remap_report.txt"
 #)
+
+set_source_files_properties(
+    average/c_rgb_drizzle.cc
+    PROPERTIES COMPILE_OPTIONS "-fopt-info-vec-all=/home/projects/temp/vec_reports/c_rgb_drizzle_report.txt"
+)
+
+

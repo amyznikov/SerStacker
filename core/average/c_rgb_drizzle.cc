@@ -69,15 +69,15 @@ static void generate_xtabs(const cv::Size & srcSize, const cv::Size & dstSize, s
   out_x_end = x_end;
 }
 
-template<class _Tp, class _Tpw>
+template<class _Tp, class _Tpw, bool _PerChannelWeights>
 static ALWAYS_INLINE
 void accumualate_pixel(float px, float py,
     const int src_cols, const int src_rows,
     const float half_drop, const float half_acc_x, const float half_acc_y,
-    const uint8_t * src_base, const size_t src_stride,
-    const uint8_t * wmap_base, const size_t wmap_stride,
+    const uint8_t * __restrict src_base, const size_t src_stride,
+    const uint8_t * __restrict wmap_base, const size_t wmap_stride,
     float * __restrict accp, float * __restrict cntrp,
-    const int src_channels, const int wmap_channels)
+    const int src_channels)
 {
   constexpr bool has_weights = !std::is_void_v<_Tpw>;
 
@@ -91,81 +91,133 @@ void accumualate_pixel(float px, float py,
   const int ix1 = std::clamp(sx1, 0, src_cols - 1);
   const int iy1 = std::clamp(sy1, 0, src_rows - 1);
 
-  const _Tp * const src0 = (const _Tp*) (src_base + iy0 * src_stride);
-  const _Tp * const src1 = (const _Tp*) (src_base + iy1 * src_stride);
-  const _Tp * const s00 = src0 + ix0 * src_channels;
-  const _Tp * const s01 = src0 + ix1 * src_channels;
-  const _Tp * const s10 = src1 + ix0 * src_channels;
-  const _Tp * const s11 = src1 + ix1 * src_channels;
+  const _Tp * const __restrict src0 = (const _Tp*) (src_base + iy0 * src_stride);
+  const _Tp * const __restrict src1 = (const _Tp*) (src_base + iy1 * src_stride);
+  const _Tp * const __restrict s00 = src0 + ix0 * src_channels;
+  const _Tp * const __restrict s01 = src0 + ix1 * src_channels;
+  const _Tp * const __restrict s10 = src1 + ix0 * src_channels;
+  const _Tp * const __restrict s11 = src1 + ix1 * src_channels;
 
   const float ax0 = px - half_acc_x, ax1 = px + half_acc_x;
   const float ay0 = py - half_acc_y, ay1 = py + half_acc_y;
-  const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
-  const float ov_x1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
-  const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop));
-  const float ov_y1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop));
-  const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
-  const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
-  const float wy0 = (sy0 >= 0) ? (ov_y0 * valid_mask) : 0.0f;
-  const float wy1 = (sy1 < src_rows) ? (ov_y1 * valid_mask) : 0.0f;
+  const float wx0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - std::max(ax0, sx0 - half_drop));
+  const float wx1 = std::max(0.0f, std::min(ax1, sx1 + half_drop) - std::max(ax0, sx1 - half_drop));
+  const float wy0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - std::max(ay0, sy0 - half_drop)) * valid_mask;
+  const float wy1 = std::max(0.0f, std::min(ay1, sy1 + half_drop) - std::max(ay0, sy1 - half_drop)) * valid_mask;
 
   if constexpr ( !has_weights ) {
-    const float w00 = wy0 * wx0, w01 = wy0 * wx1;
-    const float w10 = wy1 * wx0, w11 = wy1 * wx1;
+    const float w00 = wy0 * wx0;
+    const float w01 = wy0 * wx1;
+    const float w10 = wy1 * wx0;
+    const float w11 = wy1 * wx1;
     const float wsum = w00 + w01 + w10 + w11;
 
-    if( wmap_channels == 1 ) {
+    if constexpr ( !_PerChannelWeights ) {
       *cntrp += wsum;
-      for( int c = 0; c < src_channels; ++c ) {
-        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-        accp[c] += val;
+      switch ( src_channels ) {
+        case 1:
+          accp[0] += s00[0] * w00 + s01[0] * w01 + s10[0] * w10 + s11[0] * w11;
+          break;
+        case 3:
+          accp[0] += s00[0] * w00 + s01[0] * w01 + s10[0] * w10 + s11[0] * w11;
+          accp[1] += s00[1] * w00 + s01[1] * w01 + s10[1] * w10 + s11[1] * w11;
+          accp[2] += s00[2] * w00 + s01[2] * w01 + s10[2] * w10 + s11[2] * w11;
+          break;
+        default:
+          for ( int c = 0; c < src_channels; ++c ) {
+            accp[c] += s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+          }
+          break;
       }
     }
-    else {
-      for( int c = 0; c < src_channels; ++c ) {
-        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-        accp[c] += val;
-        cntrp[c] += wsum;
+    else { // cntr_channels == src_channels > 1
+      switch ( src_channels ) {
+        case 3:
+          cntrp[0] += wsum;
+          cntrp[1] += wsum;
+          cntrp[2] += wsum;
+          accp[0] += s00[0] * w00 + s01[0] * w01 + s10[0] * w10 + s11[0] * w11;
+          accp[1] += s00[1] * w00 + s01[1] * w01 + s10[1] * w10 + s11[1] * w11;
+          accp[2] += s00[2] * w00 + s01[2] * w01 + s10[2] * w10 + s11[2] * w11;
+          break;
+        default:
+          for ( int c = 0; c < src_channels; ++c ) {
+            cntrp[c] += wsum;
+            accp[c] += s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+          }
+          break;
       }
     }
   }
-  else { // wmap_channels == cntr_channels always when has_weights
-    const _Tpw * const m00 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix0 * wmap_channels;
-    const _Tpw * const m01 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix1 * wmap_channels;
-    const _Tpw * const m10 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix0 * wmap_channels;
-    const _Tpw * const m11 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix1 * wmap_channels;
+  else if constexpr ( !_PerChannelWeights ) { // wmap_channels == 1, cntr_channels == 1
+    const _Tpw * const __restrict wm0 = (const _Tpw*) (wmap_base + iy0 * wmap_stride);
+    const _Tpw * const __restrict wm1 = (const _Tpw*) (wmap_base + iy1 * wmap_stride);
 
-    if( wmap_channels == 1 ) {
-      const float w00 = wy0 * wx0 * m00[0];
-      const float w01 = wy0 * wx1 * m01[0];
-      const float w10 = wy1 * wx0 * m10[0];
-      const float w11 = wy1 * wx1 * m11[0];
-      const float wsum = w00 + w01 + w10 + w11;
-      *cntrp += wsum;
-      for( int c = 0; c < src_channels; ++c ) {
-        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-        accp[c] += val;
-      }
+    const float w00 = wy0 * wx0 * wm0[ix0];
+    const float w01 = wy0 * wx1 * wm0[ix1];
+    const float w10 = wy1 * wx0 * wm1[ix0];
+    const float w11 = wy1 * wx1 * wm1[ix1];
+    *cntrp += (w00 + w01 + w10 + w11);
+
+    switch ( src_channels ) {
+      case 1:
+        accp[0] += s00[0] * w00 + s01[0] * w01 + s10[0] * w10 + s11[0] * w11;
+        break;
+      case 3:
+        accp[0] += s00[0] * w00 + s01[0] * w01 + s10[0] * w10 + s11[0] * w11;
+        accp[1] += s00[1] * w00 + s01[1] * w01 + s10[1] * w10 + s11[1] * w11;
+        accp[2] += s00[2] * w00 + s01[2] * w01 + s10[2] * w10 + s11[2] * w11;
+        break;
+      default:
+        for ( int c = 0; c < src_channels; ++c ) {
+          accp[c] += s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        }
+        break;
     }
-    else {
-      for( int c = 0; c < src_channels; ++c ) {
-        const float w00 = wy0 * wx0 * m00[c];
-        const float w01 = wy0 * wx1 * m01[c];
-        const float w10 = wy1 * wx0 * m10[c];
-        const float w11 = wy1 * wx1 * m11[c];
-        const float wsum = w00 + w01 + w10 + w11;
-        const float val = s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
-        cntrp[c] += wsum;
-        accp[c] += val;
+  }
+  else { // wmap_channels == cntr_channels == src_channels > 1
+    const _Tpw * const __restrict m00 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix0 * src_channels;
+    const _Tpw * const __restrict m01 = (const _Tpw*) (wmap_base + iy0 * wmap_stride) + ix1 * src_channels;
+    const _Tpw * const __restrict m10 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix0 * src_channels;
+    const _Tpw * const __restrict m11 = (const _Tpw*) (wmap_base + iy1 * wmap_stride) + ix1 * src_channels;
+
+    const float b00 = wy0 * wx0;
+    const float b01 = wy0 * wx1;
+    const float b10 = wy1 * wx0;
+    const float b11 = wy1 * wx1;
+
+    switch ( src_channels ) {
+      case 3: {
+        const float w00_0 = b00 * m00[0], w01_0 = b01 * m01[0], w10_0 = b10 * m10[0], w11_0 = b11 * m11[0];
+        const float w00_1 = b00 * m00[1], w01_1 = b01 * m01[1], w10_1 = b10 * m10[1], w11_1 = b11 * m11[1];
+        const float w00_2 = b00 * m00[2], w01_2 = b01 * m01[2], w10_2 = b10 * m10[2], w11_2 = b11 * m11[2];
+
+        cntrp[0] += w00_0 + w01_0 + w10_0 + w11_0;
+        cntrp[1] += w00_1 + w01_1 + w10_1 + w11_1;
+        cntrp[2] += w00_2 + w01_2 + w10_2 + w11_2;
+
+        accp[0] += s00[0] * w00_0 + s01[0] * w01_0 + s10[0] * w10_0 + s11[0] * w11_0;
+        accp[1] += s00[1] * w00_1 + s01[1] * w01_1 + s10[1] * w10_1 + s11[1] * w11_1;
+        accp[2] += s00[2] * w00_2 + s01[2] * w01_2 + s10[2] * w10_2 + s11[2] * w11_2;
+        break;
       }
+      default:
+        for ( int c = 0; c < src_channels; ++c ) {
+          const float w00 = b00 * m00[c];
+          const float w01 = b01 * m01[c];
+          const float w10 = b10 * m10[c];
+          const float w11 = b11 * m11[c];
+          cntrp[c] += w00 + w01 + w10 + w11;
+          accp[c] += s00[c] * w00 + s01[c] * w01 + s10[c] * w10 + s11[c] * w11;
+        }
+        break;
     }
   }
 }
 
 } // namespace
 
-
-template<class _Tp, class _Tpw>
+template<class _Tp, class _Tpw, bool _PerChannelWeights>
 static bool _rgb_drizzle_core(cv::InputArray _src_image,
     cv::InputOutputArray _acc, // cv::Mat_<Tp, acc_channels>
     cv::InputOutputArray _cntr, // cv::Mat_<Tp, cntr_channels>
@@ -174,29 +226,29 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
 {
   constexpr bool has_weights = !std::is_void_v<_Tpw>;
 
-  if( _src_image.empty() ) {
+  if ( _src_image.empty() ) {
     CF_ERROR("Bad _src_image: empty");
     return false;
   }
 
-  if( _acc.empty() ) {
+  if ( _acc.empty() ) {
     CF_ERROR("Bad _acc: not initialized");
     return false;
   }
 
-  if( _cntr.empty() ) {
+  if ( _cntr.empty() ) {
     CF_ERROR("Bad _cntr: not initialized");
     return false;
   }
 
-  if( !rmap.empty() && rmap.size() != _src_image.size() ) {
+  if ( !rmap.empty() && rmap.size() != _src_image.size() ) {
     CF_ERROR("Bad rmap size: %dx%d. Must be %dx%d", rmap.cols, rmap.rows,
         _src_image.cols(), _src_image.rows());
     return false;
   }
 
   if constexpr ( has_weights ) {
-    if( weights.size() != _src_image.size() ) {
+    if ( weights.size() != _src_image.size() ) {
       CF_ERROR("Bad weights size: %dx%d. Must be %dx%d", weights.cols(), weights.rows(),
           _src_image.cols(), _src_image.rows());
       return false;
@@ -208,40 +260,53 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const int cntr_channels = _cntr.channels();
   const int wmap_channels = has_weights ? weights.channels() : 1;
 
-  if( src_channels != acc_channels ) {
+  if ( src_channels != acc_channels ) {
     CF_ERROR("Bad src image channels: %d. Must be acc_channels=%d", src_channels, acc_channels);
     return false;
   }
 
-  if( cntr_channels != 1 && cntr_channels != acc_channels ) {
-    CF_ERROR("Bad cntr channels: %d. Must be 1 or acc_channels=%d", cntr_channels, acc_channels);
-    return false;
-  }
-
-  if constexpr ( has_weights ) {
-    if( wmap_channels != 1 && wmap_channels != src_channels ) {
-      CF_ERROR("Bad wmap channels: %d. Must be 1 or src_channels=%d", wmap_channels, src_channels);
+  if constexpr ( !_PerChannelWeights ) {
+    if ( cntr_channels != 1 ) {
+      CF_ERROR("Bad cntr channels: %d. Expected 1", cntr_channels);
       return false;
+    }
+    if constexpr ( has_weights ) {
+      if ( wmap_channels != 1 ) {
+        CF_ERROR("Bad wmap channels: %d. Expected 1", wmap_channels);
+        return false;
+      }
+    }
+  }
+  else {
+    if ( cntr_channels != acc_channels ) {
+      CF_ERROR("Bad cntr channels: %d. Must be acc_channels=%d", cntr_channels, acc_channels);
+      return false;
+    }
+    if constexpr ( has_weights ) {
+      if ( wmap_channels != src_channels ) {
+        CF_ERROR("Bad wmap channels: %d. Must be src_channels=%d", wmap_channels, src_channels);
+        return false;
+      }
     }
   }
 
   const cv::Mat src = _src_image.getMat();
-  const uint8_t * const src_base = src.ptr();
+  const uint8_t * const __restrict src_base = src.ptr();
   const size_t src_stride = src.step;
 
   const cv::Mat wmap = has_weights ? weights.getMat() : cv::Mat();
-  const uint8_t * const wmap_base = has_weights ? wmap.ptr() : nullptr;
+  const uint8_t * const __restrict wmap_base = has_weights ? wmap.ptr() : nullptr;
   const size_t wmap_stride = has_weights ? wmap.step : 0;
 
   cv::Mat & acc = _acc.getMatRef();
-  const uint8_t * const acc_base = acc.ptr();
+  uint8_t * const __restrict acc_base = acc.ptr();
   const size_t acc_stride = acc.step;
 
   cv::Mat & cntr = _cntr.getMatRef();
-  const uint8_t * const cntr_base = cntr.ptr();
+  uint8_t * const __restrict cntr_base = cntr.ptr();
   const size_t cntr_stride = cntr.step;
 
-  const uint8_t * const rmap_base = rmap.empty() ? nullptr : rmap.ptr();
+  const uint8_t * const __restrict rmap_base = rmap.empty() ? nullptr : rmap.ptr();
   const size_t rmap_stride = rmap.empty() ? 0 : rmap.step;
 
   const cv::Size srcSize = src.size();
@@ -253,19 +318,15 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const float step_x = float(src_cols) / float(acc_cols);
   const float step_y = float(src_rows) / float(acc_rows);
 
-  // Ensure 1 pixel of the sensor array covers no more than 2x2 pixels of the CFA
-  if( step_x > 1.0f || step_y > 1.0f ) {
+  if ( step_x > 1.0f || step_y > 1.0f ) {
     CF_ERROR("Downscaling is not supported in 2x2 drizzle (step_x=%f, step_y=%f)", step_x, step_y);
     return false;
   }
 
-//  CF_DEBUG("step_x=%f, step_y=%f", step_x, step_y);
-
   // Quadratic B-spline interpolation
-  // Precompute weights and the boundaries of the safe central zone [x_begin, x_end) on X
-  std::vector<XTap> xtabs(dstSize.width);
+  std::vector<XTap> xtabs;
   int x_begin = 0, x_end = dstSize.width;
-  if( rmap_base ) {
+  if ( rmap_base ) {
     generate_xtabs(srcSize, dstSize, xtabs, x_begin, x_end);
   }
 
@@ -273,112 +334,112 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
 
   parallel_for(0, acc_rows, [=](const auto & range) {
 
-    // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
-      const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
-      const float half_acc_x = 0.5f * step_x;
-      const float half_acc_y = 0.5f * step_y;
-      const float offset_x = 0.5f * step_x - 0.5f;
-      const float offset_y = 0.5f * step_y - 0.5f;
-      const int cn = src_channels;
-      const int xbeg = x_begin;
-      const int xend = x_end;
-      const int max_x = src_cols - 1;
-      const int max_y = src_rows - 1;
+    const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
+    const float half_acc_x = 0.5f * step_x;
+    const float half_acc_y = 0.5f * step_y;
+    const float offset_x = 0.5f * step_x - 0.5f;
+    const float offset_y = 0.5f * step_y - 0.5f;
+    const int cn = src_channels;
+    const int cstep = _PerChannelWeights ? src_channels : 1;
+    const int xbeg = x_begin;
+    const int xend = x_end;
+    const int max_x = src_cols - 1;
+    const int max_y = src_rows - 1;
 
-      for ( int y = rbegin(range); y < rend(range); ++y ) {
-        float * __restrict accp = (float *)(acc_base + y * acc_stride);
-        float * __restrict cntrp = (float *)(cntr_base + y * cntr_stride);
-        const float rmap_y = y * step_y + offset_y;
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict accp = (float *)(acc_base + y * acc_stride);
+      float * __restrict cntrp = (float *)(cntr_base + y * cntr_stride);
+      const float rmap_y = y * step_y + offset_y;
 
-        if ( !rmap_base ) { // no remap
-          for ( int x = 0; x < acc_cols; ++x, accp += cn, ++cntrp ) {
-            const float rmap_x = x * step_x + offset_x;
-            accumualate_pixel<_Tp, _Tpw>(rmap_x, rmap_y, src_cols, src_rows,
-                half_drop, half_acc_x, half_acc_y,
-                src_base, src_stride,
-                wmap_base, wmap_stride,
-                accp, cntrp,
-                src_channels, wmap_channels);
-          }
-        }
-        else { // Quadratic B-spline interpolation
-          const int yc = cvFloor(rmap_y + 0.5f);
-          const float dy = rmap_y - yc;// [-0.5, 0.5]
-
-          const int y0 = std::max(0, std::min(yc - 1, max_y));
-          const int y1 = std::max(0, std::min(yc, max_y));
-          const int y2 = std::max(0, std::min(yc + 1, max_y));
-
-          const cv::Vec2f * __restrict rmp0 = (const cv::Vec2f *)(rmap_base + y0 * rmap_stride);
-          const cv::Vec2f * __restrict rmp1 = (const cv::Vec2f *)(rmap_base + y1 * rmap_stride);
-          const cv::Vec2f * __restrict rmp2 = (const cv::Vec2f *)(rmap_base + y2 * rmap_stride);
-
-          const float wy0 = 0.5f * (0.5f - dy) * (0.5f - dy);
-          const float wy1 = 0.75f - dy * dy;
-          const float wy2 = 0.5f * (0.5f + dy) * (0.5f + dy);
-
-          // Left edge with bounds checking
-          for ( int x = 0; x < xbeg; ++x, accp += cn, ++cntrp ) {
-            const XTap & t = xtabs_ptr[x];
-            const int x0 = std::max(0, std::min(t.x0, max_x));
-            const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
-            const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
-
-            const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
-            const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
-            const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
-            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
-
-            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
-                half_drop, half_acc_x, half_acc_y,
-                src_base, src_stride,
-                wmap_base, wmap_stride,
-                accp, cntrp,
-                src_channels, wmap_channels);
-          }
-
-          // Central zone with no branching, sequential memory access
-          for ( int x = xbeg; x < xend; ++x, accp += cn, ++cntrp ) {
-            const XTap & t = xtabs_ptr[x];
-            const cv::Vec2f * __restrict p0 = rmp0 + t.x0;
-            const cv::Vec2f * __restrict p1 = rmp1 + t.x0;
-            const cv::Vec2f * __restrict p2 = rmp2 + t.x0;
-
-            const cv::Vec2f v0 = p0[0] * t.wx0 + p0[1] * t.wx1 + p0[2] * t.wx2;
-            const cv::Vec2f v1 = p1[0] * t.wx0 + p1[1] * t.wx1 + p1[2] * t.wx2;
-            const cv::Vec2f v2 = p2[0] * t.wx0 + p2[1] * t.wx1 + p2[2] * t.wx2;
-            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
-
-            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
-                half_drop, half_acc_x, half_acc_y,
-                src_base, src_stride,
-                wmap_base, wmap_stride,
-                accp, cntrp,
-                src_channels, wmap_channels);
-          }
-
-          // Right edge with bounds checking
-          for ( int x = xend; x < acc_cols; ++x, accp += cn, ++cntrp ) {
-            const XTap & t = xtabs_ptr[x];
-            const int x0 = std::max(0, std::min(t.x0, max_x));
-            const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
-            const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
-
-            const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
-            const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
-            const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
-            const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
-
-            accumualate_pixel<_Tp, _Tpw>(p[0], p[1], src_cols, src_rows,
-                half_drop, half_acc_x, half_acc_y,
-                src_base, src_stride,
-                wmap_base, wmap_stride,
-                accp, cntrp,
-                src_channels, wmap_channels);
-          }
+      if ( !rmap_base ) { // no remap
+        for ( int x = 0; x < acc_cols; ++x, accp += cn, cntrp += cstep ) {
+          const float rmap_x = x * step_x + offset_x;
+          accumualate_pixel<_Tp, _Tpw, _PerChannelWeights>(rmap_x, rmap_y, src_cols, src_rows,
+              half_drop, half_acc_x, half_acc_y,
+              src_base, src_stride,
+              wmap_base, wmap_stride,
+              accp, cntrp,
+              cn);
         }
       }
-    });
+      else { // Quadratic B-spline interpolation
+        const int yc = cvFloor(rmap_y + 0.5f);
+        const float dy = rmap_y - yc; // [-0.5, 0.5]
+
+        const int y0 = std::max(0, std::min(yc - 1, max_y));
+        const int y1 = std::max(0, std::min(yc, max_y));
+        const int y2 = std::max(0, std::min(yc + 1, max_y));
+
+        const cv::Vec2f * __restrict rmp0 = (const cv::Vec2f *)(rmap_base + y0 * rmap_stride);
+        const cv::Vec2f * __restrict rmp1 = (const cv::Vec2f *)(rmap_base + y1 * rmap_stride);
+        const cv::Vec2f * __restrict rmp2 = (const cv::Vec2f *)(rmap_base + y2 * rmap_stride);
+
+        const float wy0 = 0.5f * (0.5f - dy) * (0.5f - dy);
+        const float wy1 = 0.75f - dy * dy;
+        const float wy2 = 0.5f * (0.5f + dy) * (0.5f + dy);
+
+        // Left edge with bounds checking
+        for ( int x = 0; x < xbeg; ++x, accp += cn, cntrp += cstep ) {
+          const XTap & t = xtabs_ptr[x];
+          const int x0 = std::max(0, std::min(t.x0, max_x));
+          const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
+          const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
+
+          const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
+          const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
+          const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
+          const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+          accumualate_pixel<_Tp, _Tpw, _PerChannelWeights>(p[0], p[1], src_cols, src_rows,
+              half_drop, half_acc_x, half_acc_y,
+              src_base, src_stride,
+              wmap_base, wmap_stride,
+              accp, cntrp,
+              cn);
+        }
+
+        // Central zone with no branching, sequential memory access
+        for ( int x = xbeg; x < xend; ++x, accp += cn, cntrp += cstep ) {
+          const XTap & t = xtabs_ptr[x];
+          const cv::Vec2f * __restrict p0 = rmp0 + t.x0;
+          const cv::Vec2f * __restrict p1 = rmp1 + t.x0;
+          const cv::Vec2f * __restrict p2 = rmp2 + t.x0;
+
+          const cv::Vec2f v0 = p0[0] * t.wx0 + p0[1] * t.wx1 + p0[2] * t.wx2;
+          const cv::Vec2f v1 = p1[0] * t.wx0 + p1[1] * t.wx1 + p1[2] * t.wx2;
+          const cv::Vec2f v2 = p2[0] * t.wx0 + p2[1] * t.wx1 + p2[2] * t.wx2;
+          const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+          accumualate_pixel<_Tp, _Tpw, _PerChannelWeights>(p[0], p[1], src_cols, src_rows,
+              half_drop, half_acc_x, half_acc_y,
+              src_base, src_stride,
+              wmap_base, wmap_stride,
+              accp, cntrp,
+              cn);
+        }
+
+        // Right edge with bounds checking
+        for ( int x = xend; x < acc_cols; ++x, accp += cn, cntrp += cstep ) {
+          const XTap & t = xtabs_ptr[x];
+          const int x0 = std::max(0, std::min(t.x0, max_x));
+          const int x1 = std::max(0, std::min(t.x0 + 1, max_x));
+          const int x2 = std::max(0, std::min(t.x0 + 2, max_x));
+
+          const cv::Vec2f v0 = rmp0[x0] * t.wx0 + rmp0[x1] * t.wx1 + rmp0[x2] * t.wx2;
+          const cv::Vec2f v1 = rmp1[x0] * t.wx0 + rmp1[x1] * t.wx1 + rmp1[x2] * t.wx2;
+          const cv::Vec2f v2 = rmp2[x0] * t.wx0 + rmp2[x1] * t.wx1 + rmp2[x2] * t.wx2;
+          const cv::Vec2f p = v0 * wy0 + v1 * wy1 + v2 * wy2;
+
+          accumualate_pixel<_Tp, _Tpw, _PerChannelWeights>(p[0], p[1], src_cols, src_rows,
+              half_drop, half_acc_x, half_acc_y,
+              src_base, src_stride,
+              wmap_base, wmap_stride,
+              accp, cntrp,
+              cn);
+        }
+      }
+    }
+  });
 
   return true;
 }
@@ -389,20 +450,49 @@ static bool _rgb_drizzle_dispatch_weights(cv::InputArray src,
     const cv::Mat2f & rmap,
     cv::InputArray weights)
 {
+  const int src_channels = src.channels();
+  const int cntr_channels = cntr.channels();
+
   if ( weights.empty() ) {
-    return _rgb_drizzle_core<_Tp, void>(src, acc, cntr, rmap, weights);
+    if ( cntr_channels == 1 ) {
+      return _rgb_drizzle_core<_Tp, void, false>(src, acc, cntr, rmap, weights);
+    }
+    if ( cntr_channels == src_channels ) {
+      return _rgb_drizzle_core<_Tp, void, true>(src, acc, cntr, rmap, weights);
+    }
+    CF_ERROR("Bad cntr channels: %d. Must be 1 or src_channels=%d", cntr_channels, src_channels);
+    return false;
   }
 
-  switch ( weights.type() ) {
-    case CV_8UC1:
-      return _rgb_drizzle_core<_Tp, uint8_t>(src, acc, cntr, rmap, weights);
-    case CV_32FC1:
-      return _rgb_drizzle_core<_Tp, float>(src, acc, cntr, rmap, weights);
-    default:
-      break;
+  const int wmap_channels = weights.channels();
+
+  if ( wmap_channels == 1 && cntr_channels == 1 ) {
+    switch ( weights.type() ) {
+      case CV_8UC1:
+        return _rgb_drizzle_core<_Tp, uint8_t, false>(src, acc, cntr, rmap, weights);
+      case CV_32FC1:
+        return _rgb_drizzle_core<_Tp, float, false>(src, acc, cntr, rmap, weights);
+      default:
+        break;
+    }
+  }
+  else if ( wmap_channels == src_channels && cntr_channels == src_channels ) {
+    switch ( weights.depth() ) {
+      case CV_8U:
+        return _rgb_drizzle_core<_Tp, uint8_t, true>(src, acc, cntr, rmap, weights);
+      case CV_32F:
+        return _rgb_drizzle_core<_Tp, float, true>(src, acc, cntr, rmap, weights);
+      default:
+        break;
+    }
+  }
+  else {
+    CF_ERROR("Mismatched channels: src=%d, weights=%d, cntr=%d",
+        src_channels, wmap_channels, cntr_channels);
+    return false;
   }
 
-  CF_ERROR("Not supported weights type=%d in cfa_accumulate (expected CV_8UC1 or CV_32FC1)", weights.type());
+  CF_ERROR("Not supported weights type=%d in rgb_drizzle_accumulate (expected CV_8U or CV_32F)", weights.type());
   return false;
 }
 
@@ -447,7 +537,7 @@ bool c_rgb_drizzle::add(cv::InputArray src, cv::InputArray mask)
 {
   const cv::Size src_size = src.size();
   const int src_channels = src.channels();
-  const int msk_channels = mask.channels();
+  const int msk_channels = mask.empty() ? 1 : mask.channels();
 
   cv::Size dst_size;
 
@@ -541,9 +631,9 @@ static void _compute_rgb_drizzle_output_impl(cv::InputArray _acc, cv::InputArray
   parallel_for(0, size.height, [=](const auto & range) {
     for ( int y = rbegin(range); y < rend(range); ++y ) {
 
-      const float * accp = (const float *)(acc_base + y * acc_stride);
       const float * cntrp = (const float*)(cntr_base + y * cntr_stride);
-      float * __restrict avgp = _NeedAvg ? (float *)(avg_base + y * avg_stride) : nullptr;
+      const float * accp = (const float *)(acc_base + y * acc_stride);
+      _Tp * __restrict avgp = _NeedAvg ? (_Tp *)(avg_base + y * avg_stride) : nullptr;
       uint8_t * __restrict mskp = _NeedMask ? (msk_base + y * msk_stride) : nullptr;
 
       if constexpr ( _NeedAvg ) {
@@ -551,7 +641,7 @@ static void _compute_rgb_drizzle_output_impl(cv::InputArray _acc, cv::InputArray
           const int xmax = size.width * acc_channels;
           for ( int x = 0; x < xmax; ++x ) {
             const float w = cntrp[x];
-            avgp[x] = w > eps ? accp[x] * scale / w : 0;
+            avgp[x] = cv::saturate_cast<_Tp>(w > eps ? accp[x] * scale / w : 0.f);
           }
         }
         else {
@@ -559,7 +649,7 @@ static void _compute_rgb_drizzle_output_impl(cv::InputArray _acc, cv::InputArray
           for ( int x = 0; x < xmax; ++x, accp += acc_channels, avgp += acc_channels ) {
             const float w = cntrp[x];
             for ( int c = 0; c < acc_channels; ++c ) {
-              avgp[c] = w > eps ? accp[c] * scale / w : 0;
+              avgp[c] = cv::saturate_cast<_Tp>(w > eps ? accp[c] * scale / w : 0.f);
             }
           }
         }
@@ -634,7 +724,7 @@ bool c_rgb_drizzle::compute(cv::OutputArray avg, cv::OutputArray mask, double ds
   }
 
   CV_DISPATCH(ddepth, _compute_rgb_drizzle_output, acc, cntr, avg, mask, float(dscale));
-  CF_ERROR("APP BUG: BAD ddepth=%d encountered in c_bayer_drizzle::compute", ddepth);
+  CF_ERROR("APP BUG: BAD ddepth=%d encountered in c_rgb_drizzle::compute", ddepth);
   return false;
 }
 

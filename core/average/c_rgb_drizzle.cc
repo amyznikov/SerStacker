@@ -21,14 +21,6 @@
 #endif // ALWAYS_INLINE
 
 
-namespace {
-  enum class RmapMode {
-    Empty,
-    Direct, // rmap.size() == acc_size
-    Scaled  // rmap.size() == cfa_size (on-fly interpolation)
-  };
-}
-
 // weights for the Catmull-Rom bicubic spline (a = -0.5) for t in [0, 1]
 ALWAYS_INLINE
 static void catmull_rom_weights(float t, float w[4])
@@ -41,214 +33,73 @@ static void catmull_rom_weights(float t, float w[4])
   w[3] = -0.5f * t2 + 0.5f * t3;
 }
 
-//template<class _Tp, class _Tpw, RmapMode _RmapMode>
-//static bool _rgb_drizzle_core(cv::InputArray _src_image,
-//    cv::Mat3f & acc, cv::Mat3f & cntr,
-//    const cv::Mat2f & rmap,
-//    cv::InputArray weights)
-//{
-//  const cv::Mat_<_Tp> src_image = _src_image.getMat();
-//  const uint8_t * const src_base = src_image.ptr();
-//  const size_t src_stride = src_image.step;
-//
-//  const uint8_t * const acc_base = acc.ptr();
-//  const size_t acc_stride = acc.step;
-//
-//  const uint8_t * const cntr_base = cntr.ptr();
-//  const size_t cntr_stride = cntr.step;
-//
-//  constexpr bool has_weights = !std::is_void_v<_Tpw>;
-//  const cv::Mat wmap = has_weights ? weights.getMat() : cv::Mat();
-//  const uint8_t * const wmap_base = has_weights ? wmap.ptr() : nullptr;
-//  const size_t wmap_stride = has_weights ? wmap.step : 0;
-//
-//  const uint8_t * const rmap_base = (_RmapMode != RmapMode::Empty) ? rmap.ptr() : nullptr;
-//  const size_t rmap_stride = (_RmapMode != RmapMode::Empty) ? rmap.step : 0;
-//
-//  const int src_rows = src_image.rows;
-//  const int src_cols = src_image.cols;
-//  const int acc_rows = acc.rows;
-//  const int acc_cols = acc.cols;
-//
-//  const float step_x = float(src_cols) / float(acc_cols);
-//  const float step_y = float(src_rows) / float(acc_rows);
-//
-//  // Ensure 1 pixel of the sensor array covers no more than 2x2 pixels of the CFA
-//  if ( step_x > 1.0f || step_y > 1.0f ) {
-//    CF_ERROR("Downscaling is not supported in 2x2 drizzle (step_x=%f, step_y=%f)", step_x, step_y);
-//    return false;
-//  }
-//
-//  parallel_for(0, acc_rows, [=](const auto & range) {
-//
-//    // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
-//    const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
-//    const float half_acc_x = 0.5f * step_x;
-//    const float half_acc_y = 0.5f * step_y;
-//
-//    const float offset_x = 0.5f * step_x - 0.5f;
-//    const float offset_y = 0.5f * step_y - 0.5f;
-//
-//    for ( int y = rbegin(range); y < rend(range); ++y ) {
-//      cv::Vec3f * __restrict accp = (cv::Vec3f *)(acc_base + y * acc_stride);
-//      cv::Vec3f * __restrict cntrp = (cv::Vec3f *)(cntr_base + y * cntr_stride);
-//      const float rmap_y = y * step_y + offset_y;
-//
-//      const cv::Vec2f * rmp0 = nullptr;
-//      const cv::Vec2f * rmp1 = nullptr;
-//      const cv::Vec2f * rmp2 = nullptr;
-//      const cv::Vec2f * rmp3 = nullptr;
-//      float rwy[4] = {0.0f, 1.0f, 0.0f, 0.0f};
-//
-//      if constexpr ( _RmapMode == RmapMode::Direct ) {
-//        // remap.size() == acc.size()
-//        rmp1 = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
-//      }
-//      else if constexpr ( _RmapMode == RmapMode::Scaled ) {
-//        // remap.size() == cfa_image.size()
-//        const float clamped_rmap_y = std::clamp(rmap_y, 0.0f, float(src_rows - 1));
-//        const int ry1 = cvFloor(clamped_rmap_y);
-//        const int ry0 = std::max(ry1 - 1, 0);
-//        const int ry2 = std::min(ry1 + 1, src_rows - 1);
-//        const int ry3 = std::min(ry1 + 2, src_rows - 1);
-//
-//        catmull_rom_weights(clamped_rmap_y - ry1, rwy);
-//
-//        rmp0 = (const cv::Vec2f *)(rmap_base + ry0 * rmap_stride);
-//        rmp1 = (const cv::Vec2f *)(rmap_base + ry1 * rmap_stride);
-//        rmp2 = (const cv::Vec2f *)(rmap_base + ry2 * rmap_stride);
-//        rmp3 = (const cv::Vec2f *)(rmap_base + ry3 * rmap_stride);
-//      }
-//
-//      for ( int x = 0; x < acc_cols; ++x ) {
-//        const float rmap_x = x * step_x + offset_x;
-//
-//        float px, py;
-//        if constexpr ( _RmapMode == RmapMode::Empty ) {
-//          // no remap
-//          px = rmap_x;
-//          py = rmap_y;
-//        }
-//        else if constexpr ( _RmapMode == RmapMode::Direct ) {
-//          // remap.size() == acc.size()
-//          const cv::Vec2f p = rmp1[x];
-//          px = p[0];
-//          py = p[1];
-//        }
-//        else { // RmapMode::Scaled (Bicubic Catmull-Rom)
-//          // remap.size() == cfa_image.size()
-//          const float rx = std::clamp(rmap_x, 0.0f, float(src_cols - 1));
-//          const int rx1 = cvFloor(rx);
-//          const int rx0 = std::max(rx1 - 1, 0);
-//          const int rx2 = std::min(rx1 + 1, src_cols - 1);
-//          const int rx3 = std::min(rx1 + 2, src_cols - 1);
-//
-//          float rwx[4];
-//          catmull_rom_weights(rx - rx1, rwx);
-//
-//          const cv::Vec2f row0 = rmp0[rx0] * rwx[0] + rmp0[rx1] * rwx[1] + rmp0[rx2] * rwx[2] + rmp0[rx3] * rwx[3];
-//          const cv::Vec2f row1 = rmp1[rx0] * rwx[0] + rmp1[rx1] * rwx[1] + rmp1[rx2] * rwx[2] + rmp1[rx3] * rwx[3];
-//          const cv::Vec2f row2 = rmp2[rx0] * rwx[0] + rmp2[rx1] * rwx[1] + rmp2[rx2] * rwx[2] + rmp2[rx3] * rwx[3];
-//          const cv::Vec2f row3 = rmp3[rx0] * rwx[0] + rmp3[rx1] * rwx[1] + rmp3[rx2] * rwx[2] + rmp3[rx3] * rwx[3];
-//          const cv::Vec2f p = row0 * rwy[0] + row1 * rwy[1] + row2 * rwy[2] + row3 * rwy[3];
-//          px = p[0];
-//          py = p[1];
-//        }
-//
-//        // Account for an external half-pixel border [-0.5, cols-0.5]
-//        if ( px < -0.5f || px > src_cols - 0.5f || py < -0.5f || py > src_rows - 0.5f ) {
-//          continue;
-//        }
-//
-//        float w;
-//        if constexpr ( !has_weights ) {
-//          w = 1.0f;
-//        }
-//        else {
-//          const int wy_idx = std::clamp(cvRound(py), 0, src_rows - 1);
-//          const int wx_idx = std::clamp(cvRound(px), 0, src_cols - 1);
-//          const _Tpw ww = *((const _Tpw *)(wmap_base + wy_idx * wmap_stride) + wx_idx);
-//          if ( !(ww > 0) ) {
-//            continue;
-//          }
-//          if constexpr ( std::is_integral_v<_Tpw> ) {
-//            w = 1.0f;
-//          }
-//          else {
-//            w = ww;
-//          }
-//        }
-//
-//        // 2x2 neighborhood: sx0 <= px < sx1, sy0 <= py < sy1
-//        const int sx0 = cvFloor(px), sy0 = cvFloor(py);
-//        const int sx1 = sx0 + 1, sy1 = sy0 + 1;
-//
-//        // acc footprint boundaries in CFA coordinates
-//        const float ax0 = px - half_acc_x;
-//        const float ax1 = px + half_acc_x;
-//        const float ay0 = py - half_acc_y;
-//        const float ay1 = py + half_acc_y;
-//
-//        // 1D intersections for 2x2 (given that sx0 <= px < sx1)
-//        const float ov_x0 = std::max(0.0f, std::min(ax1, sx0 + half_drop) - ax0);
-//        const float ov_x1 = std::max(0.0f, ax1 - std::max(ax0, sx1 - half_drop));
-//
-//        const float ov_y0 = std::max(0.0f, std::min(ay1, sy0 + half_drop) - ay0);
-//        const float ov_y1 = std::max(0.0f, ay1 - std::max(ay0, sy1 - half_drop));
-//
-//        // Boundary validity masks
-//        const float wx0 = (sx0 >= 0) ? ov_x0 : 0.0f;
-//        const float wx1 = (sx1 < src_cols) ? ov_x1 : 0.0f;
-//        const float wy0 = (sy0 >= 0) ? (ov_y0 * w) : 0.0f;
-//        const float wy1 = (sy1 < src_rows) ? (ov_y1 * w) : 0.0f;
-//
-//        // Safe read indices
-//        const int ix0 = std::max(sx0, 0);
-//        const int iy0 = std::max(sy0, 0);
-//        const int ix1 = std::min(sx1, src_cols - 1);
-//        const int iy1 = std::min(sy1, src_rows - 1);
-//
-//        const _Tp * const srcp0 = (const _Tp *)(src_base + iy0 * src_stride);
-//        const _Tp * const srcp1 = (const _Tp *)(src_base + iy1 * src_stride);
-//
-//        const float v00 = srcp0[ix0], v01 = srcp0[ix1];
-//        const float v10 = srcp1[ix0], v11 = srcp1[ix1];
-//
-//        const float w00 = wy0 * wx0, w01 = wy0 * wx1;
-//        const float w10 = wy1 * wx0, w11 = wy1 * wx1;
-//
-//        const int c00 = cfa_lut[sy0 & 1][sx0 & 1];
-//        const int c01 = cfa_lut[sy0 & 1][sx1 & 1];
-//        const int c10 = cfa_lut[sy1 & 1][sx0 & 1];
-//        const int c11 = cfa_lut[sy1 & 1][sx1 & 1];
-//
-//        cv::Vec3f a = accp[x];
-//        cv::Vec3f cnt = cntrp[x];
-//
-//        a[c00] += v00 * w00; cnt[c00] += w00;
-//        a[c01] += v01 * w01; cnt[c01] += w01;
-//        a[c10] += v10 * w10; cnt[c10] += w10;
-//        a[c11] += v11 * w11; cnt[c11] += w11;
-//
-//        accp[x] = a;
-//        cntrp[x] = cnt;
-//      }
-//    }
-//  });
-//
-//  return true;
-//}
-
-template<class _Tp, class _Tpw, RmapMode _RmapMode>
+template<class _Tp, class _Tpw>
 static bool _rgb_drizzle_core(cv::InputArray _src_image,
-    cv::InputOutputArray _acc, // cv::Mat3f
-    cv::InputOutputArray _cntr, // cv::Mat1f
+    cv::InputOutputArray _acc, // cv::Mat_<Tp, acc_channels>
+    cv::InputOutputArray _cntr, // cv::Mat_<Tp, cntr_channels>
     const cv::Mat2f & rmap,
     cv::InputArray weights)
 {
-  const cv::Mat src_image = _src_image.getMat();
-  const uint8_t * const src_base = src_image.ptr();
-  const size_t src_stride = src_image.step;
+  constexpr bool has_weights = !std::is_void_v<_Tpw>;
+
+  if ( _src_image.empty() ) {
+    CF_ERROR("Bad _src_image: empty");
+    return false;
+  }
+
+  if ( _acc.empty() ) {
+    CF_ERROR("Bad _acc: not initialized");
+    return false;
+  }
+
+  if ( _cntr.empty() ) {
+    CF_ERROR("Bad _cntr: not initialized");
+    return false;
+  }
+
+  if ( !rmap.empty() && rmap.size() != _src_image.size()) {
+    CF_ERROR("Bad rmap size: %dx%d. Must be %dx%d", rmap.cols, rmap.rows,
+        _src_image.cols(), _src_image.rows());
+    return false;
+  }
+
+  if constexpr (has_weights) {
+    if ( weights.size() != _src_image.size()) {
+      CF_ERROR("Bad weights size: %dx%d. Must be %dx%d", weights.cols(), weights.rows(),
+          _src_image.cols(), _src_image.rows());
+      return false;
+    }
+  }
+
+  const int src_channels = _src_image.channels();
+  const int acc_channels = _acc.channels();
+  const int cntr_channels = _cntr.channels();
+  const int wmap_channels = has_weights ? 0 : weights.channels();
+
+  if ( src_channels != acc_channels ) {
+    CF_ERROR("Bad src image channels: %d. Must be acc_channels=%d", src_channels, acc_channels);
+    return false;
+  }
+
+  if ( cntr_channels != 1 && cntr_channels != acc_channels ) {
+    CF_ERROR("Bad cntr channels: %d. Must be 1 or acc_channels=%d", cntr_channels, acc_channels);
+    return false;
+  }
+
+  if constexpr (has_weights) {
+    if ( wmap_channels != 1 && wmap_channels != src_channels ) {
+      CF_ERROR("Bad wmap channels: %d. Must be 1 or src_channels=%d", wmap_channels, src_channels);
+      return false;
+    }
+  }
+
+  const cv::Mat src = _src_image.getMat();
+  const uint8_t * const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  const cv::Mat wmap = has_weights ? weights.getMat() : cv::Mat();
+  const uint8_t * const wmap_base = has_weights ? wmap.ptr() : nullptr;
+  const size_t wmap_stride = has_weights ? wmap.step : 0;
 
   cv::Mat & acc = _acc.getMatRef();
   const uint8_t * const acc_base = acc.ptr();
@@ -258,20 +109,13 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   const uint8_t * const cntr_base = cntr.ptr();
   const size_t cntr_stride = cntr.step;
 
-  constexpr bool has_weights = !std::is_void_v<_Tpw>;
-  const cv::Mat wmap = has_weights ? weights.getMat() : cv::Mat();
-  const uint8_t * const wmap_base = has_weights ? wmap.ptr() : nullptr;
-  const size_t wmap_stride = has_weights ? wmap.step : 0;
+  const uint8_t * const rmap_base = rmap.empty() ? nullptr : rmap.ptr();
+  const size_t rmap_stride = rmap.empty() ? 0 : rmap.step;
 
-  const uint8_t * const rmap_base = (_RmapMode != RmapMode::Empty) ? rmap.ptr() : nullptr;
-  const size_t rmap_stride = (_RmapMode != RmapMode::Empty) ? rmap.step : 0;
-
-  const int src_channels = src_image.channels();
-  const int src_rows = src_image.rows;
-  const int src_cols = src_image.cols;
+  const int src_rows = src.rows;
+  const int src_cols = src.cols;
   const int acc_rows = acc.rows;
   const int acc_cols = acc.cols;
-
   const float step_x = float(src_cols) / float(acc_cols);
   const float step_y = float(src_rows) / float(acc_rows);
 
@@ -282,7 +126,6 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   }
 
   parallel_for(0, acc_rows, [=](const auto & range) {
-
 
     // Hardcoded pixfrac = 1 / scale = min(step_x, step_y)
     const float half_drop = 0.5f * std::max(1e-2f, std::min(step_x, step_y));
@@ -303,12 +146,7 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
       const cv::Vec2f * rmp3 = nullptr;
       float rwy[4] = {0.0f, 1.0f, 0.0f, 0.0f};
 
-      if constexpr ( _RmapMode == RmapMode::Direct ) {
-        // remap.size() == acc.size()
-        rmp1 = (const cv::Vec2f *)(rmap_base + y * rmap_stride);
-      }
-      else if constexpr ( _RmapMode == RmapMode::Scaled ) {
-        // remap.size() == cfa_image.size()
+      if ( rmap_base ) { // remap.size() == src_image.size()
         const float clamped_rmap_y = std::clamp(rmap_y, 0.0f, float(src_rows - 1));
         const int ry1 = cvFloor(clamped_rmap_y);
         const int ry0 = std::max(ry1 - 1, 0);
@@ -327,18 +165,11 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
         const float rmap_x = x * step_x + offset_x;
 
         float px, py;
-        if constexpr ( _RmapMode == RmapMode::Empty ) {
-          // no remap
+        if ( !rmap_base ) { // no remap
           px = rmap_x;
           py = rmap_y;
         }
-        else if constexpr ( _RmapMode == RmapMode::Direct ) {
-          // remap.size() == acc.size()
-          const cv::Vec2f p = rmp1[x];
-          px = p[0];
-          py = p[1];
-        }
-        else { // RmapMode::Scaled (Bicubic Catmull-Rom)
+        else { // Bicubic Catmull-Rom
           // remap.size() == cfa_image.size()
           const float rx = std::clamp(rmap_x, 0.0f, float(src_cols - 1));
           const int rx1 = cvFloor(rx);
@@ -367,7 +198,6 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
         const int iy0 = std::clamp(sy0, 0, src_rows - 1);
         const int ix1 = std::clamp(sx1, 0, src_cols - 1);
         const int iy1 = std::clamp(sy1, 0, src_rows - 1);
-
 
         const float ax0 = px - half_acc_x;
         const float ax1 = px + half_acc_x;
@@ -422,31 +252,6 @@ static bool _rgb_drizzle_core(cv::InputArray _src_image,
   return true;
 }
 
-template<class _Tp, class _Tpw>
-static bool _rgb_drizzle_dispatch_rmap(cv::InputArray src,
-    cv::InputOutputArray acc, cv::InputOutputArray  cntr,
-    const cv::Mat2f & rmap,
-    cv::InputArray weights)
-{
-  if ( rmap.empty() ) {
-    return _rgb_drizzle_core<_Tp, _Tpw, RmapMode::Empty>(src, acc, cntr, rmap, weights);
-  }
-
-  if ( rmap.size() == acc.size() ) {
-    return _rgb_drizzle_core<_Tp, _Tpw, RmapMode::Direct>(src, acc, cntr, rmap, weights);
-  }
-
-  if ( rmap.size() == src.size() ) {
-    return _rgb_drizzle_core<_Tp, _Tpw, RmapMode::Scaled>(src, acc, cntr, rmap, weights);
-  }
-
-  CF_ERROR("Invalid remap size (%dx%d) for src size (%dx%d) and acc size (%dx%d)",
-      rmap.cols, rmap.rows,
-      src.cols(), src.rows(),
-      acc.cols(), acc.rows());
-  return false;
-}
-
 template<class _Tp>
 static bool _rgb_drizzle_dispatch_weights(cv::InputArray src,
     cv::InputOutputArray acc, cv::InputOutputArray cntr,
@@ -454,20 +259,14 @@ static bool _rgb_drizzle_dispatch_weights(cv::InputArray src,
     cv::InputArray weights)
 {
   if ( weights.empty() ) {
-    return _rgb_drizzle_dispatch_rmap<_Tp, void>(src, acc, cntr, rmap, weights);
-  }
-
-  if ( weights.size() != src.size() ) {
-    CF_ERROR("Invalid weights size (%dx%d) for src size (%dx%d)", weights.cols(), weights.rows(),
-        src.cols(), src.rows());
-    return false;
+    return _rgb_drizzle_core<_Tp, void>(src, acc, cntr, rmap, weights);
   }
 
   switch ( weights.type() ) {
     case CV_8UC1:
-      return _rgb_drizzle_dispatch_rmap<_Tp, uint8_t>(src, acc, cntr, rmap, weights);
+      return _rgb_drizzle_core<_Tp, uint8_t>(src, acc, cntr, rmap, weights);
     case CV_32FC1:
-      return _rgb_drizzle_dispatch_rmap<_Tp, float>(src, acc, cntr, rmap, weights);
+      return _rgb_drizzle_core<_Tp, float>(src, acc, cntr, rmap, weights);
     default:
       break;
   }
@@ -491,6 +290,18 @@ static bool rgb_drizzle_accumulate(cv::InputArray src,
   if ( acc.empty() || cntr.empty() || acc.size() != cntr.size() ) {
     CF_ERROR("Invalid or mismatched accumulator (%dx%d) and counter (%dx%d) sizes",
         acc.cols(), acc.rows(), cntr.cols(), cntr.rows());
+    return false;
+  }
+
+  if ( !rmap.empty() && rmap.size() != src.size() ) {
+    CF_ERROR("Invalid rmap size (%dx%d) for src size (%dx%d)", rmap.cols, rmap.rows,
+        src.cols(), src.rows());
+    return false;
+  }
+
+  if ( !weights.empty() && weights.size() != src.size() ) {
+    CF_ERROR("Invalid weights size (%dx%d) for src size (%dx%d)", weights.cols(), weights.rows(),
+        src.cols(), src.rows());
     return false;
   }
 

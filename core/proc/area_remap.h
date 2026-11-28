@@ -12,12 +12,14 @@
 #include <opencv2/opencv.hpp>
 
 bool areaRemap(cv::InputArray srcImage, const cv::Mat2f & rmap,
-    cv::OutputArray dstImage);
+    cv::OutputArray dstImage,
+    float drop_size = 1.0f);
 
 // Combined overload (image + weight mask)
 // Supported srcMask types: empty matrix (generates CV_8UC1), CV_8U, CV_32F (1–4 channels)
 bool areaRemap(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Mat2f & rmap,
     cv::OutputArray dstImage, cv::OutputArray dstMask,
-    int mdepth = -1);
+    int mtype = -1,
+    float drop_size = 1.0f);
 
 #endif /* __area_remap_h__ */

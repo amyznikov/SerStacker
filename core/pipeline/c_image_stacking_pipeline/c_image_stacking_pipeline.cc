@@ -1347,24 +1347,29 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           {
 
             cv::Size dstSize = current_remap.size();
+            float drop_size = 1.0f;
 
             if ( !_generating_master_frame && _upscale_options.upscale != frame_upscale_none ) {
               switch(_upscale_options.upscale) {
                 case frame_upscale_x15:
                   dstSize.width = dstSize.width * 3 / 2;
                   dstSize.height = dstSize.height * 3 / 2;
+                  drop_size = float(2.0/3.);
                   break;
                 case frame_upscale_x20:
                   dstSize.width = dstSize.width * 2;
                   dstSize.height = dstSize.height * 2;
+                  drop_size = float(1.0/2.);
                   break;
                 case frame_upscale_x30:
                   dstSize.width = dstSize.width * 3;
                   dstSize.height = dstSize.height * 3;
+                  drop_size = float(1.0/3.);
                   break;
                 case frame_upscale_x40:
                   dstSize.width = dstSize.width * 4;
                   dstSize.height = dstSize.height * 4;
+                  drop_size = float(1.0/4.);
                   break;
               }
 
@@ -1374,32 +1379,32 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
               }
             }
 
-//            CF_DEBUG("[F %d] INPUT: \n"
-//                "  current_frame      : %dx%d\n"
-//                "  current_weights    : %dx%d\n"
-//                "  current_mask       : %dx%d\n"
-//                "  current_binary_mask: %dx%d",
-//                curpos,
-//                current_frame.cols, current_frame.rows,
-//                current_weights.cols, current_weights.rows,
-//                current_mask.cols, current_mask.rows,
-//                current_binary_mask.cols, current_binary_mask.rows);
+            CF_DEBUG("[F %d] INPUT drop_size=%g: \n"
+                "  current_frame      : %dx%d depth=%d channels=%d\n"
+                "  current_weights    : %dx%d depth=%d channels=%d\n"
+                "  current_mask       : %dx%d depth=%d channels=%d\n"
+                "  current_binary_mask: %dx%d depth=%d channels=%d",
+                curpos, drop_size,
+                current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
+                current_weights.cols, current_weights.rows, current_weights.depth(), current_weights.channels(),
+                current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels(),
+                current_binary_mask.cols, current_binary_mask.rows, current_binary_mask.depth(), current_binary_mask.channels());
 
-            if ( !areaRemap(current_frame, current_weights, current_remap, current_frame, current_weights) ) {
+            if( !areaRemap(current_frame, current_weights, current_remap, current_frame, current_weights, -1, drop_size) ) {
               CF_ERROR("areaRemap() fails");
               return false;
             }
 
-//            CF_DEBUG("[F %d] OUTPUT: \n"
-//                "  current_frame      : %dx%d\n"
-//                "  current_weights    : %dx%d\n"
-//                "  current_mask       : %dx%d\n"
-//                "  current_binary_mask: %dx%d",
-//                curpos,
-//                current_frame.cols, current_frame.rows,
-//                current_weights.cols, current_weights.rows,
-//                current_mask.cols, current_mask.rows,
-//                current_binary_mask.cols, current_binary_mask.rows);
+            CF_DEBUG("[F %d] OUTPUT: \n"
+                "  current_frame      : %dx%d depth=%d channels=%d\n"
+                "  current_weights    : %dx%d depth=%d channels=%d\n"
+                "  current_mask       : %dx%d depth=%d channels=%d\n"
+                "  current_binary_mask: %dx%d depth=%d channels=%d",
+                curpos,
+                current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
+                current_weights.cols, current_weights.rows, current_weights.depth(), current_weights.channels(),
+                current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels(),
+                current_binary_mask.cols, current_binary_mask.rows, current_binary_mask.depth(), current_binary_mask.channels());
           }
 
           if ( canceled() ) {
